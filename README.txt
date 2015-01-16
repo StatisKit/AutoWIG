@@ -1,4 +1,5 @@
-====== VPlants.AutoWIG ======
+VPlants.AutoWIG
+===============
 
 **Authors** : XXX
 
@@ -10,26 +11,30 @@
 
 **URL** : http://openalea.gforge.inria.fr
 
-===== About =====
+About
+-----
 
-=== Description ===
+Description
+-----------
 
 VPlants.autowig is a XXX
 
 
 
-=== Content ===
+Content
+-------
 
 The VPlants.autowig package contains :
 
 
-===== Installation =====
+Installation
+------------
 
-=== Download ===
+### Download
 
 Go to http://gforge.inria.fr/frs/?group_id=79
 
-=== Requirements ===
+### Requirements
 
 * Scons >= 1
 * SconsX
@@ -37,10 +42,7 @@ Go to http://gforge.inria.fr/frs/?group_id=79
 * Boost.Python
 
 
-=== Installation ===
-
-
-=== Utilisation ===
+### Installation
 
 <code>
 python setup.py install
@@ -48,7 +50,8 @@ python setup.py install
 
 
 
-===== Documentation =====
+Documentation
+-------------
 
 http://openalea.gforge.inria.fr/doc/vplants/autowig/doc/_build/html/contents.html
 
