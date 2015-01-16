@@ -1,1 +1,1 @@
-{{md '. /README.txt'}}
+{{md '. /README.txt '}}
