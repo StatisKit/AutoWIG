@@ -1,0 +1,31 @@
+# Sphinx
+_build
+_static
+
+# Doxygen
+*.db
+html
+latex
+xml
+
+# SCons
+.sconsign.dblite
+
+# C extensions
+*.so
+
+# Python
+*.py[cod]
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+build-scons
+
+# Vim
+*.swp
+
+# Gedit
+*.*~

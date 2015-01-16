@@ -1,0 +1,3 @@
+Use RST format for the change log or put a link to the wiki
+
+* 08/07 : add this package layout
