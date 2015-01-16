@@ -1,4 +1,1 @@
-.. toctree::
-    :maxdepth: 2
-
-    README.txt
+.. include:: README.txt
