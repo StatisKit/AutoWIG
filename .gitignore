@@ -1,3 +1,6 @@
+# IPython Notebook
+.ipynb_checkpoints
+
 # Sphinx
 _build
 _static
