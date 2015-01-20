@@ -30,11 +30,13 @@ The VPlants.autowig package contains :
 Installation
 ------------
 
-### Download
+Download
+********
 
 Go to http://gforge.inria.fr/frs/?group_id=79
 
-### Requirements
+Requirements
+************
 
 * Scons >= 1
 * SconsX
@@ -42,7 +44,8 @@ Go to http://gforge.inria.fr/frs/?group_id=79
 * Boost.Python
 
 
-### Installation
+Installation
+************
 
 <code>
 python setup.py install
