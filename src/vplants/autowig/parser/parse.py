@@ -8,37 +8,58 @@ from types import ModuleType
 import asciitree
 from clang.cindex import TranslationUnit
 
-def parse_mod(mod):
+def __repr__(self):
     """
     """
-    if not isinstance(mod, ModuleType):
-        raise TypeError('`mod` parameter')
-    modpath = mod.modpath
-    if isinstance(modpath, Sequence):
-        if len(modpath) > 1:
-            raise ValueError('`mod` parameter')
-        modpath = modpath[0]
-    if not isinstance(modpath, basestring):
-        raise ValueError('`mod` parameter')
-    modpath = path(modpath)
 
-    clang = ['-x', 'c++']
+    def node_children(node):
+        """
+        """
+        return (c for c in node.get_children() if c.location.file.name == self.spelling)
 
-    configparser = ConfigParser()
-    configparser.read(modpath/'metainfo.ini')
-    try:
-        config = dict(configparser.items('CXXFLAGS'))
+    def print_node(node):
+        """
+        """
+        text = node.spelling or node.displayname
+        kind = str(node.kind)[str(node.kind).index('.')+1:]
+        return '{} {}'.format(kind, text)
 
-        if 'std' in config:
-            clang.append('-std='+config['std'])
-    except:
-        pass
+    return asciitree.draw_tree(self.cursor, node_children, print_node)
 
-    clang.append('-D__CODE_GENERATOR__')
-    for i in (modpath/'src'/'cpp').walkfiles('*.h'):
-        yield index.parse(str(i), clang)
+TranslationUnit.__repr__ = __repr__
 
-def parse_file(filepath, listflags=None, dictflags=None):
+#def parse_mod(mod):
+#    """
+#    """
+#    if not isinstance(mod, ModuleType):
+#        raise TypeError('`mod` parameter')
+#    modpath = mod.modpath
+#    if isinstance(modpath, Sequence):
+#        if len(modpath) > 1:
+#            raise ValueError('`mod` parameter')
+#        modpath = modpath[0]
+#    if not isinstance(modpath, basestring):
+#        raise ValueError('`mod` parameter')
+#    modpath = path(modpath)
+#
+#    clang = ['-x', 'c++']
+#
+#    configparser = ConfigParser()
+#    configparser.read(modpath/'metainfo.ini')
+#    try:
+#        config = dict(configparser.items('CXXFLAGS'))
+#
+#        if 'std' in config:
+#            clang.append('-std='+config['std'])
+#    except:
+#        pass
+#
+#    clang.append('-D__CODE_GENERATOR__')
+#    for i in (modpath/'src'/'cpp').walkfiles('*.h'):
+#        yield index.parse(str(i), clang)
+#
+
+def parse(filepath, listflags=None, dictflags=None):
     """
     """
 
@@ -63,24 +84,3 @@ def parse_file(filepath, listflags=None, dictflags=None):
     clang.append('-Wdocumentation')
 
     return index.parse(filepath, clang)
-
-
-def __repr__(self):
-    """
-    """
-
-    def node_children(node):
-        """
-        """
-        return (c for c in node.get_children() if c.location.file.name == self.spelling)
-
-    def print_node(node):
-        """
-        """
-        text = node.spelling or node.displayname
-        kind = str(node.kind)[str(node.kind).index('.')+1:]
-        return '{} {}'.format(kind, text)
-
-    return asciitree.draw_tree(self.cursor, node_children, print_node)
-
-TranslationUnit.__repr__ = __repr__

@@ -1,5 +1,6 @@
 """
 """
+from parse import parse
 from clang.cindex import CursorKind, AccessSpecifier
 import itertools
 
@@ -260,32 +261,23 @@ class NamespaceModel(object):
     def _repr_interface_(self):
         return "namespace "+self.name+"\n{\n"+"\n\n".join(["\t"+"\n\t".join(d._repr_interface_().splitlines()) for d in self.declarations])+"\n}"
 
-class HeaderModel(object):
+def model(filepath, **kwargs):
     """
     """
-
-    def __init__(self, translation_unit):
-        cursor = translation_unit.cursor
-        if not cursor.kind is CursorKind.TRANSLATION_UNIT:
-            raise ValueError('`cursor` parameter')
-        self.name = cursor.spelling
-        self.declarations = []
-        for c in cursor.get_children():
-            if c.location.file.name == self.name:
-                if c.kind is CursorKind.VAR_DECL:
-                    self.declarations.append(VariableModel(c))
-                elif c.kind is CursorKind.FUNCTION_DECL:
-                    self.declarations.append(FunctionModel(c))
-                elif c.kind in [CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL]:
-                    self.declarations.append(ClassModel(c))
-                elif c.kind is CursorKind.ENUM_DECL:
-                    self.declarations.append(EnumModel(c))
-                elif c.kind is CursorKind.NAMESPACE:
-                    self.declarations.append(NamespaceModel(c))
-                elif c.kind is CursorKind.TYPEDEF_DECL:
-                    self.declarations.append(TypedefModel(c))
-                else:
-                    raise ValueError('`cursor` parameter')
-
-    def _repr_interface_(self):
-        return "\n\n".join([d._repr_interface_() for d in self.declarations])
+    translation_unit = parse(filepath, **dict.pop(kwargs, 'parse', {}))
+    for c in translation.cursor.get_children():
+        if c.location.file.name == filepath:
+            if c.kind is CursorKind.VAR_DECL:
+                yield VariableModel(c))
+            elif c.kind is CursorKind.FUNCTION_DECL:
+                yield FunctionModel(c)
+            elif c.kind in [CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL]:
+                yield ClassModel(c)
+            elif c.kind is CursorKind.ENUM_DECL:
+                yield EnumModel(c)
+            elif c.kind is CursorKind.NAMESPACE:
+                yield NamespaceModel(c)
+            elif c.kind is CursorKind.TYPEDEF_DECL:
+                yield TypedefModel(c)
+            else:
+                raise ValueError('`cursor` parameter')
