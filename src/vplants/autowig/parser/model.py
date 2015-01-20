@@ -3,11 +3,6 @@
 from clang.cindex import CursorKind, AccessSpecifier
 import itertools
 
-class DocumentedModel(object):
-
-    def __init__(self, cursor):
-        self.comment = cursor.raw_comment
-
 class TypeModel(object):
 
     def __init__(self, cursor):
@@ -26,14 +21,13 @@ class TypedefModel(TypeModel):
     def _repr_interface_(self):
         return 'typedef '+self.alias+' '+self.name+';'
 
-class VariableModel(DocumentedModel):
+class VariableModel(object):
     """
     """
 
     def __init__(self, cursor):
         if not cursor.kind in [CursorKind.VAR_DECL, CursorKind.PARM_DECL, CursorKind.FIELD_DECL]:
             raise TypeError('`cursor` parameter')
-        super(VariableModel, self).__init__(cursor)
         self.name = cursor.spelling
         self.type = TypeModel(cursor.type)
         self.const = cursor.type.is_const_qualified()
@@ -45,14 +39,13 @@ class VariableModel(DocumentedModel):
         if self.const: header = "const "+header
         return header
 
-class FunctionModel(DocumentedModel):
+class FunctionModel(object):
     """
     """
 
     def __init__(self, cursor):
         if not cursor.kind in [CursorKind.FUNCTION_DECL, CursorKind.CXX_METHOD]:
             raise TypeError('`cursor` parameter')
-        super(FunctionModel, self).__init__(cursor)
         self.name = cursor.spelling
         self.output = TypeModel(cursor.result_type)
         self.inputs = [VariableModel(c) for c in cursor.get_children()]
@@ -60,21 +53,20 @@ class FunctionModel(DocumentedModel):
     def _repr_interface_(self):
         return str(self.output)+' '+self.name+'('+", ".join([i._repr_interface_()[:-1] for i in self.inputs])+');'
 
-class EnumModel(DocumentedModel):
+class EnumModel(object):
     """
     """
 
     def __init__(self, cursor):
         if not cursor.kind is CursorKind.ENUM_DECL:
             raise TypeError('`cursor` parameter')
-        super(EnumModel, self).__init__(cursor)
         self.name = cursor.spelling
         self.values = sorted([c.spelling for c in cursor.get_children()])
 
     def _repr_interface_(self):
         return 'enum '+self.name+'\n{\n\t'+',\n\t'.join(self.values)+'\n};'
 
-class ConstructorModel(DocumentedModel):
+class ConstructorModel(object):
     """
     """
 
@@ -88,7 +80,7 @@ class ConstructorModel(DocumentedModel):
     def _repr_interface_(self):
         return self.name+'('+", ".join([i._repr_interface_()[:-1] for i in self.inputs])+');'
 
-class DestructorModel(DocumentedModel):
+class DestructorModel(object):
     """
     """
 
@@ -159,14 +151,13 @@ class BaseClassModel(object):
             string = "private"
         return string + " " + str(self.name)
 
-class ClassModel(DocumentedModel):
+class ClassModel(object):
     """
     """
 
     def __init__(self, cursor):
         if not cursor.kind in [CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL]:
             raise TypeError('`cursor` parameter')
-        super(ClassModel, self).__init__(cursor)
         self.name = cursor.spelling
         self.bases = []
         self.typedefs = []
@@ -241,14 +232,13 @@ class ClassModel(DocumentedModel):
         header = "class "+self.name+header
         return header
 
-class NamespaceModel(DocumentedModel):
+class NamespaceModel(object):
     """
     """
 
     def __init__(self, cursor):
         if not cursor.kind is CursorKind.NAMESPACE:
             raise TypeError('`cursor` parameter')
-        super(NamespaceModel, self).__init__(cursor)
         self.name = cursor.spelling
         self.declarations = []
         for c in cursor.get_children():
@@ -270,7 +260,7 @@ class NamespaceModel(DocumentedModel):
     def _repr_interface_(self):
         return "namespace "+self.name+"\n{\n"+"\n\n".join(["\t"+"\n\t".join(d._repr_interface_().splitlines()) for d in self.declarations])+"\n}"
 
-class HeaderModel(DocumentedModel):
+class HeaderModel(object):
     """
     """
 
