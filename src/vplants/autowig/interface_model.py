@@ -3,106 +3,124 @@
 from parse import parse
 from clang.cindex import CursorKind, AccessSpecifier
 import itertools
+from pygments import highlight
+from pygments.lexers import CppLexer
+from pygments.formatters import HtmlFormatter
 
-class TypeModel(object):
+class InterfaceModel(object):
 
-    def __init__(self, cursor):
-        self.name = cursor.spelling
+    def __init__(self, namespace='::'):
+        self.namespace = namespace
+
+    def _repr_html_(self):
+        return highlight(self._repr_interface_(), CppLexer(), HtmlFormatter(full = True))
+
+class TypeModel(InterfaceModel):
+
+    def __init__(self, cursor, namespace="::"):
+        InterfaceModel.__init__(self, namespace)
+        self.spelling = cursor.spelling
 
     def __repr__(self):
-        return self.name
+        return self.spelling
 
 class TypedefModel(TypeModel):
     """
     """
-    def __init__(self, cursor):
-        self.name = cursor.spelling
-        self.alias = [c for c in cursor.get_children() if c.kind is CursorKind.TYPE_REF][0].type.spelling
+    def __init__(self, cursor, namespace="::"):
+        TypeModel.__init__(self, cursor, namespace)
+        self.declaration = "::".join([c.spelling if c.kind is CursorKind.NAMESPACE_REF else c.get_declaration().spelling for c in cursor.get_children()])
 
     def _repr_interface_(self):
-        return 'typedef '+self.alias+' '+self.name+';'
+        return 'typedef '+self.declaration+' '+self.spelling+';'
 
-class VariableModel(object):
+class VariableModel(InterfaceModel):
     """
     """
 
-    def __init__(self, cursor):
+    def __init__(self, cursor, namespace="::"):
+        InterfaceModel.__init__(self, cursor, namespace)
         if not cursor.kind in [CursorKind.VAR_DECL, CursorKind.PARM_DECL, CursorKind.FIELD_DECL]:
             raise TypeError('`cursor` parameter')
-        self.name = cursor.spelling
+        self.spelling = cursor.spelling
         self.type = TypeModel(cursor.type)
         self.const = cursor.type.is_const_qualified()
         #self.static = cursor.is_static_variable()
 
 
     def _repr_interface_(self):
-        header = repr(self.type)+" "+self.name+";"
+        header = repr(self.type)+" "+self.spelling+";"
         if self.const: header = "const "+header
         return header
 
-class FunctionModel(object):
+
+class FunctionModel(InterfaceModel):
     """
     """
 
-    def __init__(self, cursor):
+    def __init__(self, cursor, namespace="::"):
+        InterfaceModel.__init__(self, namespace)
         if not cursor.kind in [CursorKind.FUNCTION_DECL, CursorKind.CXX_METHOD]:
             raise TypeError('`cursor` parameter')
-        self.name = cursor.spelling
+        self.spelling = cursor.spelling
         self.output = TypeModel(cursor.result_type)
         self.inputs = [VariableModel(c) for c in cursor.get_children()]
 
     def _repr_interface_(self):
-        return str(self.output)+' '+self.name+'('+", ".join([i._repr_interface_()[:-1] for i in self.inputs])+');'
+        return str(self.output)+' '+self.spelling+'('+", ".join([i._repr_interface_()[:-1] for i in self.inputs])+');'
 
-class EnumModel(object):
+class EnumModel(InterfaceModel):
     """
     """
 
-    def __init__(self, cursor):
+    def __init__(self, cursor, namespace="::"):
+        InterfaceModel.__init__(self, namespace)
         if not cursor.kind is CursorKind.ENUM_DECL:
             raise TypeError('`cursor` parameter')
-        self.name = cursor.spelling
+        self.spelling = cursor.spelling
         self.values = sorted([c.spelling for c in cursor.get_children()])
 
     def _repr_interface_(self):
-        return 'enum '+self.name+'\n{\n\t'+',\n\t'.join(self.values)+'\n};'
+        return 'enum '+self.spelling+'\n{\n\t'+',\n\t'.join(self.values)+'\n};'
 
-class ConstructorModel(object):
+class ConstructorModel(InterfaceModel):
     """
     """
 
-    def __init__(self, cursor):
+    def __init__(self, cursor, namespace="::"):
+        InterfaceModel.__init__(self, cursor, namespace)
         if not cursor.kind is CursorKind.CONSTRUCTOR:
             raise ValueError('`cursor` parameter')
-        self.name = cursor.spelling
+        self.spelling = cursor.spelling
         self.access = cursor.access_specifier
         self.inputs = [VariableModel(c) for c in cursor.get_children()]
 
     def _repr_interface_(self):
-        return self.name+'('+", ".join([i._repr_interface_()[:-1] for i in self.inputs])+');'
+        return self.spelling+'('+", ".join([i._repr_interface_()[:-1] for i in self.inputs])+');'
 
-class DestructorModel(object):
+class DestructorModel(InterfaceModel):
     """
     """
 
-    def __init__(self, cursor):
+    def __init__(self, cursor, namespace="::"):
+        InterfaceModel.__init__(self, namespace)
         if not cursor.kind is CursorKind.DESTRUCTOR:
             raise ValueError('`cursor` parameter')
-        self.name = cursor.spelling
+        self.spelling = cursor.spelling
         self.access = cursor.access_specifier
         self.virtual = cursor.is_virtual_method()
 
     def _repr_interface_(self):
         if self.virtual: header = "virtual "
         else: header = ""
-        return header + self.name + "();"
+        return header + self.spelling + "();"
 
 class FieldModel(VariableModel):
     """
     """
 
-    def __init__(self, cursor):
-        super(FieldModel, self).__init__(cursor)
+    def __init__(self, cursor, namespace="::"):
+        VariableModel.__init__(self, cursor, namespace)
         self.access = cursor.access_specifier
         #self.mutable = cursor.type.is_mutable_qualified()
 
@@ -116,8 +134,8 @@ class MethodModel(FunctionModel):
     """
     """
 
-    def __init__(self, cursor):
-        super(MethodModel, self).__init__(cursor)
+    def __init__(self, cursor, namespace="::"):
+        FunctionModel.__init__(self, cursor, namespace)
         self.access = cursor.access_specifier
         self.static = cursor.is_static_method()
         self.virtual = cursor.is_virtual_method()
@@ -125,23 +143,24 @@ class MethodModel(FunctionModel):
         self.const = cursor.type.is_const_qualified()
 
     def _repr_interface_(self):
-        header = super(MethodModel, self)._repr_interface_()[:-1]
+        header = FunctionModel._repr_interface_(self)[:-1]
         if self.static: header = "static " + header
         if self.virtual: header = "virtual " + header
         if self.const: header = header + " const"
         if self.pure_virtual: header = header + " = 0"
         return header+";"
 
-class BaseClassModel(object):
+class BaseClassModel(InterfaceModel):
     """
     """
 
     def __init__(self, cursor):
+        InterfaceModel.__init__(self, cursor)
         #super(BaseClassModel, self).__init__(cursor)
         if not cursor.kind is CursorKind.CXX_BASE_SPECIFIER:
             raise ValueError('`cursor` parameter')
         self.access = cursor.access_specifier
-        self.name = [c for c in cursor.get_children() if c.kind is CursorKind.TYPE_REF][0].type.spelling
+        self.spelling = [c for c in cursor.get_children() if c.kind is CursorKind.TYPE_REF][0].type.spelling
 
     def __str__(self):
         if self.access is AccessSpecifier.PUBLIC:
@@ -150,16 +169,17 @@ class BaseClassModel(object):
             string = "protected"
         elif self.access is AccessSpecifier.PRIVATE:
             string = "private"
-        return string + " " + str(self.name)
+        return string + " " + str(self.spelling)
 
-class ClassModel(object):
+class ClassModel(InterfaceModel):
     """
     """
 
     def __init__(self, cursor):
+        InterfaceModel.__init__(self, cursor)
         if not cursor.kind in [CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL]:
             raise TypeError('`cursor` parameter')
-        self.name = cursor.spelling
+        self.spelling = cursor.spelling
         self.bases = []
         self.typedefs = []
         self.constructors = []
@@ -230,17 +250,18 @@ class ClassModel(object):
                     elif i.access is AccessSpecifier.PRIVATE:
                         private_bases.append(i.__str__())
                 header = " : " +", ".join([", ".join(i) for i in [public_bases, protected_bases, private_bases] if len(i) > 0])+header
-        header = "class "+self.name+header
+        header = "class "+self.spelling+header
         return header
 
-class NamespaceModel(object):
+class NamespaceModel(InterfaceModel):
     """
     """
 
     def __init__(self, cursor):
+        InterfaceModel.__init__(self, cursor)
         if not cursor.kind is CursorKind.NAMESPACE:
             raise TypeError('`cursor` parameter')
-        self.name = cursor.spelling
+        self.spelling = cursor.spelling
         self.declarations = []
         for c in cursor.get_children():
             if c.kind is CursorKind.VAR_DECL:
@@ -259,25 +280,44 @@ class NamespaceModel(object):
                 raise ValueError('`cursor` parameter')
 
     def _repr_interface_(self):
-        return "namespace "+self.name+"\n{\n"+"\n\n".join(["\t"+"\n\t".join(d._repr_interface_().splitlines()) for d in self.declarations])+"\n}"
+        return "namespace "+self.spelling+"\n{\n"+"\n\n".join(["\t"+"\n\t".join(d._repr_interface_().splitlines()) for d in self.declarations])+"\n}"
 
-def model(filepath, **kwargs):
+class GlobalscopeModel(InterfaceModel):
     """
     """
+
+    def __init__(self, cursor, filepath=None):
+        InterfaceModel.__init__(self, cursor)
+        if not cursor.kind is CursorKind.TRANSLATION_UNIT:
+            raise TypeError('`cursor` parameter')
+        self.spelling = cursor.spelling
+        self.declarations = []
+        for c in cursor.get_children():
+            if c.location.file.name == filepath:
+                if c.kind is CursorKind.VAR_DECL:
+                    self.declarations.append(VariableModel(c))
+                elif c.kind is CursorKind.FUNCTION_DECL:
+                    self.declarations.append(FunctionModel(c))
+                elif c.kind in [CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL]:
+                    self.declarations.append(ClassModel(c))
+                elif c.kind is CursorKind.ENUM_DECL:
+                    self.declarations.append(EnumModel(c))
+                elif c.kind is CursorKind.NAMESPACE:
+                    self.declarations.append(NamespaceModel(c))
+                elif c.kind is CursorKind.TYPEDEF_DECL:
+                    self.declarations.append(TypedefModel(c))
+                else:
+                    raise ValueError('`cursor` parameter')
+
+    def _repr_interface_(self):
+        return "\n\n".join([declaration._repr_interface_() for declaration in self.declarations])
+
+def interface_model(filepath, filefilter=True, **kwargs):
+    """
+    """
+    if not isinstance(filefilter, bool):
+        raise TypeError('`filefilter` parameter')
     translation_unit = parse(filepath, **dict.pop(kwargs, 'parse', {}))
-    for c in translation.cursor.get_children():
-        if c.location.file.name == filepath:
-            if c.kind is CursorKind.VAR_DECL:
-                yield VariableModel(c))
-            elif c.kind is CursorKind.FUNCTION_DECL:
-                yield FunctionModel(c)
-            elif c.kind in [CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL]:
-                yield ClassModel(c)
-            elif c.kind is CursorKind.ENUM_DECL:
-                yield EnumModel(c)
-            elif c.kind is CursorKind.NAMESPACE:
-                yield NamespaceModel(c)
-            elif c.kind is CursorKind.TYPEDEF_DECL:
-                yield TypedefModel(c)
-            else:
-                raise ValueError('`cursor` parameter')
+    if not filefilter: filepath = None
+    return GlobalscopeModel(translation_unit.cursor, filepath=filepath)
+
