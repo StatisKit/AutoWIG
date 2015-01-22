@@ -2,11 +2,23 @@
 """
 
 from openalea.core.path import path
-from index import index
-from ConfigParser import ConfigParser
-from types import ModuleType
 import asciitree
-from clang.cindex import TranslationUnit
+from clang.cindex import Config, Index, TranslationUnit
+from ConfigParser import ConfigParser
+
+_path_ = path(__file__)
+while len(_path_) > 0 and not str(_path_.name) == 'src':
+    _path_ = _path_.parent
+_path_ = _path_.parent
+configparser = ConfigParser()
+configparser.read(_path_/'metainfo.ini')
+config = dict(configparser.items('libclang'))
+
+if 'path' in config:
+    Config.set_library_path(config['path'])
+elif 'file' in config:
+    Config.set_library_file(config['file'])
+index = Index.create()
 
 def __repr__(self):
     """
@@ -64,7 +76,7 @@ def parse(filepath, listflags=None, dictflags=None):
     """
 
     if not isinstance(filepath, basestring):
-        raise ValueError('`filepath` parameter')
+        raise TypeError('`filepath` parameter')
     if not isinstance(filepath, path):
         filepath = path(filepath)
 
@@ -80,7 +92,7 @@ def parse(filepath, listflags=None, dictflags=None):
             raise TypeError('`listflags` parameter')
         clang.extend(listflags)
 
-    clang.append('-D__CODE_GENERATOR__')
+    clang.append('-D__AUTOWIG__')
     clang.append('-Wdocumentation')
 
     return index.parse(filepath, clang)
