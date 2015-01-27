@@ -1,24 +1,26 @@
 """
 """
 
-from openalea.core.path import path
+from path import path
 import asciitree
 from clang.cindex import Config, Index, TranslationUnit
 from ConfigParser import ConfigParser
 
-_path_ = path(__file__)
-while len(_path_) > 0 and not str(_path_.name) == 'src':
+if not Config.loaded:
+    _path_ = path(__file__)
+    while len(_path_) > 0 and not str(_path_.name) == 'src':
+        _path_ = _path_.parent
     _path_ = _path_.parent
-_path_ = _path_.parent
-configparser = ConfigParser()
-configparser.read(_path_/'metainfo.ini')
-config = dict(configparser.items('libclang'))
+    configparser = ConfigParser()
+    configparser.read(_path_/'metainfo.ini')
+    config = dict(configparser.items('libclang'))
 
-if 'path' in config:
-    Config.set_library_path(config['path'])
-elif 'file' in config:
-    Config.set_library_file(config['file'])
-index = Index.create()
+    if 'path' in config:
+            Config.set_library_path(config['path'])
+    elif 'file' in config:
+        Config.set_library_file(config['file'])
+    else:
+        raise IOError('cannot find libclang path or file')
 
 def __repr__(self):
     """
@@ -71,9 +73,18 @@ TranslationUnit.__repr__ = __repr__
 #        yield index.parse(str(i), clang)
 #
 
-def parse(filepath, listflags=None, dictflags=None):
+
+def parse_file(filepath, listflags=None, dictflags=None):
     """
     """
+    if not isinstance(filepath, basestring):
+        raise TypeError('`filepath` parameter')
+    if not isinstance(filepath, path):
+        filepath = path(filepath)
+    if not filepath.exists():
+        raise ValueError('`filepath` parameter')
+
+    index = Index.create()
 
     if not isinstance(filepath, basestring):
         raise TypeError('`filepath` parameter')
@@ -85,7 +96,7 @@ def parse(filepath, listflags=None, dictflags=None):
     if not dictflags is None:
         if not isinstance(dictflags, dict):
             raise TypeError('`dictflags` parameter')
-        clang.extend(['-'+i+'='+j for i, j in cxxflags.iteritems()])
+        clang.extend(['-'+i+'='+j for i, j in dictflags.iteritems()])
 
     if not listflags is None:
         if not isinstance(listflags, list):
