@@ -6,7 +6,25 @@ from pygments import highlight
 from pygments.lexers import CppLexer
 from pygments.formatters import HtmlFormatter
 from IPython.display import HTML
+import os, stat
+import itertools
 from mako.template import Template
+
+def openfile(filepath):
+    if not isinstance(filepath, basestring):
+        raise TypeError('`filepath` parameter')
+    if not isinstance(filepath, path):
+        filepath = path(filepath)
+    if filepath.exists():
+        os.chmod(filepath, stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
+    return open(filepath, 'w')
+
+def closefile(fileobj):
+    if not isinstance(fileobj, file):
+        raise TypeError('`filehandler` parameter')
+    os.chmod(fileobj.name, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+    fileobj.close()
+
 __makopath__ = path(__file__)
 while len(__makopath__) > 0 and not str(__makopath__.name) == 'src':
     __makopath__ = __makopath__.parent
@@ -43,13 +61,13 @@ class ClassBoostPythonModel(BoostPythonModel):
         while len(white) > 0:
             gray = [white.pop()]
             if model.methods[gray[0]].access is AccessSpecifier.PUBLIC:
-                for w in white:
-                    if model.methods[gray[0]].spelling == model.methods[w].spelling:
-                        gray.append(w)
-            if len(gray) == 1:
-                self.methods.append(model.methods[gray[0]])
-            else:
-                self.overloaded_methods.append([model.methods[g] for g in gray])
+                    for w in white:
+                        if model.methods[gray[0]].spelling == model.methods[w].spelling:
+                            gray.append(w)
+                    if len(gray) == 1 and not 'hidden' in model.methods[gray[0]].annotations:
+                        self.methods.append(model.methods[gray[0]])
+                    else:
+                        self.overloaded_methods.append([model.methods[g] for g in gray if not 'hidden' in model.methods[g].annotations])
             white = [w for w in white if not w in gray]
             black.extend(gray)
 
@@ -87,23 +105,27 @@ class ScopeBoostPythonModel(BoostPythonModel):
         while len(white) > 0:
             gray = [white.pop()]
             if isinstance(declarations[gray[0]], UserDefinedTypeInterfaceModel) and not isinstance(declarations[gray[0]], TemplateClassInterfaceModel):
-                self.classes.append(ClassBoostPythonModel(declarations[gray[0]], scope=self.scope+self.spelling))
+                if not 'hidden' in declarations[gray[0]].annotations and not declarations[gray[0]].empty:
+                    self.classes.append(ClassBoostPythonModel(declarations[gray[0]], scope=self.scope))
             elif isinstance(declarations[gray[0]], EnumInterfaceModel):
-                self.enums.append(declarations[gray[0]])
+                if not 'hidden' in declarations[gray[0]].annotations:
+                    self.enums.append(declarations[gray[0]])
             elif isinstance(declarations[gray[0]], (FunctionInterfaceModel, ScopeInterfaceModel)):
                 for w in white:
                     if isinstance(declarations[w], (FunctionInterfaceModel, ScopeInterfaceModel)) and declarations[gray[0]].spelling == declarations[w].spelling:
-                        gray.append(w)
+                            gray.append(w)
                 if isinstance(declarations[gray[0]], FunctionInterfaceModel):
-                    if len(gray) == 1:
+                    if len(gray) == 1 and not 'hidden' in declarations[gray[0]].annotations:
                         self.methods.append(declarations[gray[0]])
                     else:
-                        self.overloaded_methods.append([declarations[g] for g in gray])
+                        self.overloaded_methods.append([declarations[g] for g in gray if not 'hidden' in declarations[g].annotations])
+                        if len(self.overloaded_methods[-1]) == 0:
+                            self.overloaded_methods.pop()
                 else:
-                    if len(gray) == 1:
+                    if len(gray) == 1 and not 'hidden' in declarations[gray[0]].annotations:
                         self.scopes.append(ScopeBoostPythonModel(declarations[gray[0]], scope=self.scope+declarations[gray[0]].spelling))
                     else:
-                        self.scopes.append(ScopeBoostPythonModel(*[declarations[g] for g in gray], scope=self.scope+declarations[gray[0]].spelling))
+                        self.scopes.append(ScopeBoostPythonModel(*[declarations[g] for g in gray if not 'hidden' in declarations[g].annotations], scope=self.scope+declarations[gray[0]].spelling))
             white = [w for w in white if not w in gray]
             black.extend(gray)
 
@@ -112,7 +134,7 @@ def read_boost_python(*models, **kwargs):
     """
     return ScopeBoostPythonModel(*models, **kwargs)
 
-def write_boost_python(wrapperpath, model, **kwargs):
+def write_boost_python(wrapperpath, model, library, **kwargs):
     """
     """
     if not isinstance(wrapperpath, basestring):
@@ -121,30 +143,32 @@ def write_boost_python(wrapperpath, model, **kwargs):
         wrapperpath = path(wrapperpath)
     if not isinstance(model, ScopeBoostPythonModel):
         raise TypeError('`model` parameter')
+    if not isinstance(library, basestring):
+        raise TypeError('`library` parameter')
     if not wrapperpath.exists():
         wrapperpath.makedirs()
     for m in model.methods:
         template = Template(filename=str(__makopath__/'function.mako'))
-        f = open(wrapperpath/m.spelling+'.cpp', 'w')
-        f.write(template.render(model=m, scope=model.scope))
-        f.close()
+        f = openfile(wrapperpath/m.spelling+'.cpp')
+        f.write(template.render(model=m, scope=model.scope, library=library))
+        closefile(f)
     for m in model.overloaded_methods:
         template = Template(filename=str(__makopath__/'functions.mako'))
-        f = open(wrapperpath/m[0].spelling+'.cpp', 'w')
-        f.write(template.render(models=m, scope=model.scope))
-        f.close()
+        f = open(wrapperpath/m[0].spelling+'.cpp')
+        f.write(template.render(models=m, scope=model.scope, library=library))
+        closefile(f)
     for e in model.enums:
         template = Template(filename=str(__makopath__/'enums.mako'))
-        f = open(wrapperpath/e.spelling+'.cpp', 'w')
-        f.write(template.render(model=e, scope=model.scope))
-        f.close()
+        f = openfile(wrapperpath/e.spelling+'.cpp')
+        f.write(template.render(model=e, scope=model.scope, library=library))
+        closefile(f)
     for c in model.classes:
         template = Template(filename=str(__makopath__/'class.mako'))
-        f = open(wrapperpath/''.join('_' + char.lower() if char.isupper() else char for char in c.spelling).lstrip('_')+'.cpp', 'w')
-        f.write(template.render(model=c))
-        f.close()
+        f = openfile(wrapperpath/''.join('_' + char.lower() if char.isupper() else char for char in c.spelling).lstrip('_')+'.cpp')
+        f.write(template.render(model=c, library=library))
+        closefile(f)
     for s in model.scopes:
-        write_boost_python(wrapperpath/model.scope, s)
+        write_boost_python(wrapperpath/model.scope, s, library=library)
 
 #def boost_python(filepath, dirpath, **kwargs):
 #    """
