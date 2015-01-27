@@ -7,20 +7,20 @@
 <% files = set() %>\
 % for m in models:
     % if not m.file in files:
-#include <${m.file}><% files.add(m.file) %>
+#include <${m.file.replace('./src/cpp', library)}><% files.add(m.file) %>
     % endif
 % endfor
 
 using namespace boost::python;
 
 % for i, j in enumerate(models):
-${j.output.spelling} (${scope}*${j.spelling}_${i})(${", ".join([k.type.spelling if not k.const else 'const '+k.type.spelling for k in j.inputs])}) = ${scope}${j.spelling};
+${j.output.spelling} (*${j.spelling}_${i})(${", ".join([k.type.spelling if not k.const else 'const '+k.type.spelling for k in j.inputs])}) = ${scope}${j.spelling};
 % endfor
 
 BOOST_PYTHON_MODULE(_${models[0].spelling})
 {
 % for i, j in enumerate(models):
-    def("${j.spelling}", ${j.spelling}_${i})
+    def("${j.spelling}", ${j.spelling}_${i});
 % endfor
 }
 

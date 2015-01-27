@@ -40,17 +40,24 @@ class TypeModel(object):
     def __repr__(self):
         return self.spelling
 
+class UsingInterfaceModel(InterfaceModel):
+    """
+    """
+    def __init__(self, cursor):
+        InterfaceModel.__init__(self, cursor)
+        self.spelling = cursor.spelling
+        self.declaration = cursor.underlying_typedef_type.spelling
+
+    def _repr_interface_(self):
+        return 'using '+self.spelling+' = '+self.declaration+';'
+
 class TypedefInterfaceModel(InterfaceModel):
     """
     """
     def __init__(self, cursor):
         InterfaceModel.__init__(self, cursor)
         self.spelling = cursor.spelling
-        self.declaration = ""
-        for c in cursor.get_children():
-            if c.kind is CursorKind.NAMESPACE_REF:
-                self.declaration += c.spelling+"::"
-        self.declaration = list(cursor.get_children()).pop().type.spelling
+        self.declaration = cursor.underlying_typedef_type.spelling
 
     def _repr_interface_(self):
         return 'typedef '+self.declaration+' '+self.spelling+';'
@@ -64,7 +71,8 @@ class EnumInterfaceModel(InterfaceModel):
         if not cursor.kind is CursorKind.ENUM_DECL:
             raise TypeError('`cursor` parameter')
         self.spelling = cursor.spelling
-        self.values = sorted([c.spelling for c in cursor.get_children()])
+        self.values = sorted([c.spelling for c in cursor.get_children() if c.kind is CursorKind.ENUM_CONSTANT_DECL])
+        self.annotations = [c.spelling for c in cursor.get_children() if c.kind is CursorKind.ANNOTATE_ATTR]
 
     def _repr_interface_(self):
         return 'enum '+self.spelling+'\n{\n\t'+',\n\t'.join(self.values)+'\n};'
@@ -95,6 +103,7 @@ class FieldInterfaceModel(VariableInterfaceModel):
         VariableInterfaceModel.__init__(self, cursor)
         self.access = cursor.access_specifier
         #self.mutable = cursor.type.is_mutable_qualified()
+        self.annotations = [c.spelling for c in cursor.get_children() if c.kind is CursorKind.ANNOTATE_ATTR]
 
     def _repr_interface_(self):
         header = super(FieldInterfaceModel, self)._repr_interface_()
@@ -111,7 +120,8 @@ class ConstructorInterfaceModel(InterfaceModel):
             raise ValueError('`cursor` parameter')
         self.spelling = cursor.spelling
         self.access = cursor.access_specifier
-        self.inputs = [VariableInterfaceModel(c) for c in cursor.get_children()]
+        self.inputs = [VariableInterfaceModel(c) for c in cursor.get_children() if c.kind is CursorKind.PARM_DECL]
+        self.annotations = [c.spelling for c in cursor.get_children() if c.kind is CursorKind.ANNOTATE_ATTR]
 
     def _repr_interface_(self):
         return self.spelling+'('+", ".join([i._repr_interface_()[:-1] for i in self.inputs])+');'
@@ -127,6 +137,7 @@ class DestructorInterfaceModel(InterfaceModel):
         self.spelling = cursor.spelling
         self.access = cursor.access_specifier
         self.virtual = cursor.is_virtual_method()
+        self.annotations = [c.spelling for c in cursor.get_children() if c.kind is CursorKind.ANNOTATE_ATTR]
 
     def _repr_interface_(self):
         if self.virtual: header = "virtual "
@@ -144,6 +155,7 @@ class FunctionInterfaceModel(InterfaceModel):
         self.spelling = cursor.spelling
         self.output = TypeModel(cursor.result_type)
         self.inputs = [VariableInterfaceModel(c) for c in cursor.get_children() if c.kind is CursorKind.PARM_DECL]
+        self.annotations = [c.spelling for c in cursor.get_children() if c.kind is CursorKind.ANNOTATE_ATTR]
 
     def _repr_interface_(self):
         return str(self.output)+' '+self.spelling+'('+", ".join([i._repr_interface_()[:-1] for i in self.inputs])+');'
@@ -177,7 +189,7 @@ class BaseClassInterfaceModel(InterfaceModel):
         if not cursor.kind is CursorKind.CXX_BASE_SPECIFIER:
             raise ValueError('`cursor` parameter')
         self.access = cursor.access_specifier
-        self.spelling = [c for c in cursor.get_children() if c.kind is CursorKind.TYPE_REF][0].type.spelling
+        self.spelling = [c for c in cursor.get_children() if c.kind in [CursorKind.TYPE_REF, CursorKind.TEMPLATE_REF]][0].type.spelling
 
     def __str__(self):
         if self.access is AccessSpecifier.PUBLIC:
@@ -198,10 +210,11 @@ class UserDefinedTypeInterfaceModel(InterfaceModel):
         self.methods = []
         self.fields = []
         self.classes = []
+        self.annotations = []
         if cursor is None:
             raise TypeError('`cursor` parameter')
         InterfaceModel.__init__(self, cursor)
-        if not cursor.kind in [CursorKind.CLASS_DECL, CursorKind.CLASS_TEMPLATE, CursorKind.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION, CursorKind.STRUCT_DECL]:
+        if not cursor.kind in [CursorKind.CLASS_DECL, CursorKind.CLASS_TEMPLATE, CursorKind.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION, CursorKind.STRUCT_DECL, CursorKind.UNION_DECL]:
             raise ValueError('`cursor` parameter')
         self.spelling = cursor.spelling
         for c in cursor.get_children():
@@ -217,13 +230,40 @@ class UserDefinedTypeInterfaceModel(InterfaceModel):
                 self.fields.append(FieldInterfaceModel(c))
             elif c.kind is CursorKind.TYPEDEF_DECL:
                 self.typedefs.append(TypedefInterfaceModel(c))
-            elif c.kind in [CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL]:
+                self.typedefs[-1].access = c.access_specifier
+            elif c.kind is CursorKind.TYPE_ALIAS_DECL:
+                self.typedefs.append(UsingInterfaceModel(c))
+                self.typdefs[-1].access = c.acces_specifier
+            elif c.kind is CursorKind.CLASS_DECL:
                 self.classes.append(ClassInterfaceModel(c))
+                self.classes[-1].access = c.access_specifier
+            elif c.kind is CursorKind.STRUCT_DECL:
+                self.classes.append(StructInterfaceModel(c))
+                self.classes[-1].access = c.access_specifier
+            elif c.kind is CursorKind.UNION_DECL:
+                self.classes.append(UnionInterfaceModel(c))
+                self.classes[-1].access = c.access_specifier
             elif c.kind is CursorKind.TEMPLATE_TYPE_PARAMETER:
                 self.templates.append(TypeModel(c))
-            elif c.kind is CursorKind.CXX_ACCESS_SPEC_DECL:
+            elif c.kind is CursorKind.ANNOTATE_ATTR:
+                self.annotations.append(c.spelling)
+            elif c.kind in [CursorKind.CXX_ACCESS_SPEC_DECL, CursorKind.UNEXPOSED_EXPR, CursorKind.UNEXPOSED_DECL]:
                 continue
             else:
+                def node_children(node):
+                    """
+                    """
+                    return (c for c in node.get_children() if c.location.file.name == self.spelling)
+
+                def print_node(node):
+                    """
+                    """
+                    text = node.spelling or node.displayname
+                    kind = str(node.kind)[str(node.kind).index('.')+1:]
+                    return '{} {}'.format(kind, text)
+
+                import asciitree
+                print asciitree.draw_tree(c, node_children, print_node)
                 raise ValueError('`cursor` parameter')
 
     @property
@@ -244,7 +284,7 @@ class UserDefinedTypeInterfaceModel(InterfaceModel):
             public_header = ""
             protected_header = ""
             private_header = ""
-            for i in [self.typedefs, self.fields, list(itertools.chain(self.constructors, [self.destructor])), self.methods]:
+            for i in [self.typedefs, self.fields, self.classes, list(itertools.chain(self.constructors, [self.destructor])), self.methods]:
                 public_lines = 0
                 protected_lines = 0
                 private_lines = 0
@@ -294,7 +334,19 @@ class ClassInterfaceModel(UserDefinedTypeInterfaceModel):
     """
 
     def _repr_interface_(self):
-        return "class "+UserDefinedTypeModel._repr_interface_(self)
+        return "class "+UserDefinedTypeInterfaceModel._repr_interface_(self)
+
+class UnionInterfaceModel(UserDefinedTypeInterfaceModel):
+    """
+    """
+
+    def __init__(self, cursor):
+        UserDefinedTypeInterfaceModel.__init__(self, cursor)
+        if any([m.virtual for m in self.methods]) or len(self.bases) > 0:
+            raise ValueError('`cursor` parameter')
+
+    def _repr_interface_(self):
+        return "union "+UserDefinedTypeInterfaceModel._repr_interface_(self)
 
 class TemplateClassInterfaceModel(UserDefinedTypeInterfaceModel):
     """
@@ -314,6 +366,7 @@ class ScopeInterfaceModel(InterfaceModel):
     def __init__(self, cursor, filtering=None):
         InterfaceModel.__init__(self, cursor)
         self.declarations = []
+        self.annotations = []
         if filtering is None:
             def filtering(children):
                 return children
@@ -337,6 +390,8 @@ class ScopeInterfaceModel(InterfaceModel):
                 self.declarations.append(NamespaceInterfaceModel(ch))
             elif ch.kind is CursorKind.TYPEDEF_DECL:
                 self.declarations.append(TypedefInterfaceModel(ch))
+            elif ch.kind is CursorKind.ANNOTATE_ATTR:
+                self.annotations.append(ch.spelling)
             else:
                 self.declarations.append(InterfaceModel(ch))
 

@@ -4,7 +4,7 @@
  * */
  
 #include <boost/python.hpp>
-#include <${model.file}>
+#include <${model.file.replace('./src/cpp', library)}>
 
 using namespace boost::python;
 
@@ -14,6 +14,7 @@ BOOST_PYTHON_MODULE(_${model.spelling})
         % for v in model.values:
         .value("${v}", ${scope}${v})
         % endfor
+        ;
 }
 
 void init_bindings()

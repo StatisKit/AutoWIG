@@ -4,7 +4,7 @@
  * */
  
 #include <boost/python.hpp>
-#include <${model.file}>
+#include <${model.file.replace('./src/cpp', library)}>
 
 using namespace boost::python;
 
@@ -43,7 +43,7 @@ boost::shared_ptr< ${model.scope}${model.spelling} >\
             % if not m.static:
 &\
             % endif
-${model.scope}::${model.spelling}::${m.spelling})
+${model.scope}${model.spelling}::${m.spelling})
         % endfor
         % for m in model.overloaded_methods:
             % for i, j in enumerate(m):

@@ -29,7 +29,7 @@ def __repr__(self):
     def node_children(node):
         """
         """
-        return (c for c in node.get_children() if c.location.file.name == self.spelling)
+        return (c for c in node.get_children() if not c.location.file is None and c.location.file.name == self.spelling)
 
     def print_node(node):
         """
