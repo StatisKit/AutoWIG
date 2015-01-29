@@ -9,6 +9,11 @@ from IPython.display import HTML
 import os, stat
 import itertools
 from mako.template import Template
+from mako.lookup import TemplateLookup
+
+__dir__ = path(__file__)
+__dir__ = __dir__.parent
+lookup = TemplateLookup(directories=[str(__dir__)])
 
 def openfile(filepath):
     if not isinstance(filepath, basestring):
@@ -17,6 +22,10 @@ def openfile(filepath):
         filepath = path(filepath)
     if filepath.exists():
         os.chmod(filepath, stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
+    else:
+        dirpath = filepath.parent
+        if not dirpath.exists():
+            dirpath.makedirs()
     return open(filepath, 'w')
 
 def closefile(fileobj):
@@ -25,10 +34,6 @@ def closefile(fileobj):
     os.chmod(fileobj.name, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
     fileobj.close()
 
-__makopath__ = path(__file__)
-while len(__makopath__) > 0 and not str(__makopath__.name) == 'src':
-    __makopath__ = __makopath__.parent
-__makopath__ = __makopath__.parent/'mako'
 
 def BoostPython(obj):
     """
@@ -141,29 +146,54 @@ def write_boost_python(wrapperpath, model, library, **kwargs):
         raise TypeError('`wrapperpath` parameter')
     if not isinstance(wrapperpath, path):
         wrapperpath = path(wrapperpath)
+    if not 'pythonpath' in kwargs:
+        pythonpath = path(wrapperpath.replace('wrapper/', ''))
+        print pythonpath
+    else:
+        pythonpath = dict.pop(kwargs, 'pythonpath')
+        if not isinstance(pythonpath, basestring):
+            raise TypeError('`pythonpath` parameter')
+        if not isinstance(pythonpath, path):
+            pythonpath = path(pythonpath)
     if not isinstance(model, ScopeBoostPythonModel):
         raise TypeError('`model` parameter')
     if not isinstance(library, basestring):
         raise TypeError('`library` parameter')
     if not wrapperpath.exists():
         wrapperpath.makedirs()
+    if not pythonpath.exists():
+        pythonpath.makedirs()
     for m in model.methods:
-        template = Template(filename=str(__makopath__/'function.mako'))
+        template = Template(filename=str(__dir__/'function-cpp.mako'))
         f = openfile(wrapperpath/m.spelling+'.cpp')
         f.write(template.render(model=m, scope=model.scope, library=library))
         closefile(f)
+        template = Template(filename=str(__dir__/'function-py.mako'), lookup=lookup)
+        scopepath = path(pythonpath)
+        for s in model.scope.split('::'):
+            scopepath /= ''.join('_' + c.lower() if c.isupper() else c for c in s).lstrip('_')
+        f = openfile(scopepath/'__'+m.spelling+'.py')
+        f.write(template.render(model=m, library=library))
+        closefile(f)
     for m in model.overloaded_methods:
-        template = Template(filename=str(__makopath__/'functions.mako'))
+        template = Template(filename=str(__dir__/'functions-cpp.mako'))
         f = open(wrapperpath/m[0].spelling+'.cpp')
         f.write(template.render(models=m, scope=model.scope, library=library))
         closefile(f)
     for e in model.enums:
-        template = Template(filename=str(__makopath__/'enums.mako'))
+        template = Template(filename=str(__dir__/'enums-cpp.mako'))
         f = openfile(wrapperpath/e.spelling+'.cpp')
         f.write(template.render(model=e, scope=model.scope, library=library))
         closefile(f)
+        template = Template(filename=str(__dir__/'enums-py.mako'), lookup=lookup)
+        scopepath = path(pythonpath)
+        for s in model.scope.split('::'):
+            scopepath /= ''.join('_' + c.lower() if c.isupper() else c for c in s).lstrip('_')
+        f = openfile(scopepath/'__'+e.spelling+'.py')
+        f.write(template.render(model=e))
+        closefile(f)
     for c in model.classes:
-        template = Template(filename=str(__makopath__/'class.mako'))
+        template = Template(filename=str(__dir__/'class-cpp.mako'))
         f = openfile(wrapperpath/''.join('_' + char.lower() if char.isupper() else char for char in c.spelling).lstrip('_')+'.cpp')
         f.write(template.render(model=c, library=library))
         closefile(f)
