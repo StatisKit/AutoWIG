@@ -74,7 +74,7 @@ TranslationUnit.__repr__ = __repr__
 #
 
 
-def parse_file(filepath, listflags=None, dictflags=None):
+def parse_file(filepath, cxxflags=None):
     """
     """
     if not isinstance(filepath, basestring):
@@ -91,19 +91,6 @@ def parse_file(filepath, listflags=None, dictflags=None):
     if not isinstance(filepath, path):
         filepath = path(filepath)
 
-    clang = ['-x', 'c++']
+    cxxflags.extend(['-x', 'c++', '-D__AUTOWIG__', '-Wdocumentation'])
 
-    if not dictflags is None:
-        if not isinstance(dictflags, dict):
-            raise TypeError('`dictflags` parameter')
-        clang.extend(['-'+i+'='+j for i, j in dictflags.iteritems()])
-
-    if not listflags is None:
-        if not isinstance(listflags, list):
-            raise TypeError('`listflags` parameter')
-        clang.extend(listflags)
-
-    clang.append('-D__AUTOWIG__')
-    clang.append('-Wdocumentation')
-
-    return index.parse(filepath, clang)
+    return index.parse(filepath, cxxflags)

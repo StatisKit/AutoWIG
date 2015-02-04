@@ -5,12 +5,10 @@
  
 #include <boost/python.hpp>
 #include <${model.file.replace('./src/cpp', library)}>
-
-using namespace boost::python;
-
+<%namespace file='/tools-py.mako' import='method_spelling'/>\
 % for m in model.overloaded_methods:
     % for i, j in enumerate(m):
-${j.output.spelling} (${model.scope}${model.spelling}::*${j.spelling}_${i})(${", ".join([k.type.spelling if not k.const else 'const '+k.type.spelling for k in j.inputs])}) = \
+${j.output._repr_interface_()} (${model.scope}${model.spelling}::*${j.spelling}_${i})(${", ".join(k.type._repr_interface_() for k in j.inputs)}) = \
         % if not j.static:
 &\
         % endif
@@ -20,30 +18,32 @@ ${j.output.spelling} (${model.scope}${model.spelling}::*${j.spelling}_${i})(${",
 
 BOOST_PYTHON_MODULE(_${''.join('_' + char.lower() if char.isupper() else char for char in model.spelling).lstrip('_')})
 {
-    class_< ${model.scope}${model.spelling}, \
+    boost::python::class_< ${model.scope}${model.spelling}, \
     % if len(model.bases) > 0:
-bases< ${", ".join([i.spelling for i in model.bases])} >, \
+boost::python::bases< ${", ".join([i.spelling for i in model.bases])} >, \
     %endif
 boost::shared_ptr< ${model.scope}${model.spelling} >\
     % if model.pure_virtual:
 , boost::noncopyable\
     % endif
- >("${model.spelling}", no_init)
+ >("${model.spelling}", boost::python::no_init)
     % if not model.pure_virtual:
         % for c in model.constructors:
-            % if len(c.inputs) > 0:
-        .def(init< ${", ".join([i.type.spelling if not i.const else "const "+i.type.spelling for i in c.inputs])} >())
+            % if len(c.inputs) == 0:
+        .def(boost::python::init<>())
             % else:
-        .def(init<>())
+        .def(boost::python::init< ${", ".join(i.type._repr_interface_() for i in c.inputs)} >())
             % endif
         % endfor
     % endif
         % for m in model.methods:
-        .def("${m.spelling}", \
-            % if not m.static:
+            % if not m.pure_virtual:
+        .def("${method_spelling(m)}", \
+                % if not m.static:
 &\
-            % endif
+                % endif
 ${model.scope}${model.spelling}::${m.spelling})
+            % endif
         % endfor
         % for m in model.overloaded_methods:
             % for i, j in enumerate(m):
@@ -52,7 +52,7 @@ ${model.scope}${model.spelling}::${m.spelling})
         % endfor
         ;
     % for i in model.bases:
-    implicitly_convertible< boost::shared_ptr< ${model.scope}${model.spelling} >, boost::shared_ptr< ${i.spelling} > >();
+    boost::python::implicitly_convertible< boost::shared_ptr< ${model.scope}${model.spelling} >, boost::shared_ptr< ${i.spelling} > >();
 % endfor
 }
 

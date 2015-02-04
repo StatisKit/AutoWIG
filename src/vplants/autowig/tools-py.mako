@@ -1,8 +1,19 @@
-<%def name="write_import(library, model)">\
+<%def name="method_spelling(method)">\
+% if method.spelling == 'operator()':
+__call__\
+% elif method.spelling == 'get_size':
+__len__\
+% else:
+${method.spelling}\
+% endif
+</%def>
+
+<%def name="write_import(library, objects, imported)">\
 <% import re %>\
-% for i in [j.type.spelling.replace('const', '').replace('&', '').replace('*', '').replace(' ', '') for j in model.inputs]:
-    % if re.match(library+r'::(.*)', i):
-from ${'.'.join([''.join('_' + c.lower() if c.isupper() else c for c in j).lstrip('_') for j in i.split('::')[:-1]])} import ${'_'+''.join('_' + c.lower() if c.isupper() else c for c in i.rsplit('::', -1)[-1]).lstrip('_').replace(' ', '_')}
+% for i in [o.spelling.replace('const', '').replace('&', '').replace('*', '').replace(' ', '') for o in objects]:
+    % if re.match(library+r'::(.*)', i) and not i in imported:
+from ${'.'.join([''.join('_' + c.lower() if c.isupper() else c for c in j) for j in i.split('::')])} import ${i.rsplit('::', -1)[-1]}
+    <% imported.add(i) %>\
     % endif
 % endfor
 </%def>\
@@ -12,12 +23,16 @@ from ${'.'.join([''.join('_' + c.lower() if c.isupper() else c for c in j).lstri
 % if argtype in ['unsignedint', 'int']:
 ${"    "*indent}if not isinstance(${argname}, int):
 ${"    "*indent}    raise TypeError('`${argname}` parameter')
+    % if argtype == 'unsignedint':
+${"    "*indent}if not ${argname} > 0:
+${"    "*indent}    raise ValueError('`${argname}` parameter')
+    % endif
 % elif argtype == 'double':
 ${"    "*indent}if not isinstance(${argname}, float):
 ${"    "*indent}    raise TypeError('`${argname}` parameter')
 % elif re.match(r'std::(.*)', argtype):
     % if argtype == 'std::string':
-${"    "*indent}if not isinstance(${argname}, string):
+${"    "*indent}if not isinstance(${argname}, str):
 ${"    "*indent}    raise TypeError('`${argname}` parameter')
     % elif re.match(r'std::vector<(.*)>', argtype):
 ${"    "*indent}if not isinstance(${argname}, collections.Sequence):
@@ -36,8 +51,21 @@ ${"    "*indent}    raise TypeError('`${argname}` parameter')
 % endif
 </%def>\
 
-<%def name="write_inputs(library, indent, inputs)">\
-${', '.join([i.spelling for i in inputs])}):
+<%def name="write_inputs(library, indent, inputs, args=False, kwargs=False)">\
+${', '.join([i.spelling for i in inputs])}\
+% if args:
+    % if len(inputs) > 0:
+, \
+    % endif
+*args\
+% endif
+% if kwargs:
+    % if len(inputs) > 0 or args:
+, \
+    % endif
+**kwargs\
+% endif
+):
 % for i in inputs:
 <%self:write_test library="${library}" indent="${indent}" argtype="${i.type.spelling.replace('const', '').replace('&', '').replace('*', '').replace(' ', '')}" argname="${i.spelling}">\
 \

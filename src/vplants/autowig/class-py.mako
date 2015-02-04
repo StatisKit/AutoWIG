@@ -4,7 +4,7 @@
 """
 
 <% imported = set() %>\
-<%namespace file='/tools-py.mako' import='write_import, write_inputs'/>\
+<%namespace file='/tools-py.mako' import='write_import, write_inputs, method_spelling'/>\
 ${write_import(library, model.bases, imported)}\
 % for c in model.constructors:
     ${write_import(library, [i.type for i in c.inputs], imported)}\
@@ -29,7 +29,7 @@ def wrapper(f):
         % if len(model.constructors[0].inputs) == 0:
         f(self)
         % else:
-        f(self, ${', '.join(i.spelling for i in model.inputs)})
+        f(self, ${', '.join(i.spelling for i in model.constructors[0].inputs)})
         % endif
         for key, value in kwargs.iteritems():
             if hasattr(self, key):
@@ -41,14 +41,17 @@ def wrapper(f):
 ${model.spelling}.__init__ = wrapper(${model.spelling}.__init__)
 del wrapper
 % endif
-
 % for m in model.methods:
+
     % if not m.pure_virtual:
 def wrapper(f):
     @wraps(f)
-    def ${m.spelling}(\
+    def ${method_spelling(m)}(\
         % if not m.static:
 self\
+            % if len(m.inputs) > 0:
+, \
+            % endif
         % endif
         % if len(m.inputs) > 0:
 ${write_inputs(library, 2, m.inputs)}\
@@ -67,22 +70,28 @@ self\
             % endif
         % endif
 ${', '.join(i.spelling for i in m.inputs)})
-    return ${m.spelling}
+    return ${method_spelling(m)}
 
-${model.spelling}.${m.spelling} = wrapper(${model.spelling}.${m.spelling})
+${model.spelling}.${method_spelling(m)} = wrapper(${model.spelling}.${method_spelling(m)})
 del wrapper
     %endif
 % endfor
-\
 % for f in model.fields:
+
 getter = getattr(${model.spelling}, get_${f.spelling}, None)
 if not getter is None:
     setter = getattr(${model.spelling}, set_${f.spelling}, None)
     ${model.spelling}.${f.spelling} = property(getter, setter)
     if not setter is None:
         del ${model.spelling}.set_${f.spelling}
-    del ${model.spelling}.get_${f.spelling}
-
+    del ${model.spelling}.get_${f.spelling}, getter, setter
+    % if f.type.spelling.replace('const', '').replace('&', '').replace(' ', '') == 'bool':
+else:
+    getter = getattr(${model.spelling}, is_${f.spelling}, None)
+    if not getter is None:
+        ${model.spelling}.${f.spelling} = property(getter)
+        del ${model.spelling}.is_${f.spelling}, getter
+    % endif
 % endfor
 \
 del wraps
