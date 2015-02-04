@@ -26,7 +26,7 @@ namespace namespace_a
 
     }
 
-    typedef namespace_b::namespace_c::enum_type enum_type; 
+    typedef namespace_b::namespace_c::enum_type ref_enum_type; 
 
     int& function(const int& a);
 
@@ -36,7 +36,7 @@ namespace namespace_a
         virtual ~Struct();
         Struct(const Struct& s);
 
-        virtual double virtual_function(const enum_type& enum_value) const = 0;
+        virtual double virtual_function(const ref_enum_type& enum_value) const = 0;
     };
 
     class BaseClass : public Struct
@@ -53,7 +53,7 @@ namespace namespace_b
         int field;
 
         public:
-            virtual double virtual_function(const namespace_a::enum_type& enum_value) const;
+            virtual double virtual_function(const namespace_a::ref_enum_type& enum_value) const;
     };
 }
 
