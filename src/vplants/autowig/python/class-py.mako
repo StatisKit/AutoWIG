@@ -1,3 +1,4 @@
+# vim: set main_syntax=python
 """This file was automaticaly generated using VPlants.AutoWIG package
 
 .. warning:: Any post-processing of this file will be lost if VPlants.AutoWIG is re-run
