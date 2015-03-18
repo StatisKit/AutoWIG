@@ -3,9 +3,10 @@
 .. warning:: Any post-processing of this file will be lost if VPlants.AutoWIG is re-run
 """
 
-\
+<% imported = set() %>\
 <%namespace file='/tools-py.mako' import='write_import, write_inputs'/>\
-${write_import(library, model)}\
+${write_import(library, [i.type for i in model.inputs], imported)}\
+
 from _${model.spelling} import ${model.spelling}
 from functools import wraps
 import collections
