@@ -1,12 +1,12 @@
 % if enum.anonymous:
     % for value in enum.values:
-    boost::python::scope().attr("${value}") = ${scope}${value};
+boost::python::scope().attr("${value}") = ${scope}${value};
     % endfor
 % else:
-    boost::python::enum_< ${scope}${str(enum)} >("${str(enum)}")\
+boost::python::enum_< ${scope}${str(enum)} >("${str(enum)}")\
         % for value in enum.values:
 
-        .value("${value}", ${scope}${value})\
+    .value("${value}", ${scope}${value})\
         % endfor
 ;
 % endif

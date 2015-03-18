@@ -62,6 +62,7 @@ def parse_file(filepath, flags=None):
     if not isinstance(filepath, path):
         filepath = path(filepath)
     if not filepath.exists():
+        print filepath
         raise ValueError('`filepath` parameter')
 
     index = Index.create()
@@ -82,7 +83,7 @@ def indent(lines, tabsize=4, level=1):
     return "\n".join(" "*tabsize*level+line for line in lines.splitlines())
 
 def H(obj, **kwargs):
-    return HTML(highlight(obj.header(), CppLexer(), HtmlFormatter(full = True)), **kwargs)
+    return HTML(highlight(obj.interface(), CppLexer(), HtmlFormatter(full = True)), **kwargs)
 
 def CPP(obj, **kwargs):
     return HTML(highlight(obj.implementation(), CppLexer(), HtmlFormatter(full = True)), **kwargs)

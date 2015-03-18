@@ -1,11 +1,17 @@
-from vplants.autowig.tools import indent
-from vplants.autowig.header.interface import InterfaceTypedefType, TypeRefHeaderInterface, InterfaceLValueReferenceType, InterfacePointerType, FunctionHeaderInterface
+from ..tools import indent
+from ..cpp.interface import InterfaceTypedefType, TypeRefHeaderInterface, InterfaceLValueReferenceType, InterfacePointerType, FunctionHeaderInterface
+
+def special_functions(funcname):
+    if funcname == "operator()":
+        return "__call__"
+    else:
+        return funcname
 
 def write_thin(scope, string, level=0, tabsize=4):
-    if len(lines) == 0 or lines.isspace():
+    if len(string) == 0 or string.isspace():
         return ""
     else:
-        result = "\n"
+        result = ""
         _level = level
         if level == 0:
             result += "namespace autowig\n{\n"
@@ -27,7 +33,7 @@ def write_deep(string):
         if len(lines) == 1:
             return "{ "+lines[0]+" }"
         else:
-            return "{\n"+"\n".join(lines)+"\n}\n\n";
+            return "{\n    "+"\n    ".join(lines)+"\n}\n";
 
 def return_value_policy(function):
     if not isinstance(function, FunctionHeaderInterface):

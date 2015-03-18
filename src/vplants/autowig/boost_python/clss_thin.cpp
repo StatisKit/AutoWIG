@@ -1,6 +1,6 @@
 <%!
     from vplants.autowig.tools import indent
-    from vplants.autowig.header.interface import enums, functions, classes
+    from vplants.autowig.cpp.interface import enums, functions, classes
 %>\
 <%
     public = clss.access('public')

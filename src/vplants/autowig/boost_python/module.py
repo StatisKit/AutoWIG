@@ -1,32 +1,29 @@
-from ..header.interface import FunctionHeaderInterface, functions, flatten, header_interface
+"""
+"""
+
+from SCons.Builder import Builder
+from SCons.Action import Action
+from SCons.Node.FS import Dir
 from mako.lookup import TemplateLookup
+import os
 from path import path
+
+from ..cpp.interface import functions, resolve_scopes, header_interface
 
 class BoostPythonModule(object):
 
-    def __init__(dirpath, **kwargs):
+    def __init__(self, *funcnames, **kwargs):
         """
         """
-        if not isinstance(dirpath, path):
-            self._dirpath = path(dirpath)
-        if not self._dirpath.exists():
-            raise ValueError('`dirpath` parameter')
-        self._flags = dict.pop(kwargs, 'flags', None)
+        self.funcnames = funcnames
         self.lookup = dict.pop(kwargs, 'lookup', TemplateLookup(directories=[str(path(__file__).parent)], strict_undefined=True))
-        self._filename = dict.pop(kwargs, 'filename', 'export_module')
-        self._tabsize = dict.pop(kwargs, 'tabsize', 4)
+        self.modname = dict.pop(kwargs, 'module', 'module')
 
-    def implementation(self):
-        includes = set()
-        module = ""
-        for scope, interfaces in flatten(*[header_interface(filepath, flags) for filepath in dirpath.walkfiles(pattern='.h')], level=2):
-            filtered = [interface for interface in functions(*interfaces) if str(interface.output) == 'void' and len(interface.inputs) == 0]
-            module += (" "*self._tabsize).join(scope+str(interface)+"();\n" for interface in filtered)
-            includes.update([interface.file for interface in filtered])
-        template = lookup.get_template('boost_python_module.cpp')
+    def implement(self):
+        template = self.lookup.get_template('boost_python_module.cpp')
         return template.render(
-                includes = includes,
-                module = module)
+                modname = self.modname,
+                funcnames = self.funcnames)
 
 def get_lookup(self):
     return self._lookup
@@ -38,3 +35,19 @@ def set_lookup(self, lookup):
 
 BoostPythonModule.lookup = property(get_lookup, set_lookup)
 del get_lookup, set_lookup
+
+def boost_python_module_build(target, source, env):
+    """
+    """
+    print target[0].path
+    commonprefix = os.path.commonprefix([os.path.dirname(filenode.abspath)+os.path.sep for filenode in source+target])
+    module = BoostPythonModule(*[node.abspath.replace(commonprefix, '').replace('.cpp', '') for node in source],
+            module = target[0].abspath.replace(commonprefix, '').replace('.cpp', ''),
+            flags = env.subst("$_CCCOMCOM").split(" "))
+    filehandler = open(target[0].abspath, 'w')
+    filehandler.write(module.implement())
+    filehandler.close()
+    return 0
+
+boost_python_module = Builder(
+        action = Action(boost_python_module_build, "Generate file: \"$TARGET\""))

@@ -1,21 +1,23 @@
-/** This file was automatically generated using VPlants.AutoWIG package
-*
-* @warning Any modification of this file will be lost if VPlants.AutoWIG is re-run
-* */
-<%!
-    from vplants.autowig.boost_python.tools import write_deep
-%>\
+/***************************************************************************/
+/* This file was automatically generated using VPlants.AutoWIG package     */
+/*                                                                         */
+/* Any modification of this file will be lost if VPlants.AutoWIG is re-run */
+/***************************************************************************/
 
 #include <boost/python.hpp>
-% for include in includes:
-#include <${include}>
+% for funcname in funcnames:
+void ${funcname}();
 % endfor
 
-BOOST_PYTHON_MODULE(_${filename})
-${write_deep(module)}
+BOOST_PYTHON_MODULE(_${modname})
+{
+% for funcname in funcnames:
+    ${funcname}();
+% endfor
+}
 
 void init_bindings()
 {
     Py_Initialize();
-    init_${filename}();
+    init_${modname}();
 }

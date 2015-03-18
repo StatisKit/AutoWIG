@@ -1,10 +1,11 @@
 """
 """
-from ..tools import AST, parse_file
 from clang.cindex import TranslationUnit, Type, Cursor, CursorKind, Type, TypeKind, AccessSpecifier
 import itertools
 import re
 from numpy import cumsum
+
+from ..tools import AST, parse_file
 
 __mapping__ = dict()
 
@@ -669,7 +670,7 @@ def header_interface(filepath, flags=None):
     """
     return GlobalscopeHeaderInterface(parse_file(filepath, flags).cursor)
 
-def flatten(*interfaces, **kwargs):
+def resolve_scopes(*interfaces, **kwargs):
     """
     """
     scope = dict.pop(kwargs, 'scope', "")
@@ -684,7 +685,7 @@ def flatten(*interfaces, **kwargs):
     for interface in interfaces:
         if level > 0 and isinstance(interface, ScopeHeaderInterface):
             if level == 1:
-                for key, value in flatten(*interface[:], scope=scope+str(interface)).iteritems():
+                for key, value in resolve_scopes(*interface[:], scope=scope+str(interface)).iteritems():
                     if key in results:
                         results[key].extend(value)
                     else:
@@ -693,7 +694,7 @@ def flatten(*interfaces, **kwargs):
                 results[scope].append(interface)
         elif level > 1 and isinstance(interface, UserDefinedTypeHeaderInterface):
             if level == 2:
-                for key, value in flatten(*interface[:], scope=scope+str(interface)).iteritems():
+                for key, value in resolve_scopes(*interface[:], scope=scope+str(interface)).iteritems():
                     if key in results:
                         results[key].extend(value)
                     else:
