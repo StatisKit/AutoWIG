@@ -48,4 +48,33 @@ class Triangle: public Polygon
       virtual Polygon* copy() const;
 };
 
+template<class T, int I> class Container
+{
+    //template<class U> U foo();
+    T bar(const T& bar);
+};
+
+template<class A, int B> class OtherContainer : public Container<A, B>
+{
+};
+
+/*template<class T> class Container<T*>
+{
+};*/
+
+template<class A, int B> class Container< A*, B >;
+//template<> class Container< Polygon, 10 >
+{
+};
+/*template<> SPECIALIZATION DO NOT WORK
+class Container< Polygon >
+{
+};*/
+
+Container< Polygon, 10 > copy_container(const Container< Polygon, 10 >& container);
+
+/*
+class PolygonContainer : public Container< Polygon >
+{};*/
+
 #endif

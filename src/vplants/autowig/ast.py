@@ -50,10 +50,13 @@ class AbstractSyntaxTree(object):
         if any(not isinstance(filepath, basestring) for filepath in filepaths):
             raise TypeError('`filepaths` parameter')
         filepaths = [filepath if isinstance(filepath, path) else path(filepath) for filepath in filepaths]
+        self.filepaths = []
         for filepath in filepaths:
             if not filepath.exists() or not filepath.isfile():
                 raise ValueError('`filepaths` parameter')
-            tempfilehandler.write('#include \"' + filepath.abspath() + '\"\n')
+            self.filepaths.append(str(filepath.abspath()))
+        for filepath in self.filepaths:
+            tempfilehandler.write('#include \"' + filepath + '\"\n')
         tempfilehandler.close()
 
         flags = kwargs.get('flags', ['-x', 'c++', '-Wdocumentation'])
