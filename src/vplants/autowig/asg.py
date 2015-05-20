@@ -1,7 +1,7 @@
 from pygments import highlight
-from pygments.lexers import CppLexer, PythonLexer
+from pygments.lexers import CLexer, CppLexer, PythonLexer
 from pygments.formatters import HtmlFormatter
-from clang.cindex import Cursor, CursorKind, Type, TypeKind
+from clang.cindex import Index, TranslationUnit, CursorKind, Type, TypeKind
 import uuid
 from mako.template import Template
 from path import path
@@ -11,10 +11,17 @@ from IPython.core import pylabtools
 from IPython.html.widgets import interact
 import itertools
 import os
+from tempfile import NamedTemporaryFile
 from abc import ABCMeta
 from fnmatch import fnmatch
 import re
-from .ast import AbstractSyntaxTree
+import warnings
+import hashlib
+
+from .scope import Scope
+from .config import Cursor
+
+__all__ = ['AbstractSemanticGraph']
 
 class NodeProxy(object):
     """
@@ -24,26 +31,59 @@ class NodeProxy(object):
         self._asg = asg
         self._node = node
 
+    @property
+    def id(self):
+        return self._node
+
+    @property
+    def hash(self):
+        return str(uuid.uuid5(uuid.NAMESPACE_X500, self._node)).replace('-', '_')
+
     def __repr__(self):
         return self._node
 
     def __dir__(self):
-        return self._asg._nodes[self._node].keys()
+        return sorted([key for key in self._asg._nodes[self._node].keys() if not key.startswith('_')])
 
     def __getattr__(self, attr):
         try:
-            attr = self._asg._nodes[self._node][attr]
+            return self._asg._nodes[self._node][attr]
         except:
-            raise AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
-        else:
-            if isinstance(attr, basestring) and attr in self._asg:
-                return self._asg[attr]
-            else:
-                return attr
+            raise #AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
 
-    @property
-    def hashname(self):
-        return self.localname.replace(' ', '_') + '_' + str(uuid.uuid5(uuid.NAMESPACE_X500, self._node)).replace('-', '_')
+    def _clean_default(self):
+        return True
+
+def get_clean(self):
+    if not hasattr(self, '_clean'):
+        return self._clean_default()
+    else:
+        return self._clean
+
+def set_clean(self, clean):
+    self._asg._nodes[self._node]['_clean'] = clean
+
+def del_clean(self):
+    self._asg._nodes[self._node].pop('_clean', False)
+
+NodeProxy.clean = property(get_clean, set_clean, del_clean)
+del get_clean, set_clean, del_clean
+
+def get_traverse(self):
+    if not '_traverse' in self._asg._nodes[self._node]:
+        return True
+    else:
+        return self._asg._nodes[self._node]['_traverse']
+
+def set_traverse(self, traverse):
+    if not traverse:
+        self._asg._nodes[self._node]['_traverse'] = traverse
+
+def del_traverse(self):
+    self._asg._nodes[self._node].pop('_traverse')
+
+NodeProxy.traverse = property(get_traverse, set_traverse, del_traverse)
+del get_traverse, set_traverse, del_traverse
 
 class EdgeProxy(object):
     """
@@ -53,7 +93,6 @@ class DirectoryProxy(NodeProxy):
     """
     """
 
-
     @property
     def globalname(self):
         return self._node
@@ -62,27 +101,91 @@ class DirectoryProxy(NodeProxy):
     def localname(self):
         return self.globalname[self.globalname.rfind(os.sep, 0, -1)+1:]
 
-    def glob(self, pattern='*', on_disk=False):
-        if on_disk:
-            dirpath = path(self.globalname)
-            if dirpath.exists():
-                nodes = dirpath.glob(pattern)
-            for node in nodes:
-                nodepath = node.asbpath()
-                if node.isdir():
-                    self._asg._nodes[nodepath] = dict(proxy = DirectoryProxy)
-                else:
-                    self._asg._nodes[nodepath] = dict(proxy = FileProxy)
-                self._asg._diredges[self._nodes].append(nodepath)
-        return [self._asg[node] for node in self._asg._diredges[self._node] if fnmatch(node, pattern)]
+    @property
+    def parent(self):
+        parent = os.sep.join(self.globalname.split(os.sep)[:-2]) + os.sep
+        if parent == '':
+            parent = os.sep
+        return self._asg[parent]
 
-    def walkdirs(self, pattern='*', on_disk=False):
-        nodes = [node for node in self.glob(pattern=pattern, on_disk=on_disk) if isinstance(node, DirectoryProxy)]
-        return nodes+list(itertools.chain(*[node.walkdirs(pattern, on_disk=on_disk) for node in nodes]))
+    def glob(self, pattern='*', on_disk=False, sort=False):
+        if sort:
+            return sorted(self.glob(pattern=pattern, on_disk=on_disk), key=lambda node: node.localname)
+        else:
+            if on_disk:
+                dirname = path(self.globalname)
+                for name in dirname.glob(pattern=pattern):
+                    if name.isdir():
+                        self._asg.add_directory(str(name.abspath()))
+                    if name.isfile():
+                        self._asg.add_file(str(name.abspath()))
+            nodes = [self._asg[node] for node in self._asg._syntax_edges[self.id]]
+            return [node for node in nodes if fnmatch(node.localname, pattern) and node.traverse]
 
-    def walkfiles(self, pattern='*'):
-        nodes = itertools.chain(*[node.glob(pattern) for node in self.walkdirs(on_disk=on_disk)])
-        return [node for node in nodes if isinstance(node, FileProxy) and fnmatch(node.globalname, pattern)]
+    def walkdirs(self, pattern='*', on_disk=False, sort=False):
+        if sort:
+            return sorted(self.walkdirs(pattern=pattern, on_disk=on_disk), key=lambda node: node.localname)
+        else:
+            if on_disk:
+                dirname = path(self.globalname)
+                for name in dirname.glob(pattern=pattern):
+                    if name.isdir():
+                        self._asg.add_directory(str(name.abspath()))
+            nodes = [node for node in self.glob(pattern=pattern) if isinstance(node, DirectoryProxy)]
+            return nodes+list(itertools.chain(*[node.walkdirs(pattern, on_disk=on_disk) for node in nodes]))
+
+    def walkfiles(self, pattern='*', on_disk=False, sort=False):
+        if sort:
+            return sorted(self.walkfiles(pattern=pattern, on_disk=on_disk), key=lambda node: node.localname)
+        else:
+            nodes = itertools.chain(*[node.glob(on_disk=on_disk) for node in self.walkdirs(on_disk=on_disk)])
+            return [node for node in self.glob(pattern=pattern) if isinstance(node, FileProxy)]+[node for node in nodes if isinstance(node, FileProxy) and fnmatch(node.globalname, pattern)]
+
+    def makedirs(self):
+        if not self.on_disk:
+            os.makedirs(self.globalname)
+            self._asg._nodes[self.id]['on_disk'] = True
+
+    def parse(self,  pattern='*.h', side_effect=True, **kwargs):
+        includes = self.walkfiles(pattern=pattern)
+        for include in includes:
+            include.clean = False
+        if not side_effect:
+            if kwargs.pop('libclang', True):
+                index = Index.create()
+                tempfilehandler = NamedTemporaryFile(delete=False)
+                for include in includes:
+                    if include.on_disk:
+                        tempfilehandler.write('#include \"' + include.globalname + '\"\n')
+                    else:
+                        tempfilehandler.write('\n' + str(include) + '\n')
+                tempfilehandler.close()
+                flags = kwargs.pop('flags', None)
+                if flags is None:
+                    language = kwargs.pop('language')
+                    if language == 'c++':
+                        flags = ['-x', 'c++', '-std=c++11', '-Wdocumentation']
+                    elif language == 'c':
+                        flags = ['-x', 'c', '-std=c11', '-Wdocumentation']
+                    else:
+                        raise ValueError('\'language\' parameter')
+                if 'c' in flags:
+                    for include in includes:
+                        self._asg._nodes[include.id]['language'] = 'c'
+                    self._asg._language = 'c'
+                if 'c++' in flags:
+                    for include in includes:
+                        self._asg._nodes[include.id]['language'] = 'c++'
+                    self._asg._language = 'c++'
+                tu = index.parse(tempfilehandler.name, args=flags, unsaved_files=None, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
+                os.unlink(tempfilehandler.name)
+                self._asg._read_translation_unit(tu)
+                del self._asg._language
+            else:
+                raise NotImplementedError('')
+        else:
+            for include in includes:
+                include.parse(**kwargs)
 
 class FileProxy(NodeProxy):
     """
@@ -96,38 +199,259 @@ class FileProxy(NodeProxy):
     def localname(self):
         return self.globalname[self.globalname.rfind(os.sep)+1:]
 
-    def __str__(self):
-        filepath = path(self.globalname)
-        if not filepath.exists():
-            if hasattr(self, '_template'):
-                return self._template.render(obj=self)
-            else: return ""
+    @property
+    def suffix(self):
+        return self.localname[self.localname.rfind('.'):]
+
+    def write(self, force=False):
+        if not self.on_disk or not self.is_protected or force:
+            parent = self.parent
+            if not parent.on_disk:
+                parent.makedirs()
+            filehandler = open(self.globalname, 'w')
+            try:
+                filehandler.write(str(self))
+            except:
+                filehandler.close()
+                raise
+            else:
+                filehandler.close()
         else:
-            return "".join(filepath.lines())
+            raise IOError('Protected file on dis on disk')
+
+    def __str__(self):
+        return self.content
+
+    def md5(self):
+        return hashlib.md5(str(self)).hexdigest()
+
+    def _repr_html_(self):
+        if hasattr(self, 'language'):
+            if self.language == 'c':
+                lexer = CLexer()
+            elif self.language == 'c++':
+                lexer = CppLexer()
+            elif self.language == 'py':
+                lexer = PythonLexer()
+            else:
+                raise NotImplementedError('\'language\': '+str(self.language))
+            return highlight(str(self), lexer, HtmlFormatter(full = True))
+        else:
+            raise NotImplementedError()
 
     @property
     def parent(self):
-        return self._asg[self.globalname.replace(self.localname, '')]
+        parent = os.sep.join(self.globalname.split(os.sep)[:-1]) + os.sep
+        return self._asg[parent]
 
-class CxxFileProxy(FileProxy):
-    """
-    """
+    def parse(self, **kwargs):
+        self.clean = False
+        if kwargs.pop('libclang', True):
+            index = Index.create()
+            flags = kwargs.pop('flags', None)
+            if flags is None:
+                language = kwargs.pop('language', self.language)
+                if language == 'c++':
+                    flags = ['-x', 'c++', '-std=c++11', '-Wdocumentation']
+                elif language == 'c':
+                    flags = ['-x', 'c', '-std=c11', '-Wdocumentation']
+                else:
+                    raise ValueError('\'language\' parameter')
+            if 'c' in flags:
+                self._asg._nodes[self.id]['language'] = 'c'
+                self._asg._language = 'c'
+            if 'c++' in flags:
+                self._asg._nodes[self.id]['language'] = 'c++'
+                self._asg._language = 'c++'
+            if self.on_disk:
+                tu = index.parse(self.globalname, args=flags, unsaved_files=None, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
+            else:
+                tempfilehandler = NamedTemporaryFile(delete=False)
+                tempfilehandler.write(str(self))
+                tempfilehandler.close()
+                tu = index.parse(tempfilehandler.name, args=flags, unsaved_files=None, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
+                os.unlink(tempfilehandler.name)
+            self._asg._read_translation_unit(tu)
+            del self._asg._language
+        else:
+            raise NotImplementedError('')
 
-    def _repr_html_(self):
-        return highlight(str(self), CppLexer(), HtmlFormatter(full = True))
+def get_is_protected(self):
+    if hasattr(self, '_is_protected'):
+        return self._is_protected
+    else:
+        return True
 
-class CxxFundamentalTypeProxy(NodeProxy):
+def set_is_protected(self, is_protected):
+    self._asg._nodes[self.id]['_is_protected'] = is_protected
+
+def del_is_protected(self):
+    self._asg._nodes[self.id].pop('_is_protected', True)
+
+FileProxy.is_protected = property(get_is_protected, set_is_protected, del_is_protected)
+del get_is_protected, set_is_protected, del_is_protected
+
+def get_content(self):
+    if not hasattr(self, '_content'):
+        filepath = path(self.globalname)
+        if filepath.exists():
+            return "".join(filepath.lines())
+        else:
+            return ""
+    else:
+        return self._content
+
+def set_content(self, content):
+    self._asg._nodes[self.id]['_content'] = content
+
+def del_content(self):
+    self._asg._nodes[self._id].pop('_content', False)
+
+FileProxy.content = property(get_content, set_content, del_content)
+del get_content, set_content, del_content
+
+class CodeNodeProxy(NodeProxy):
+
+    @property
+    def header(self):
+        try:
+            return self._asg[self._header]
+        except:
+            try:
+                return self.scope.header
+            except:
+                return None
+
+    def _clean_default(self):
+        header = self.header
+        return header is None or header.clean
+
+    def __contains__(self, scope):
+        if scope.has_scopes:
+            raise ValueError('\'scope\' parameter')
+        node = self.id
+        if not node.endswith('::'):
+            node += '::'
+        #if scope.has_templates:
+        #    #if not node + scope.name in self._asg._syntax_edges[self._node]:
+        #    #    #templates = scope.templates
+        #    #    #nb_templates = len(templates)
+        #    #    #candidate = [candidate for candidate in self.classes() if isinstance(candidate, (ClassTemplateProxy, ClassDefaultTemplateProxy)) and candidate.nb_templates == nb_templates]
+        #    #    #if len(candidate) == 0:
+        #    #    #    return False
+        #    #    #elif len(candidate) == 1:
+        #    #    #    candidate = candidate.pop()
+        #    #    #    #if candidate.is_specialized:
+        #    #    #    #    maxmatch = 0
+        #    #    #    #    candidates = []
+        #    #    #    #    for specialization in candidate.specializations:
+        #    #    #    #        match = specialization.match(scope)
+        #    #    #    #        if match >= maxmatch:
+        #    #    #    #            maxmatch = match
+        #    #    #    #            candidates.append(specialization)
+        #    #    #    #    if len(candidates) > 1:
+        #    #    #    #        raise ValueError()
+        #    #    #    #    elif len(candidates) == 1:
+        #    #    #    #        candidate = candidates.pop()
+        #    #    #    candidate.instantiate(*templates)
+        #    #    #    return True
+        #    #    #else:
+        #    #    #    raise ValueError()
+        #    #raise NotImplementedError()
+        #    #else:
+        #    #    return True
+        #    node = node + scope.remove_templates().name
+        #else:
+        node = node + scope.name
+        return node in self._asg._syntax_edges[self._node]
+        #if not contains and hasattr(self, 'usings'):
+        #    for using in self.usings:
+        #        if scope in self._asg[using]:
+        #            contains = True
+        #            break
+        #return contains
+
+    def __getitem__(self, scope):
+        if isinstance(scope, basestring):
+            scope = Scope(scope)
+        if scope.is_global:
+            item = self._asg._nodes['::']['proxy'](self._asg, '::')
+            for scope in scope.split():
+                item = item[scope]
+            return item
+        elif scope.has_scopes:
+            item = self
+            scopes = list(scope.split())
+            while not scopes[0] in item and not item.globalname == '::':
+                item = item.scope
+            item = self.__getproxy__(item, scopes[0])
+            for scope in scopes[1:]:
+                item = item[scope]
+            return item
+        else:
+            item = self
+            while not scope in item and not item.globalname == '::':
+                item = item.scope
+            return self.__getproxy__(item, scope)
+
+    def __getproxy__(self, item, scope):
+        if isinstance(item, AliasProxy):
+            item = item.alias
+        node = item._node
+        if not node.endswith('::'):
+            node += '::'
+        if scope.has_templates:
+            node += scope.remove_templates().name
+        else:
+            node += scope.name
+        #if node in self._asg._syntax_edges[item.id]:
+        return self._asg._nodes[node]['proxy'](self._asg, node)
+        #elif hasattr(item, 'usings'):
+        #     for using in item.usings:
+        #         self._asg._syntax_edges[self._node]
+        #         if scope in self._asg[using]:
+        #            contains = True
+        #            break
+
+    @property
+    def scopes(self):
+        scopes = []
+        scope = self.parent
+        while not scope.globalname == '::':
+            scopes.append(scope)
+            scope = scope.parent
+        return reversed(scopes)
+
+def get_export(self):
+    if not hasattr(self, '_export'):
+        return True
+    else:
+        return self._export
+
+def set_export(self, export):
+    if export:
+        del self._export
+    else:
+        self._asg._nodes[self.id]['_export'] = export
+
+def del_export(self):
+    self._asg._nodes[self._id].pop('_export', False)
+
+CodeNodeProxy.export = property(get_export, set_export, del_export)
+del get_export, set_export, del_export
+
+class FundamentalTypeProxy(CodeNodeProxy):
     """
     http://www.cplusplus.com/doc/tutorial/variables/
     """
 
     @property
     def globalname(self):
-        return self._node
+        return self._node.lstrip('::')
 
     @property
     def localname(self):
-        return self._node
+        return self.globalname
 
     def __str__(self):
         return self._node
@@ -135,130 +459,181 @@ class CxxFundamentalTypeProxy(NodeProxy):
     def _repr_html_(self):
         return highlight(str(self), CppLexer(), HtmlFormatter(full = True))
 
+    def __getitem__(self, node):
+        if node.startswith('::'):
+            return self._asg[node]
+        else:
+            return self._asg['::'+node]
+
     @property
-    def ignore(self):
-        return True
+    def scope(self):
+        return self.parent
 
-class CxxCharacterFundamentalTypeProxy(CxxFundamentalTypeProxy):
-    """
-    """
+    @property
+    def parent(self):
+        return self._asg['::']
 
-class CxxCharTypeProxy(CxxCharacterFundamentalTypeProxy):
-    """
-    """
-
-    _node = 'char'
-
-class CxxChar16TypeProxy(CxxCharacterFundamentalTypeProxy):
+class UnexposedTypeProxy(FundamentalTypeProxy):
     """
     """
 
-    _node = "char16_t"
+    _node = '::unexposed'
 
-class CxxChar32TypeProxy(CxxCharacterFundamentalTypeProxy):
-    """
-    """
-
-    _node = "char32_t"
-
-class CxxWCharTypeProxy(CxxCharacterFundamentalTypeProxy):
+class CharacterFundamentalTypeProxy(FundamentalTypeProxy):
     """
     """
 
-    _node = "wchar_t"
-
-class CxxSignedIntegerTypeProxy(CxxFundamentalTypeProxy):
+class CharTypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-class CxxSignedShortIntegerTypeProxy(CxxSignedIntegerTypeProxy):
+    _node = '::char'
+
+    def __call__(self, localname):
+        return str(localname)
+
+class UnsignedCharTypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-    _node = "short"
+    _node = '::unsigned char'
 
-class CxxSignedIntegerTypeProxy(CxxSignedIntegerTypeProxy):
+class SignedCharTypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-    _node = "int"
+    _node = '::signed char'
 
-class CxxSignedLongIntegerTypeProxy(CxxSignedIntegerTypeProxy):
+class Char16TypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-    _node = "long int"
+    _node = "::char16_t"
 
-class CxxSignedLongLongIntegerTypeProxy(CxxSignedIntegerTypeProxy):
+class Char32TypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-    _node = "long long int"
+    _node = "::char32_t"
 
-class CxxUnsignedIntegerTypeProxy(CxxFundamentalTypeProxy):
+class WCharTypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-class CxxUnsignedShortIntegerTypeProxy(CxxUnsignedIntegerTypeProxy):
+    _node = "::wchar_t"
+
+class SignedIntegerTypeProxy(FundamentalTypeProxy):
     """
     """
 
-    _node = "unsigned short"
+    def __call__(self, localname):
+        return str(int(localname))
 
-class CxxUnsignedIntegerTypeProxy(CxxUnsignedIntegerTypeProxy):
+class SignedShortIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-    _node = "unsigned int"
+    _node = "::short"
 
-class CxxUnsignedLongIntegerTypeProxy(CxxUnsignedIntegerTypeProxy):
+class SignedIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-    _node = "unsigned long int"
+    _node = "::int"
 
-class CxxUnsignedLongLongIntegerTypeProxy(CxxUnsignedIntegerTypeProxy):
+class SignedLongIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-    _node = "unsigned long long int"
+    _node = "::long"
 
-class CxxSignedFloatingPointTypeProxy(CxxFundamentalTypeProxy):
+class SignedLongLongIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-class CxxSignedFloatTypeProxy(CxxSignedFloatingPointTypeProxy):
+    _node = "::long long"
+
+class UnsignedIntegerTypeProxy(FundamentalTypeProxy):
     """
     """
 
-    _node = "float"
+    def __call__(self, localname):
+        return str(int(localname))
 
-class CxxSignedDoubleTypeProxy(CxxSignedFloatingPointTypeProxy):
+class UnsignedShortIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    _node = "double"
+    _node = "::unsigned short"
 
-class CxxSignedLongDoubleTypeProxy(CxxSignedFloatingPointTypeProxy):
+class UnsignedIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    _node = "long double"
+    _node = "::unsigned int"
 
-class CxxBoolTypeProxy(CxxFundamentalTypeProxy):
+class UnsignedLongIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    _node = "bool"
+    _node = "::unsigned long"
 
-
-class CxxVoidTypeProxy(CxxFundamentalTypeProxy):
+class UnsignedLongLongIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    _node = "void"
+    _node = "::unsigned long long"
 
-class CxxTypeSpecifiersProxy(EdgeProxy):
+class SignedFloatingPointTypeProxy(FundamentalTypeProxy):
+    """
+    """
+
+    def __call__(self, localname):
+        return str(float(localname))
+
+class SignedFloatTypeProxy(SignedFloatingPointTypeProxy):
+    """
+    """
+
+    _node = "::float"
+
+class SignedDoubleTypeProxy(SignedFloatingPointTypeProxy):
+    """
+    """
+
+    _node = "::double"
+
+class SignedLongDoubleTypeProxy(SignedFloatingPointTypeProxy):
+    """
+    """
+
+    _node = "::long double"
+
+class BoolTypeProxy(FundamentalTypeProxy):
+    """
+    """
+
+    _node = "::bool"
+
+    def __call__(self, localname):
+        return str(bool(localname))
+
+class ComplexTypeProxy(FundamentalTypeProxy):
+    """
+    """
+
+    _node = "::_Complex float"
+
+    def __call__(self, localname):
+        return str(bool(localname))
+
+class VoidTypeProxy(FundamentalTypeProxy):
+    """
+    """
+
+    _node = "::void"
+
+class TypeSpecifiersProxy(EdgeProxy):
     """
     http://en.cppreference.com/w/cpp/language/declarations
     """
@@ -268,20 +643,38 @@ class CxxTypeSpecifiersProxy(EdgeProxy):
         self._source = source
 
     @property
-    def type(self):
-        return self._asg[self._asg._typeedges[self._source]["target"]]
+    def target(self):
+        return self._asg[self._asg._type_edges[self._source]["target"]]
 
     @property
     def specifiers(self):
-        return self._asg._typeedges[self._source]["specifiers"]
+        return self._asg._type_edges[self._source]["specifiers"]
 
     @property
     def globalname(self):
-        return self.type.globalname + self.specifiers
+        return self.target.globalname + self.specifiers
 
     @property
     def localname(self):
-        return self.type.localname + self.specifiers
+        return self.target.localname + self.specifiers
+
+    @property
+    def is_const(self):
+        if self.is_reference:
+            return self.specifiers.endswith('const &')
+        else:
+            return self.specifiers.endswith('const')
+
+    @property
+    def is_reference(self):
+        return self.specifiers.endswith('&')
+
+    @property
+    def is_pointer(self):
+        if self.is_const:
+            return self.specifiers.endswith('* const')
+        else:
+            return self.specifiers.endswith('*')
 
     def __str__(self):
         return self.globalname
@@ -289,98 +682,29 @@ class CxxTypeSpecifiersProxy(EdgeProxy):
     def _repr_html_(self):
         return highlight(str(self), CppLexer(), HtmlFormatter(full = True))
 
-class CxxDeclarationProxy(NodeProxy):
+class DeclarationProxy(CodeNodeProxy):
     """
     """
 
     @property
     def globalname(self):
-        if '-' in self._node:
-            globalname = []
-            for name in self._node.split('::'):
-                if not '-' in name and not name == '':
-                    globalname.append(name)
-            return '::'+'::'.join(globalname)
-        else:
-            return self._node
+        return re.sub('(.*)::[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}(.*)', r'\1\2', self.id)
 
     @property
     def localname(self):
-        localname = self.globalname[self.globalname.rfind(':')+1:]
-        if localname == '':
-            return self._noname
-        else:
-            return localname
+        return Scope(self.globalname, False).split()[-1].name
 
     @property
     def scope(self):
-        scope = self._node[:self._node.rfind(':')-1]
-        if scope == '':
-            scope = '::'
-        return self._asg[scope]
+        return self.parent
 
-    def __contains__(self, node):
-        return any(node == contained.replace(self._node, '').lstrip('::') for contained in self._asg._declarationedges.get(self._node, [])+self._asg._templateedges.get(self._node, []))
-
-    def __getitem__(self, node):
-        try:
-            if self.globalname == '::':
-                try:
-                    return self._asg._nodes[node]["proxy"](self._asg, node)
-                except:
-                    return self._asg._nodes['::' + node]["proxy"](self._asg, '::' + node)
-            else:
-                if node.startswith('::'):
-                    return self._asg._nodes[node]["proxy"](self._asg, node)
-                else:
-                    scope = self
-                    while not node in scope and not scope.globalname == '::':
-                        scope = scope.scope
-                    if scope._node.endswith('::'):
-                        nodescope = scope._node + node
-                    else:
-                        nodescope = scope._node + '::' + node
-                    return self._asg._nodes[nodescope]["proxy"](self._asg, nodescope)
-        except:
-            if re.match('(.*)<(.*)>$', node):
-                if node.startswith('::'):
-                    pattern = re.sub('(.*)<(.*)>$', r'^\1<(.*)>$', node)
-                else:
-                    pattern = re.sub('(.*)<(.*)>$', r'(.*)::\1<(.*)>$', node)
-                candidates = self._asg[pattern]
-                if len(candidates) == 0:
-                    raise NotImplementedError()
-                else:
-                    max = -1*float('INFINITY')
-                    argmax = None
-                    scopes = self.scope.globalname.split('::')
-                    templates = [template.strip() for template in re.sub('(.*)<(.*)>$', r'\2', node).split(',')]
-                    nb_templates = len(templates)
-                    pattern = '(' + "|".join('::'.join(scopes[:scope+1]) for scope in reversed(range(len(scopes)))) + '::)(.*)'
-                    for candidate in candidates:
-                        if isinstance(candidate, CxxClassTemplateProxy):
-                            match = re.match(pattern, candidate.globalname)
-                            if match and candidate.nb_templates == nb_templates and candidate.primary:
-                                max = len(match.group(1))
-                                argmax = candidate
-                    templates = []
-                    for template in re.sub('(.*)<(.*)>$', r'\2', node).split(','):
-                        try:
-                            templates.append(self[template.strip()])
-                        except:
-                            templates.append(template.strip())
-                    globalname = re.sub('(.*)::<(.*)>$', r'\1< ' + ', '.join(template.globalname if not isinstance(template, basestring) else template for template in templates) + ' >',argmax.globalname)
-                    if argmax.specialized:
-                        max = argmax.match(globalname)
-                        for specialization in argmax.specializations:
-                            if isinstance(specialization, CxxClassTemplateProxy):
-                                current = specialization.match(globalname)
-                                if current > max:
-                                    max = current
-                                    argmax = specialization
-                    return argmax.instantiate(False, *templates)
-            else:
-                raise ValueError('\'node\' parameter')
+    @property
+    def parent(self):
+        parent = self.globalname
+        parent = parent[:parent.rfind(':')-1]
+        if parent == '':
+            parent = '::'
+        return self._asg[parent]
 
     def _repr_html_(self):
         return highlight(str(self), CppLexer(), HtmlFormatter(full = True))
@@ -391,268 +715,244 @@ class CxxDeclarationProxy(NodeProxy):
         else:
             return self.globalname
 
+class AliasProxy(DeclarationProxy):
+
+    def __dir__(self):
+        return sorted(['alias'] + self.alias.__dir__())
+
+    def __getattr__(self, attr):
+        if attr == 'alias':
+            return self._asg[self._asg._nodes[self.id]['alias']]
+        else:
+            return getattr(self.alias, attr)
+
+    def __contains__(self, scope):
+        if scope.has_scopes:
+            raise ValueError('\'scope\' parameter')
+        node = self.alias.id
+        if not node.endswith('::'):
+            node += '::'
+        if scope.has_templates:
+            #if not node + scope.name in self._asg._syntax_edges[self._node]:
+            #    #templates = scope.templates
+            #    #nb_templates = len(templates)
+            #    #candidate = [candidate for candidate in self.classes() if isinstance(candidate, (ClassTemplateProxy, ClassDefaultTemplateProxy)) and candidate.nb_templates == nb_templates]
+            #    #if len(candidate) == 0:
+            #    #    return False
+            #    #elif len(candidate) == 1:
+            #    #    candidate = candidate.pop()
+            #    #    #if candidate.is_specialized:
+            #    #    #    maxmatch = 0
+            #    #    #    candidates = []
+            #    #    #    for specialization in candidate.specializations:
+            #    #    #        match = specialization.match(scope)
+            #    #    #        if match >= maxmatch:
+            #    #    #            maxmatch = match
+            #    #    #            candidates.append(specialization)
+            #    #    #    if len(candidates) > 1:
+            #    #    #        raise ValueError()
+            #    #    #    elif len(candidates) == 1:
+            #    #    #        candidate = candidates.pop()
+            #    #    candidate.instantiate(*templates)
+            #    #    return True
+            #    #else:
+            #    #    raise ValueError()
+            #raise NotImplementedError()
+            #else:
+            #    return True
+            node = node + scope.remove_templates().name
+        else:
+            node = node + scope.name
+        return node in self._asg._syntax_edges[self.alias.id]
+
+class EnumConstantProxy(DeclarationProxy):
+    """
+    """
+
+class ParameterProxy(DeclarationProxy):
+    """
+    """
+
     @property
-    def ignore(self):
-        return False
-
-class CxxEnumConstantProxy(CxxDeclarationProxy):
-    """
-    """
-
-class CxxParameterProxy(CxxDeclarationProxy):
-    """
-    """
+    def parent(self):
+        parent = self.id
+        parent = parent[:parent.rfind(':')-1]
+        if parent == '':
+            parent = '::'
+        return self._asg[parent]
 
     @property
     def type(self):
-        return CxxTypeSpecifiersProxy(self._asg, self._node)
+        return TypeSpecifiersProxy(self._asg, self._node)
 
     def __str__(self):
         return self.type.globalname + " " + self.localname
 
-class CxxTemplateParameterProxy(CxxDeclarationProxy):
+class EnumProxy(DeclarationProxy):
     """
     """
 
-    def __str__(self):
-        return 'class ' + self.localname
+    def _clean_default(self):
+        if super(EnumProxy, self)._clean_default():
+            return True
+        elif not self.is_complete:
+            return True
+        else:
+            return False
 
-class CxxTemplateNonTypeParameterProxy(CxxTemplateParameterProxy):
+    @property
+    def is_complete(self):
+        return len(self._asg._syntax_edges[self._node]) > 0
+
+    @property
+    def constants(self):
+        return [self._asg[node] for node in self._asg._syntax_edges[self._node]]
+
+class TypedefProxy(DeclarationProxy):
     """
     """
 
     @property
     def type(self):
-        return CxxTypeSpecifiersProxy(self._asg, self._node)
+        return TypeSpecifiersProxy(self._asg, self._node)
 
-    def __str__(self):
-        return self.type.globalname + ' ' + self.localname
-
-class CxxDeclarationProxy(CxxDeclarationProxy):
+class VariableProxy(DeclarationProxy):
     """
     """
-
-class CxxEnumProxy(CxxDeclarationProxy):
-    """
-    """
-
-    _template = Template(text=r"""enum\
-% if not obj.anonymous:
- ${obj.localname}\
-% endif
-
-{
-% for value in obj.values[:-1]:
-    ${value.localname},
-% endfor
-    ${obj.values[-1].localname}
-};""")
-
-    _noname = 'enum'
-
-    @property
-    def values(self):
-        return [self._asg[node] for node in self._asg._declarationedges[self._node]]
-
-    @property
-    def anonymous(self):
-        return '-' in self._node
-
-class CxxTypedefProxy(CxxDeclarationProxy):
-    """
-    """
-
-    _template = Template(text=r"""\
-typedef ${obj.localname} ${obj.type.globalname};
-""")
 
     @property
     def type(self):
-        return CxxTypeSpecifiersProxy(self._asg, self._node)
+        return TypeSpecifiersProxy(self._asg, self._node)
 
-class CxxVariableProxy(CxxDeclarationProxy):
+class FieldProxy(VariableProxy):
     """
     """
 
-    _template = Template(text=r"""\
-% if obj.static:
-static \
-% endif
-${obj.type.globalname} ${obj.localname};""")
-
-    @property
-    def type(self):
-        return CxxTypeSpecifiersProxy(self._asg, self._node)
-
-class CxxFieldProxy(CxxVariableProxy):
+class FunctionProxy(DeclarationProxy):
     """
     """
-
-    _template =  Template(text=r"""\
-% if obj.mutable:
-mutable \
-% elif obj.static:
-static \
-% endif
-${obj.type.globalname} ${obj.localname};""")
-
-class CxxFunctionProxy(CxxDeclarationProxy):
-    """
-    """
-
-    _template = Template(text=r"""\
-${obj.result_type.globalname} ${obj.localname}(${", ".join(parameter.type.globalname + ' ' + parameter.localname for parameter in obj.parameters)});""")
 
     @property
     def result_type(self):
-        return CxxTypeSpecifiersProxy(self._asg, self._node)
+        return TypeSpecifiersProxy(self._asg, self._node)
+
+    @property
+    def nb_parameters(self):
+        return len(self._asg._syntax_edges[self._node])
 
     @property
     def parameters(self):
-        return [self._asg[node] for node in self._asg._declarationedges[self._node]]
+        return [self._asg[node] for node in self._asg._syntax_edges[self._node]]
 
     @property
     def scope(self):
-        scope = self.globalname[:self.globalname.rfind(':')-1]
-        if scope == '':
-            scope = '::'
-        return self._asg[scope]
+        return self.parent
 
     @property
-    def overloaded(self):
-        if not self._asg._frozen:
-            raise ValueError('')
-        if not overloaded in self._asg[node]:
-            overloads = self._asg["^" + self.scope._node + "(.*)-(.*)-(.*)-(.*)-(.*)" + self.localname + "$"]
+    def is_overloaded(self):
+        if not hasattr(self, '_is_overloaded'):
+            overloads = self._asg["^" + self.globalname + "::[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$"]
             if len(overloads) == 1:
-                self._asg[node]["overloaded"] = False
+                self._asg._nodes[self._node]["_is_overloaded"] = False
             else:
                 for overload in overloads:
-                    self._nodes[overload._node]["overloaded"] = True
-        return self._asg[self._node]["overloaded"]
+                    self._asg._nodes[overload._node]["_is_overloaded"] = True
+        overloaded = self._is_overloaded
+        if not overloaded:
+            self._asg._nodes[self._node].pop("_is_overloaded")
+        return overloaded
 
     @property
     def signature(self):
         return str(self.result_type) + " " + self.localname + "(" + ", ".join(str(parameter.type) for parameter in self.parameters)+ ")"
 
-class CxxMethodProxy(CxxFunctionProxy):
+class MethodProxy(FunctionProxy):
     """
     """
 
-    _template = Template(text=r"""\
-% if obj.static:
-static \
-% elif obj.virtual:
-virtual \
-%endif
-${obj.result_type.globalname} ${obj.localname}(${", ".join(parameter.type.globalname + ' ' + parameter.localname for parameter in obj.parameters)})\
-% if obj.const:
- const\
-% endif
-% if obj.pure_virtual:
- = 0\
-% endif
-;""")
-
-class CxxConstructorProxy(CxxDeclarationProxy):
+class ConstructorProxy(DeclarationProxy):
     """
     """
-
-    _template = Template(text=r"""\
-${obj.localname}(${", ".join(parameter.type.globalname + ' ' + parameter.localname for parameter in obj.parameters)});""")
 
     @property
     def parameters(self):
-        return [self._asg[node] for node in self._asg._declarationedges[self._node]]
+        return [self._asg[node] for node in self._asg._syntax_edges[self._node]]
 
     @property
     def scope(self):
-        scope = self.globalname[:self.globalname.rfind(':')-1]
-        if scope == '':
-            scope = '::'
-        return self._asg[scope]
+        return self.parent
 
-    @property
-    def overloaded(self):
-        if not self._asg._frozen:
-            raise ValueError('')
-        if not overloaded in self._asg[node]:
-            overloads = self._asg[self.scope._node + "(.*)-(.*)-(.*)-(.*)-(.*)" + self.localname + "$"]
-            if len(overloads) == 1:
-                self._asg[node]["overloaded"] = False
-            else:
-                for overload in overloads:
-                    self._nodes[overload._node]["overloaded"] = True
-        return self._asg[self._node]["overloaded"]
+    #@property
+    #def overloaded(self):
+    #    if not self._asg._frozen:
+    #        raise ValueError('')
+    #    if not overloaded in self._asg[node]:
+    #        overloads = self._asg[self.scope._node + "(.*)-(.*)-(.*)-(.*)-(.*)" + self.localname + "$"]
+    #        if len(overloads) == 1:
+    #            self._asg[node]["overloaded"] = False
+    #        else:
+    #            for overload in overloads:
+    #                self._nodes[overload._node]["overloaded"] = True
+    #    return self._asg[self._node]["overloaded"]
 
-class CxxDestructorProxy(CxxDeclarationProxy):
+class DestructorProxy(DeclarationProxy):
     """
     """
 
-    _template = Template(text=r"""\
-% if obj.virtual:
-virtual \
-% endif
-${obj.localname}();""")
-
-class CxxClassProxy(CxxDeclarationProxy):
+class ClassProxy(DeclarationProxy):
     """
 
     .. see:: `<http://en.cppreference.com/w/cpp/language/class>_`
     """
 
-    _template = Template(text=r"""<% access = obj.default_access %>\
-class ${obj.localname}\
-% if obj.derived:
- : ${", ".join(base.access + " " + base.globalname for base in obj.bases())}
-% else:
-
-% endif
-{
-% for declaration in obj.declarations():
-    % if not access == declaration.access:
-        ${declaration.access}:
-<% access = declaration.access %>\
-    % endif
-            ${str(declaration)}
-% endfor
-};""")
-
-    def __init__(self, asg, node):
-        super(CxxDeclarationProxy, self).__init__(asg, node)
-        #if self.forward_declaration and hasattr(self, 'instantiation'):
-        #    pass # TODO build nodes corresponding to methods etc.
+    def _clean_default(self):
+        if super(ClassProxy, self)._clean_default():
+            return True
+        elif not self.is_complete:
+            return True
+        else:
+            return False
 
     @property
-    def forward_declaration(self):
-        return len(self.bases()) + len(self.declarations()) == 0
+    def parent(self):
+        parent = self.globalname
+        if parent[-1] == '>':
+            index = -2
+            delimiter = 1
+            while not delimiter == 0:
+                if parent[index] == '<':
+                    delimiter -= 1
+                elif parent[index] == '>':
+                    delimiter += 1
+                index -= 1
+            parent = parent[:index+1]
+        parent = parent[:parent.rfind(':')-1]
+        if parent == '':
+            parent = '::'
+        return self._asg[parent]
+
+    @property
+    def is_complete(self):
+        return len(self.bases()) + len(self.declarations()) > 0
 
     @property
     def derived(self):
-        return len(self._asg._baseedges[self._node]) > 0
-
-    @property
-    def localname(self):
-        match = re.match('(.*)<(.*)>$', self._node)
-        if match:
-            localname = match.group(1)
-            localname = localname[localname.rindex(':')+1:]
-            return localname + '< ' + match.group(2) + ' >'
-        else:
-            return super(CxxDeclarationProxy, self).localname
+        return len(self._asg._base_edges[self._node]) > 0
 
     def bases(self, inherited=False):
         bases = []
-        for base in self._asg._baseedges[self._node]:
+        for base in self._asg._base_edges[self._node]:
             bases.append(self._asg[base['base']])
+            #if isinstance(bases[-1], TypedefProxy):
+            #    bases[-1] = bases[-1].type.target
             bases[-1].access = base['access']
         if not inherited:
             return bases
         else:
             inheritedbases = []
             for base in bases:
-                if isinstance(base, CxxClassSpecializationProxy):
-                    basebases = base.specialize.bases(True)
+                if isinstance(base, TypedefProxy):
+                    basebases = base.type.target.bases(True)
                 else:
                     basebases = base.bases(True)
                 if base.access == 'protected':
@@ -665,14 +965,23 @@ class ${obj.localname}\
                 inheritedbases += basebases
             return bases+inheritedbases
 
+    @property
+    def depth(self):
+        if not self.derived:
+            return 0
+        else:
+            if not hasattr(self, '_depth'):
+                self._asg._nodes[self.id]['_depth'] = max([base.type.target.depth if isinstance(base, TypedefProxy) else base.depth for base in self.bases()])+1
+            return self._depth
+
     def declarations(self, inherited=False):
-        declarations = [self._asg[node] for node in self._asg._declarationedges[self._node]]
+        declarations = [self._asg[node] for node in self._asg._syntax_edges[self.id]]
         if not inherited:
             return declarations
         else:
             for base in self.bases(True):
-                if isinstance(base, CxxClassSpecializationProxy):
-                    basedeclarations = [basedeclaration for basedeclaration in base.specialize.declarations(False) if not basedeclaration.access == 'private']
+                if isinstance(base, TypedefProxy):
+                    basedeclarations = [basedeclaration for basedeclaration in base.type.target.declarations(False) if not basedeclaration.access == 'private']
                 else:
                     basedeclarations = [basedeclaration for basedeclaration in base.declarations(False) if not basedeclaration.access == 'private']
                 if base.access == 'protected':
@@ -686,181 +995,40 @@ class ${obj.localname}\
             return declarations
 
     def enums(self, inherited=False):
-        return [enum for enum in self.declarations(inherited) if isinstance(enum, CxxEnumProxy)]
+        return [enum for enum in self.declarations(inherited) if isinstance(enum, EnumProxy)]
 
     def fields(self, inherited=False):
-        return [field for field in self.declarations(inherited) if isinstance(field, CxxFieldProxy)]
+        return [field for field in self.declarations(inherited) if isinstance(field, FieldProxy)]
 
     def methods(self, inherited=False):
-        return [method for method in self.declarations(inherited) if isinstance(method, CxxMethodProxy)]
+        return [method for method in self.declarations(inherited) if isinstance(method, MethodProxy)]
 
     def classes(self, inherited=False):
-        return [klass for klass in self.declarations(inherited) if isinstance(klass, CxxClassProxy)]
+        return [klass for klass in self.declarations(inherited) if isinstance(klass, ClassProxy)]
 
     @property
     def constructors(self):
-        return [constructor for constructor in self.declarations(False) if isinstance(constructor, CxxConstructorProxy)]
+        return [constructor for constructor in self.declarations(False) if isinstance(constructor, ConstructorProxy)]
 
     @property
     def destructor(self):
         try:
-            return [destructor for destructor in self.declarations(False) if isinstance(destructor, CxxDestructorProxy)].pop()
+            return [destructor for destructor in self.declarations(False) if isinstance(destructor, DestructorProxy)].pop()
         except:
             return None
 
-    @property
-    def pure_virtual(self):
-        if not hasattr(self, '_pure_virtual'):
-            blackmethods = set()
-            whitemethods = set()
-            for method in self.methods(True):
-                if method.virtual:
-                    if method.pure_virtual:
-                        blackmethods.add(method.signature)
-                    else:
-                        whitemethods.add(method.signature)
-            self._pure_virtual = len(blackmethods-whitemethods) > 0
-        return self._pure_virtual
-
-class CxxClassTemplateProxy(CxxClassProxy):
-    """
-    """
-
-    _template = Template(text=r"""<% access = obj.default_access %>\
-template< ${', '.join(str(template) for template in obj.templates)} >
-class ${obj.localname}\
-% if obj.derived:
- : ${", ".join(base.access + " " + base.globalname for base in obj.bases())}
-% else:
-
-% endif
-{
-};""")
-
-    @property
-    def templates(self):
-        return [self._asg[template] for template in self._asg._templateedges[self._node]]
-
-    @property
-    def nb_templates(self):
-        return len(self._asg._templateedges[self._node])
-
-    def match(self, spelling):
-        pattern = self.globalname
-        for template in self.templates:
-            pattern = pattern.replace(' ' + template.localname, ' (.*)')
-        match = re.match(pattern, spelling)
-        if match is None:
-            return 0
-        else:
-            return len(match.groups())
-
-    @property
-    def specializations(self):
-        return [self._asg[node] for node in self._asg._specializationedges.get(self._node, [])]
-
-    @property
-    def specialized(self):
-        return len(self._asg._specializationedges.get(self._node, [])) > 0
-
-    def instantiate(self, default, *templates):
-        if len(templates) == 0:
-            raise ValueError('`templates` parameter')
-        if not default and not len(templates) == self.nb_templates :
-            raise ValueError('`globalname` parameter')
-        elif default:# and len(templates) =< self.nb_templates:
-            raise ValueError('`globalname` parameter')
-        if any(isinstance(template, CxxTemplateParameterProxy) for template in templates):
-            node = re.sub('(.*)<(.*)>$', r'\1'+ '< ' + ', '.join(template.localname if not isinstance(template, CxxTemplateParameterProxy) else template.localname if not isinstance(template, basestring) else template for template in templates) + ' >', self._node)
-            if not node in self._asg._nodes:
-                self._asg._nodes[node] = dict(proxy = CxxClassTemplateProxy, default_access = self.default_access, primary=False, instantiation=self._node)
-                self._asg._declarationedges[node] = []
-                self._asg._baseedges[node] = []
-                self._asg._templateedges[node] = []
-                for template in templates:
-                    if isinstance(template, CxxTemplateParameterProxy):
-                        templatenode = node + '::' + template.localname
-                        self._asg._nodes[templatenode] = self._asg._nodes[template._node]
-                        if isinstance(template, CxxTemplateNonTypeParameterProxy):
-                            self._asg._typeedges[templatenode] = self._asg._typeedges[template._node]
-                        self._asg._templateedges[node].append(templatenode)
-                self._asg._declarationedges[self.scope._node].append(node)
-            return self._asg[node]
-        else:
-            node = re.sub('(.*)<(.*)>$', r'\1'+ '< ' + ', '.join(template.globalname if not isinstance(template, basestring) else template for template in templates) + ' >', self._node)
-            if not node in self._asg._nodes:
-                self._asg._nodes[node] = dict(proxy = CxxClassProxy, default_access = self.default_access, primary=False, instantiation=self._node)
-                self._asg._declarationedges[node] = []
-                self._asg._baseedges[node] = []
-                self._asg._declarationedges[self.scope._node].append(node)
-            return self._asg[node]
-
-    #def specialize(self, *args):
-    #    if not len(args) == len(self._asg._templateedges[self._node]):
-    #        raise NotImplementedError('partial specialization of \'' + self.__class__.__name__ + '\' is not implemented')
-    #    if any(isinstance(base, CxxClassTemplateProxy) for base in self.bases()):
-    #        raise NotImplementedError('specialization of \'' + self.__class__.__name__ + '\' with template base classes is not implemented')
-    #    scope = re.sub('<(.*)>',  '<' + ', '.join(arg.globalname for arg in args) + '>', self._node)
-    #    self._asg._nodes[scope] = dict(proxy = CxxClassProxy)
-    #    self._asg._declarationedges[scope] = []
-    #    self._asg._baseedges[scope] = self._asg._baseedges[self._node]
-    #    for declaration in self.declarations():
-    #        if isinstance(declaration, CxxMethodProxy):
-    #            methodscope = declaration._node.replace(self._node, scope)
-    #            self._asg._nodes[methodscope] = self._asg._nodes[declaration._node]
-    #            self._asg._typeedges[methodscope] = self._asg._typeedges[declaration._node]
-    #            for arg in args:
-    #                match = re.match('((.*)\s|^)' + arg.localname + '(\s(.*)|$)', declaration.result_type.localname)
-    #                if match:
-    #                    newscope = match.group(1)
-    #                    if not newscope == '':
-    #                        newnode += ' '
-    #                    newscope += arg.globalname
-    #                    if not match.group(4) == '':
-    #                        newscope += ' ' + match.group(4)
-    #                    if not newscope in self._asg._nodes:
-    #                        raise NotImplementedError()
-    #                    self._asg._typedges[methodscope] = self._asg[newscope]._node
-    #                    break
-    #            self._asg._declarationedges[methodscope] = []
-    #            for parameter in declaration.parameters:
-    #                self._asg._declarationedges[methodscope].append(parameter._node)
-    #                for arg in args:
-    #                    match = re.match('((.*)\s|^)' + arg.localname + '(\s(.*)|$)', parameter.localname)
-    #                    if match:
-    #                        newscope = match.group(1)
-    #                        if not newscope == '':
-    #                            newnode += ' '
-    #                        newscope += arg.globalname
-    #                        if not match.group(4) == '':
-    #                            newscope += ' ' + match.group(4)
-    #                        if not newscope in self._asg._nodes:
-    #                            raise NotImplementedError()
-    #                        self._asg._declarationedges[methodscope][-1] = self._asg[newscope]._node
-    #                        break
-    #            self._asg._declarationedges[scope].append(methodscope)
-    #        elif isinstance(declaration, CxxFieldProxy):
-    #            fieldscope = declaration._node.replace(self._node, scope)
-    #            self._asg._nodes[fieldscope] = self._asg._nodes[declaration._node]
-    #            self._asg._typeedges[fieldscope] = self._asg._typeedges[declaration._node]
-    #            for template, specialization in zip(self.templates, args):
-    #                if self._asg._typeedges[fieldscope] == template._node:
-    #                    self._asg._typeedges[fieldscope] = specialization._node
-    #                    break
-    #        elif isinstance(declaration, (CxxConstructorProxy, CxxDestructorProxy)):
-    #            continue
-    #        else:
-    #            raise NotImplementedError('specialization of \'' + self.__class__.__name__ + '\' with enumerations or nested classes is not implemented')
-    #    return scope
-
-class CxxNamespaceProxy(CxxDeclarationProxy):
+class NamespaceProxy(DeclarationProxy):
     """
 
     .. see:: `<http://en.cppreference.com/w/cpp/language/namespace>_`
     """
 
+    @property
+    def header(self):
+        return None
+
     def __init__(self, asg, node):
-        super(CxxDeclarationProxy, self).__init__(asg, node)
+        super(DeclarationProxy, self).__init__(asg, node)
         if node == '::':
             self._noname = '::'
         else:
@@ -870,32 +1038,39 @@ class CxxNamespaceProxy(CxxDeclarationProxy):
     def anonymous(self):
         return '-' in self._node
 
+    @property
+    def is_empty(self):
+        return len(self.declarations(True)) == 0
+
     def declarations(self, nested=False):
-        declarations = [self._asg[node] for node in self._asg._declarationedges[self._node]]
+        declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node]]
         if not nested:
             return declarations
         else:
-            declarations = [declaration for declaration in declarations if not isinstance(declaration, CxxNamespaceProxy)]
+            declarations = [declaration for declaration in declarations if not isinstance(declaration, NamespaceProxy)]
             for nestednamespace in self.namespaces(False):
                 for nesteddeclaration in nestednamespace.declarations(True):
                     declarations.append(nesteddeclaration)
             return declarations
 
     def enums(self, nested=False):
-        return [enum for enum in self.declarations(nested) if isinstance(enum, CxxEnumProxy)]
+        return [enum for enum in self.declarations(nested) if isinstance(enum, EnumProxy)]
+
+    def enum_constants(self, nested=False):
+        return [enum_constant for enum_constant in self.declarations(nested) if isinstance(enum_constant, EnumConstantProxy)]
 
     def variables(self, nested=False):
-        return [variable for variable in self.declarations(nested) if isinstance(variable, CxxVariableProxy)]
+        return [variable for variable in self.declarations(nested) if isinstance(variable, VariableProxy)]
 
     def functions(self, nested=False):
-        return [function for function in self.declarations(nested) if isinstance(function, CxxFunctionProxy)]
+        return [function for function in self.declarations(nested) if isinstance(function, FunctionProxy)]
 
     def classes(self, nested=False):
-        return [klass for klass in self.declarations(nested) if isinstance(klass, CxxClassProxy)]
+        return [klass for klass in self.declarations(nested) if isinstance(klass, ClassProxy)]
 
     def namespaces(self, nested=False):
         if not nested:
-            return [namespace for namespace in self.declarations(nested) if isinstance(namespace, CxxNamespacePRoxy)]
+            return [namespace for namespace in self.declarations(nested) if isinstance(namespace, NamespacePRoxy)]
         else:
             nestednamespaces = []
             namespaces = self.namespaces(False)
@@ -907,366 +1082,811 @@ class CxxNamespaceProxy(CxxDeclarationProxy):
 
 class AbstractSemanticGraph(object):
 
-    def __init__(self, ast, **kwargs):
-        if not isinstance(ast, AbstractSyntaxTree):
-            raise TypeError('`ast` parameter')
+    def __init__(self, *args, **kwargs):
         self._nodes = dict()
-        self._declarationedges = dict()
-        self._baseedges = dict()
-        self._templateedges = dict()
-        self._specializationedges = dict()
-        self._typeedges = dict()
-        self._diredges = dict()
-        self._frozen = False
-        self._filepaths = ast.filepaths
-        #try:
-        self._read_ast(ast.translation_unit.cursor, **kwargs)
-        #except Exception as e:
-        #    raise e
-        del self._filepaths
-        self._frozen = True
+        self._syntax_edges = dict()
+        self._base_edges = dict()
+        self._type_edges = dict()
+        self._symbol_edges = dict()
 
-    def _read_ast(self, node, scope='::', **kwargs):
-        if self._frozen:
-            raise Exception('`AbstractSemanticGraph` instance is frozen')
-        if isinstance(node, Cursor):
-            if node.kind is CursorKind.TRANSLATION_UNIT:
-                self._nodes['::'] = dict(proxy = CxxNamespaceProxy)
-                self._declarationedges['::'] = []
-                for child in node.get_children():
-                    childscope = self._read_ast(child, scope='::')
-                    #if not childscope is None and not childscope in self._declarationedges['::']:
-                    #    self._declarationedges['::'].append(childscope)
-            elif str(node.location.file) in self._filepaths:
-                if not scope.endswith('::'):
-                    spelling = scope + "::" + node.spelling
-                else:
-                    spelling = scope + node.spelling
-                if node.kind is CursorKind.ENUM_DECL:
-                    if node.spelling == '':
-                        spelling += str(uuid.uuid4())
-                    self._declarationedges[spelling] = []
-                    self._nodes[spelling] = dict(proxy = CxxEnumProxy)
-                    self._declarationedges[scope].append(spelling)
-                    for child in node.get_children():
-                        self._read_ast(child, spelling)
-                    filename = str(node.location.file)
-                    self._add_file(filename, file_proxy=CxxFileProxy)
-                    self._nodes[spelling]['header'] = filename
-                    return spelling
-                elif node.kind is CursorKind.ENUM_CONSTANT_DECL:
-                    self._nodes[spelling] = dict(proxy = CxxEnumConstantProxy)
-                    self._declarationedges[scope].append(spelling)
-                    return spelling
-                elif node.kind in [CursorKind.VAR_DECL, CursorKind.FIELD_DECL]:
-                    if node.kind is CursorKind.VAR_DECL:
-                        self._nodes[spelling] = dict(proxy = CxxVariableProxy,
-                                static=False) # TODO
-                        filename = str(node.location.file)
-                        self._add_file(filename, file_proxy=CxxFileProxy)
-                        self._nodes[spelling]['header'] = filename
-                    else:
-                        self._nodes[spelling] = dict(proxy = CxxFieldProxy,
-                                mutable=False, # TODO
-                                static=False) # TODO
-                    self._declarationedges[scope].append(spelling)
-                    self._read_ast(node.type, spelling)
-                    return spelling
-                elif node.kind is CursorKind.PARM_DECL:
-                    self._nodes[spelling] = dict(proxy = CxxParameterProxy)
-                    self._declarationedges[scope].append(spelling)
-                    self._read_ast(node.type, spelling)
-                    return spelling
-                elif node.kind in [CursorKind.FUNCTION_DECL, CursorKind.CXX_METHOD, CursorKind.DESTRUCTOR, CursorKind.CONSTRUCTOR]:
-                    if not node.kind is CursorKind.DESTRUCTOR:
-                        spelling = spelling + '::' + str(uuid.uuid4())
-                    if node.kind is CursorKind.FUNCTION_DECL:
-                        self._nodes[spelling] = dict(proxy = CxxFunctionProxy)
-                        if not node.location is None:
-                            filename = str(node.location.file)
-                            self._add_file(filename, file_proxy=CxxFileProxy)
-                            self._nodes[spelling]['header'] = filename
-                    elif node.kind is CursorKind.CXX_METHOD:
-                            self._nodes[spelling] = dict(proxy = CxxMethodProxy,
-                                    static = node.is_static_method(),
-                                    virtual = node.is_virtual_method(),
-                                    const = node.type.is_const_qualified(),
-                                    pure_virtual = node.is_pure_virtual_method())
-                    elif node.kind is CursorKind.CONSTRUCTOR:
-                            self._nodes[spelling] = dict(proxy = CxxConstructorProxy)
-                    else:
-                        self._nodes[spelling] = dict(proxy = CxxDestructorProxy, virtual=node.is_virtual_method())
-                    self._declarationedges[spelling] = []
-                    self._declarationedges[scope].append(spelling)
-                    for child in node.get_children():
-                        if child.kind is CursorKind.PARM_DECL:
-                            self._read_ast(child, spelling)
-                    if not node.kind in [CursorKind.CONSTRUCTOR, CursorKind.DESTRUCTOR]:
-                        self._read_ast(node.result_type, spelling)
-                    return spelling
-                elif node.kind in [CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL, CursorKind.CLASS_TEMPLATE, CursorKind.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION]:
-                    primary = True
-                    if re.match('(.*)<(.*)>$', node.displayname):
-                        primary = node.kind is CursorKind.CLASS_TEMPLATE
-                        templates = [template.strip() for template in re.sub('(.*)<(.*)>$', r'\2', node.displayname).split(',')]
-                        spelling += '< ' + ', '.join(templates) + ' >'
-                    if not spelling in self._nodes:
-                        if node.kind is CursorKind.STRUCT_DECL:
-                            self._nodes[spelling] = dict(proxy = CxxClassProxy, default_access = 'public', primary=primary)
-                        elif node.kind is CursorKind.CLASS_DECL:
-                            self._nodes[spelling] = dict(proxy = CxxClassProxy, default_access = 'private', primary=primary)
-                        elif node.kind is CursorKind.CLASS_TEMPLATE:
-                            self._nodes[spelling] = dict(proxy = CxxClassTemplateProxy, default_access = 'private', primary=primary)
-                            self._templateedges[spelling] = []
-                            self._specializationedges[spelling] = []
-                        elif node.kind is CursorKind.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION:
-                            self._nodes[spelling] = dict(proxy = CxxClassTemplateProxy, default_access = 'private', primary=primary)
-                            self._templateedges[spelling] = []
-                            primary = None
-                        self._declarationedges[spelling] = []
-                        self._baseedges[spelling] = []
-                    if spelling in self._declarationedges[scope] and self[spelling].forward_declaration:
-                        self._declarationedges[scope].remove(spelling)
-                    if not spelling in self._declarationedges[scope]:
-                        self._declarationedges[scope].append(spelling)
-                    if len(self._templateedges.get(spelling, [])) > 0:
-                        self._templateedges[spelling] = []
-                        #raise NotImplementedError('forward declaration of template classes')
-                    if not primary:
-                        for klass in self[re.sub('(.*)<(.*)>$', r'^\1<(.*)>$', spelling)]:
-                            if isinstance(klass, CxxClassTemplateProxy) and klass.primary and klass.nb_templates == len(templates):
-                                primary = klass._node
-                        if not spelling in self._specializationedges[primary]:
-                            self._specializationedges[primary].append(spelling)
-                    for child in node.get_children():
-                        if child.kind is CursorKind.CXX_BASE_SPECIFIER:
-                            base = self[spelling][child.type.spelling]._node
-                            access = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
-                            self._baseedges[spelling].append(dict(
-                                base = base,
-                                access = access))
-                        elif child.kind is CursorKind.TEMPLATE_TYPE_PARAMETER:
-                            childspelling = spelling + "::" + child.spelling
-                            self._nodes[childspelling] = dict(proxy = CxxTemplateParameterProxy)
-                            self._templateedges[spelling].append(childspelling)
-                        elif child.kind is CursorKind.TEMPLATE_NON_TYPE_PARAMETER:
-                            childspelling = spelling + "::" + child.spelling
-                            self._nodes[childspelling] = dict(proxy = CxxTemplateNonTypeParameterProxy)
-                            self._templateedges[spelling].append(childspelling)
-                            self._read_ast(child.type, childspelling)
-                        elif child.kind in [CursorKind.ENUM_DECL, CursorKind.CXX_METHOD, CursorKind.FIELD_DECL, CursorKind.CONSTRUCTOR, CursorKind.DESTRUCTOR, CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL, CursorKind.CLASS_TEMPLATE]:
-                            childspelling = self._read_ast(child, spelling)
-                            if not childspelling is None:
-                                self._nodes[childspelling]["access"] = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
-                    if len(self._declarationedges[spelling])+len(self._baseedges[spelling]) > 0 and not 'header' in self._nodes[spelling]:
-                        filename = str(node.location.file)
-                        self._add_file(filename, file_proxy=CxxFileProxy)
-                        self._nodes[spelling]['header'] = filename
-                    return spelling
-                elif node.kind is CursorKind.NAMESPACE:
-                    if not spelling in self._nodes:
-                        self._nodes[spelling] = dict(proxy = CxxNamespaceProxy)
-                        self._declarationedges[spelling] = []
-                    for child in node.get_children():
-                        self._read_ast(child, spelling)
-                    return spelling
-                else:
-                    raise NotImplementedError("(" + scope + ")" + node.spelling + ': ' + str(node.kind))
-        elif isinstance(node, Type):
-            specifiers = ''
-            done = False
-            while not done:
-                if node.kind is TypeKind.LVALUEREFERENCE:
-                    specifiers = ' &' + specifiers
-                    node = node.get_pointee()
-                elif node.kind is TypeKind.POINTER:
-                    specifiers = ' *' + ' const'*node.is_const_qualified() + specifiers
-                    node = node.get_pointee()
-                elif node.kind is TypeKind.RECORD:
-                    spelling = node.spelling
-                    if node.is_const_qualified():
-                        spelling = spelling.replace('const' ,'')
-                        specifiers = ' const' + specifiers
-                    spelling = spelling.replace(' ', '')
-                    node = self[scope][spelling]._node
-                    self._typeedges[scope] = dict(target=node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.UNEXPOSED:
-                    spelling = node.spelling
-                    if node.is_const_qualified():
-                        spelling = spelling.replace('const' ,'')
-                        specifiers = ' const' + specifiers
-                    spelling = spelling.replace(' ', '')
-                    node = self[scope][spelling]._node
-                    self._typeedges[scope] = dict(target=node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.CHAR16: # TODO CHAR
-                    if not CxxChar16TypeProxy._node in self._nodes:
-                        self._nodes[CxxChar16TypeProxy._node] = dict(proxy = CxxChar16TypeProxy)
-                        self._declarationedges['::'].append(CxxChar16TypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxChar16TypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.CHAR32:
-                    if not CxxChar32TypeProxy._node in self._nodes:
-                        self._nodes[CxxChar32TypeProxy._node] = dict(proxy = CxxChar32TypeProxy)
-                        self._declarationedges['::'].append(CxxChar32TypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxChar32TypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.WCHAR:
-                    if not CxxWCharTypeProxy._node in self._nodes:
-                        self._nodes[CxxWCharTypeProxy._node] = dict(proxy = CxxWCharTypeProxy)
-                        self._declarationedges['::'].append(CxxWCharTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxWCharTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.SHORT:
-                    if not CxxSignedShortIntegerTypeProxy._node in self._nodes:
-                        self._nodes[CxxSignedShortIntegerTypeProxy._node] = dict(proxy = CxxSignedShortIntegerTypeProxy)
-                        self._declarationedges['::'].append(CxxSignedShortIntegerTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxSignedShortIntegerTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.INT:
-                    if not CxxSignedIntegerTypeProxy._node in self._nodes:
-                        self._nodes[CxxSignedIntegerTypeProxy._node] = dict(proxy = CxxSignedIntegerTypeProxy)
-                        self._declarationedges['::'].append(CxxSignedIntegerTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxSignedIntegerTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.LONG:
-                    if not CxxSignedLongIntegerTypeProxy._node in self._nodes:
-                        self._nodes[CxxSignedLongIntegerTypeProxy._node] = dict(proxy = CxxSignedLongIntegerTypeProxy)
-                        self._declarationedges['::'].append(CxxSignedLongIntegerTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxSignedLongIntegerTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.LONGLONG:
-                    if not CxxSignedLongLongIntegerTypeProxy._node in self._nodes:
-                        self._nodes[CxxSignedLongLongIntegerTypeProxy._node] = dict(proxy = CxxSignedLongLongIntegerTypeProxy)
-                        self._declarationedges['::'].append(CxxSignedLongLongIntegerTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxSignedLongLongIntegerTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.USHORT:
-                    if not CxxUnsignedShortIntegerTypeProxy._node in self._nodes:
-                        self._nodes[CxxUnsignedShortIntegerTypeProxy._node] = dict(proxy = CxxUnsignedShortIntegerTypeProxy)
-                        self._declarationedges['::'].append(CxxUnsignedShortIntegerTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxUnsignedShortIntegerTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.UINT:
-                    if not CxxUnsignedIntegerTypeProxy._node in self._nodes:
-                        self._nodes[CxxUnsignedIntegerTypeProxy._node] = dict(proxy = CxxUnsignedIntegerTypeProxy)
-                        self._declarationedges['::'].append(CxxUnsignedIntegerTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxUnsignedIntegerTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.ULONG:
-                    if not CxxUnsignedLongIntegerTypeProxy._node in self._nodes:
-                        self._nodes[CxxUnsignedLongIntegerTypeProxy._node] = dict(proxy = CxxUnsignedLongIntegerTypeProxy)
-                        self._declarationedges['::'].append(CxxUnsignedLongIntegerTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxUnsignedLongIntegerTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.ULONGLONG:
-                    if not CxxUnsignedLongLongIntegerTypeProxy._node in self._nodes:
-                        self._nodes[CxxUnsignedLongLongIntegerTypeProxy._node] = dict(proxy = CxxUnsignedLongLongIntegerTypeProxy)
-                        self._declarationedges['::'].append(CxxUnsignedLongLongIntegerTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxUnsignedLongLongIntegerTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.FLOAT:
-                    if not CxxSignedFloatTypeProxy._node in self._nodes:
-                        self._nodes[CxxSignedFloatTypeProxy._node] = dict(proxy = CxxSignedFloatTypeProxy)
-                        self._declarationedges['::'].append(CxxSignedFloatTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxSignedFloatTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.DOUBLE:
-                    if not CxxSignedDoubleTypeProxy._node in self._nodes:
-                        self._nodes[CxxSignedDoubleTypeProxy._node] = dict(proxy = CxxSignedDoubleTypeProxy)
-                        self._declarationedges['::'].append(CxxSignedDoubleTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxSignedDoubleTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.LONGDOUBLE:
-                    if not CxxSignedLongDoubleTypeProxy._node in self._nodes:
-                        self._nodes[CxxSignedLongDoubleTypeProxy._node] = dict(proxy = CxxSignedLongDoubleTypeProxy)
-                        self._declarationedges['::'].append(CxxSignedLongDoubleTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxSignedLongDoubleTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.BOOL:
-                    if not CxxBoolTypeProxy._node in self._nodes:
-                        self._nodes[CxxBoolTypeProxy._node] = dict(proxy = CxxBoolTypeProxy)
-                        self._declarationedges['::'].append(CxxBoolTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxBoolTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                elif node.kind is TypeKind.VOID:
-                    if not CxxVoidTypeProxy._node in self._nodes:
-                        self._nodes[CxxVoidTypeProxy._node] = dict(proxy = CxxVoidTypeProxy)
-                        self._declarationedges['::'].append(CxxVoidTypeProxy._node)
-                    if node.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    self._typeedges[scope] = dict(target=CxxVoidTypeProxy._node,
-                            specifiers=specifiers)
-                    done = True
-                else:
-                    raise NotImplementedError("(" + scope + ")" + node.spelling + ': ' + str(node.kind))
+    def __len__(self):
+        return len(self._nodes)
 
-    def _add_file(self, filename, file_proxy):
-        if not filename in self._nodes:
-            self._nodes[filename] = dict(proxy = file_proxy)
-            dirname = filename[:filename.rfind(os.sep)+1]
-            if not dirname in self._nodes:
-                while not dirname == '' and not dirname in self._nodes:
-                    self._nodes[dirname] = dict(proxy = DirectoryProxy)
-                    self._diredges[dirname] = [filename]
-                    filename = dirname
-                    dirname = filename[:filename.rfind(os.sep, 0, -1)+1]
-                if not dirname == '':
-                    self._diredges[dirname].append(filename)
+    def add_directory(self, dirname):
+        dirname = path(dirname).abspath()
+        initname = str(dirname)
+        if not initname.endswith(os.sep):
+            initname += os.sep
+        if not initname in self._nodes:
+            idparent = initname
+            if not idparent in self._syntax_edges:
+                self._syntax_edges[idparent] = []
+            while not dirname == os.sep:
+                idnode = idparent
+                if not idnode.endswith(os.sep):
+                    idnode += os.sep
+                if not idnode in self._nodes:
+                    self._nodes[idnode] = dict(proxy=DirectoryProxy,
+                            on_disk=dirname.exists())
+                    dirname = dirname.parent
+                    idparent = str(dirname)
+                    if not idparent.endswith(os.sep):
+                        idparent += os.sep
+                    if not idparent in self._syntax_edges:
+                        self._syntax_edges[idparent] = []
+                    self._syntax_edges[idparent].append(idnode)
+                else:
+                    break
+            if dirname == os.sep and not os.sep in self._nodes:
+                self._nodes[os.sep] = dict(proxy=DirectoryProxy,
+                            on_disk=dirname.exists())
+        return self[initname]
+
+    def add_file(self, filename, **kwargs):
+        filename = path(filename).abspath()
+        initname = str(filename)
+        proxy = kwargs.pop('proxy', FileProxy)
+        if not initname in self._nodes:
+            idnode = str(filename)
+            self._nodes[idnode] = dict(proxy=proxy,
+                    on_disk=filename.exists(),
+                    **kwargs)
+            idparent = str(filename.parent)
+            if not idparent.endswith(os.sep):
+                idparent += os.sep
+            if not idparent in self._syntax_edges:
+                self._syntax_edges[idparent] = []
+            self._syntax_edges[idparent].append(idnode)
+            self.add_directory(idparent)
+        else:
+            self._nodes[initname].update(kwargs)
+        return self[initname]
+
+    def write(self, pattern=None, force=False):
+        for node in self.files(pattern=pattern):
+            try:
+                node.write(force=force)
+            except IOError as error:
+                warnings.warn(str(error), Warning)
+
+    def nodes(self, pattern=None):
+        if pattern is None:
+            return [self[node] for node in self._nodes.keys()]
+        else:
+            return [self[node] for node in self._nodes.keys() if re.match(pattern, node)]
+
+    def directories(self, pattern=None):
+        return [node for node in self.nodes(pattern) if isinstance(node, DirectoryProxy)]
+
+    def files(self, pattern=None):
+        return [node for node in self.nodes(pattern) if isinstance(node, FileProxy)]
+
+    def fundamental_types(self, pattern=None):
+        return [node for node in self.nodes(pattern) if isinstance(node, FundamentalTypeProxy)]
+
+    def declarations(self, pattern=None):
+        return [node for node in self.nodes(pattern) if isinstance(node, FundamentalTypeProxy)]
+
+    def typedefs(self, pattern=None):
+        return [node for node in self.nodes(pattern) if isinstance(node, TypedefProxy)]
+
+    def enums(self, pattern=None):
+        return [node for node in self.nodes(pattern) if isinstance(node, EnumProxy)]
+
+    def functions(self, pattern=None):
+        return [node for node in self.nodes(pattern) if isinstance(node, FunctionProxy)]
+
+    def classes(self, pattern=None):
+        return [node for node in self.nodes(pattern) if isinstance(node, ClassProxy)]
+
+    def namespaces(self, pattern=None):
+        return [node for node in self.nodes(pattern) if isinstance(node, NamespaceProxy)]
+
+    def to_object(self, func2method=True):
+        """
+        """
+
+        if func2method:
+            for klass in [klass for klass in self['::'].classes() if hasattr(klass, '_header') and klass.header.language == 'c' and klass.traverse]:
+                for function in [function for function in self['::'].functions() if function.traverse]:
+                    mv = False
+                    rtype = function.result_type
+                    if rtype.target.id == klass.id:
+                        self._nodes[function.id].update(proxy=MethodProxy,
+                                is_static=True,
+                                is_virtual=False,
+                                is_pure_virtual=False,
+                                is_const=ptype.is_const,
+                                as_constructor=True,
+                                access='public')
+                        mv = True
+                    elif function.nb_parameters > 0:
+                        ptype = function.parameters[0].type
+                        if ptype.target.id == klass.id and (ptype.is_reference or ptype.is_pointer):
+                            self._nodes[function.id].update(proxy=MethodProxy,
+                                    is_static=False,
+                                    is_virtual=False,
+                                    is_pure_virtual=False,
+                                    is_const=ptype.is_const,
+                                    access='public')
+                            mv = True
+                    if mv:
+                        self._syntax_edges[function.scope.id].remove(function.id)
+                        self._syntax_edges[klass.id].append(function.id)
+
+    def compute_clean(self):
+        temp = [node for node in self.nodes() if not node.clean]
+        while len(temp) > 0:
+            node = temp.pop()
+            node.clean = False
+            parent = node.parent
+            if parent.clean:
+                temp.append(parent)
             else:
-                self._diredges[dirname].append(filename)
+                parent.clean = False
+            if hasattr(node, 'header'):
+                header = node.header
+                if not header is None:
+                    if header.clean:
+                        temp.append(header)
+                    else:
+                        node.header.clean = False
+            if isinstance(node, (TypedefProxy, VariableProxy, ParameterProxy)):
+                underlying_type = node.type.target
+                if underlying_type.clean:
+                    temp.append(underlying_type)
+                else:
+                    underlying_type.clean = False
+            elif isinstance(node, FunctionProxy):
+                result_type = node.result_type.target
+                result_type.clean = False
+                for parameter in node.parameters:
+                    if parameter.clean:
+                        temp.append(parameter)
+                    else:
+                        parameter.clean = False
+            elif isinstance(node, ConstructorProxy):
+                for parameter in node.parameters:
+                    if parameter.clean:
+                        temp.append(parameter)
+                    else:
+                        parameter.clean = False
+            elif isinstance(node, ClassProxy):
+                for base in node.bases():
+                    if base.clean:
+                        temp.append(base)
+                    else:
+                        base.clean = False
 
-    @property
-    def nodes(self):
-        return [self[node] for node in self._nodes.keys()]
+    def clean(self):
+        """
+        """
+        self.compute_clean()
+
+        nodes = [node for node in self.nodes() if node.clean]
+        for node in nodes:
+            self._syntax_edges[node.parent.id].remove(node.id)
+
+        for node in nodes:
+            self._nodes.pop(node.id)
+            self._syntax_edges.pop(node.id, None)
+            self._base_edges.pop(node.id, None)
+            self._type_edges.pop(node.id, None)
+
+    def to_networkx(self, pattern='(.*)', specialization=True, type=True, base=True, directories=True, files=True, fundamentals=True, parameters=True):
+        graph = networkx.DiGraph()
+
+        class Filter(object):
+
+            __metaclass__ = ABCMeta
+
+        if not directories:
+            Filter.register(DirectoryProxy)
+        if not files:
+            Filter.register(FileProxy)
+        if not fundamentals:
+            Filter.register(FundamentalTypeProxy)
+        if not parameters:
+            Filter.register(ParameterProxy)
+        for node in self.nodes():
+            if not isinstance(node, Filter):
+                graph.add_node(node.id)
+        for source, targets in self._syntax_edges.iteritems():
+            if not isinstance(self[source], Filter):
+                for target in targets:
+                    if not isinstance(self[target], Filter):
+                        graph.add_edge(source, target, color='k', linestyle='solid')
+        #if specialization:
+        #    for target, sources in self._specializationedges.iteritems():
+        #        if not isinstance(self[target], Filter):
+        #            for source in sources:
+        #                if not isinstance(self[source], Filter):
+        #                    graph.add_edge(source, target, color='y', linestyle='dashed')
+        if type:
+            for source, target in self._type_edges.iteritems():
+                if not isinstance(self[source], Filter) and not isinstance(self[target['target']], Filter):
+                    graph.add_edge(source, target['target'], color='r', linestyle='solid')
+        #for source, properties in self._nodes.iteritems():
+        #    if 'instantiation' in properties:
+        #        graph.add_edge(source, properties['instantiation'], color='y', linestyle='solid')
+        #for source, targets in self._syntax_edges.iteritems():
+        #    for target in targets: graph.add_edge(source, target, color='k', linestyle='solid')
+        if base:
+            for source, targets in self._base_edges.iteritems():
+                if not isinstance(self[source], Filter):
+                    for target in targets:
+                        if not isinstance(self[target], Filter):
+                            graph.add_edge(source, target['base'], color='m', linestyle='solid')
+
+        return graph.subgraph([node for node in graph.nodes() if re.match(pattern, node)])
+
+    def _read_type(self, cursortype, scope, **kwargs):
+        specifiers = ''
+        while True:
+            if cursortype.kind is TypeKind.LVALUEREFERENCE:
+                specifiers = ' &' + specifiers
+                cursortype = cursortype.get_pointee()
+            if cursortype.kind is TypeKind.RVALUEREFERENCE:
+                specifiers = ' &&' + specifiers
+                cursortype = cursortype.get_pointee()
+            elif cursortype.kind is TypeKind.POINTER:
+                specifiers = ' *' + ' const'*cursortype.is_const_qualified() + specifiers
+                cursortype = cursortype.get_pointee()
+            elif cursortype.kind is TypeKind.INCOMPLETEARRAY:
+                specifiers = ' []' + ' const'*cursortype.is_const_qualified() + specifiers
+                cursortype = cursortype.get_array_element_type()
+            elif cursortype.kind is TypeKind.CONSTANTARRAY:
+                specifiers = ' [' + str(cursortype.get_array_size()) +']' + ' const'*cursortype.is_const_qualified() + specifiers
+                cursortype = cursortype.get_array_element_type()
+            elif cursortype.kind in [TypeKind.RECORD, TypeKind.TYPEDEF, TypeKind.ENUM, TypeKind.UNEXPOSED]:
+                spelling = cursortype.get_declaration().type.spelling
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                if cursortype.is_volatile_qualified():
+                    specifiers = ' volatile' + specifiers
+                return self[scope][Scope(spelling)].id, specifiers
+            elif cursortype.kind is TypeKind.MEMBERPOINTER:
+                    return UnexposedTypeProxy._node, specifiers
+            elif cursortype.kind in [TypeKind.CHAR_U, TypeKind.CHAR_S]:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return CharTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.UCHAR:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return UnsignedCharTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.SCHAR:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return SignedCharTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.CHAR16:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return Char16TypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.CHAR32:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return Char32TypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.WCHAR:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return WCharTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.SHORT:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return SignedShortIntegerTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.INT:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return SignedIntegerTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.LONG:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return SignedLongIntegerTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.LONGLONG:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return SignedLongLongIntegerTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.USHORT:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return UnsignedShortIntegerTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.UINT:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return UnsignedIntegerTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.ULONG:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return UnsignedLongIntegerTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.ULONGLONG:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return UnsignedLongLongIntegerTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.FLOAT:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return SignedFloatTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.DOUBLE:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return SignedDoubleTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.LONGDOUBLE:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return SignedLongDoubleTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.BOOL:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return BoolTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.COMPLEX:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return ComplexTypeProxy._node, specifiers
+            elif cursortype.kind is TypeKind.VOID:
+                if cursortype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                return VoidTypeProxy._node, specifiers
+            else:
+                raise NotImplementedError(str(cursortype.kind) + ': ' + cursortype.spelling)
+
+    def _read_translation_unit(self, tu):
+        """
+        """
+        if not '::' in self._nodes:
+            self._nodes['::'] = dict(proxy = NamespaceProxy)
+        if not '::' in self._syntax_edges:
+            self._syntax_edges['::'] = []
+
+        fundamentals = [FundamentalTypeProxy]
+        while len(fundamentals) > 0:
+            fundamental = fundamentals.pop()
+            if hasattr(fundamental, '_node'):
+                if not fundamental._node in self._nodes:
+                    self._nodes[fundamental._node] = dict(proxy = fundamental)
+                if not fundamental._node in self._syntax_edges['::']:
+                    self._syntax_edges['::'].append(fundamental._node)
+            fundamentals.extend(fundamental.__subclasses__())
+
+        for child in tu.cursor.get_children():
+            self._read_cursor(child, scope='::')
+
+    def _read_decl(self, decl, scope='::', **kwargs):
+        """
+        """
+        if not scope.endswith('::'):
+            spelling = scope + "::" + cursor.spelling
+        else:
+            spelling = scope + cursor.spelling
+        if isinstance(decl, _autowig.clang.EnumDecl):
+            if spelling.endswith('::'):
+                children = []
+                if not spelling == '::':
+                    spelling = spelling[:-2]
+                for child in decl.get_children():
+                    children.extend(self._read_decl(child, spelling))
+                #filename = str(path(str(cursor.location.file)).abspath()) TODO
+                #self.add_file(filename, language=self._language)
+                #for childspelling in children:
+                #    self._nodes[childspelling]['_header'] = filename
+                return children
+            else:
+                if not spelling in self._nodes:
+                    self._syntax_edges[spelling] = []
+                    self._nodes[spelling] = dict(proxy=EnumProxy)
+                    self._syntax_edges[scope].append(spelling)
+                elif not self[spelling].is_complete:
+                    self._syntax_edges[scope].remove(spelling)
+                    self._syntax_edges[scope].append(spelling)
+                if not self[spelling].is_complete:
+                    for child in decl.get_children():
+                        self._read_decl(child, spelling)
+                    #filename = str(path(str(cursor.location.file)).abspath()) TODO
+                    #self.add_file(filename, language=self._language)
+                    #self._nodes[spelling]['_header'] = filename
+                    return [spelling]
+                else:
+                    return []
+        elif isinstance(decl, _autowig.clang.EnumConstantDecl):
+            self._nodes[spelling] = dict(proxy=EnumConstantProxy)
+            self._syntax_edges[scope].append(spelling)
+            return [spelling]
+        elif isinstance(decl, _autowig.clang.TypedefDecl):
+            if not spelling in self._nodes:
+                self._nodes[spelling] = dict(proxy=TypedefProxy)
+                self._syntax_edges[scope].append(spelling)
+                pass # TODO type
+            else:
+                return []
+        elif isinstance(decl, _autowig.clang.VarDecl) and not isinstance(decl, _autowig.clang.VarTemplateSpecializationDecl):
+            if not spelling in self._nodes:
+                self._nodes[spelling] = dict(proxy=VariableProxy)
+                self._syntax_edges[scope].append(spelling)
+                if not isinstance(decl, _autowig.clang.ParmDecl):
+                    #filename = str(path(str(cursor.location.file)).abspath()) TODO
+                    #self.add_file(filename, language=self._language)
+                    #self._nodes[spelling]['_header'] = filename
+                    pass
+                pass # TODO tyoe
+            else:
+                return []
+        elif isinstance(decl, _autowig.clang.FieldDecl):
+            if not spelling in self._nodes:
+                self._nodes[spelling] = dict(proxy=FieldProxy,
+                        is_mutable=decl.is_mutable())
+                self._syntax_edges[scope].append(spelling)
+                pass # TODO type + anonymous
+            else:
+                return []
+        elif isinstance(decl, _autowig.clang.FunctionDecl):
+            if not isinstance(decl, _autowig.clang.CXXMethodDecl):
+                if not self.language == 'c' and not decl.is_extern_c_context():
+                    spelling += '::' + str(uuid.uuid4())
+                self._nodes[spelling] = dict(proxy=FunctionProxy)
+                self._syntax_edges[scope].append(spelling)
+                for child in decl.get_children():
+                    self._read_decl(child, spelling)
+                #filename = str(path(str(cursor.location.file)).abspath()) TODO
+                #self.add_file(filename, language=self._language)
+                #self._nodes[spelling]['_header'] = filename
+                # TODO type
+                # TODO Problem when parsing 2 or more times the same file
+                return [spelling]
+            else:
+                if not isinstance(decl.get_lexical_parent(), _autowig.NamespaceDecl):
+                    if isinstance(decl, _autowig.clang.CXXDestructorDecl):
+                        self._nodes[spelling] = dict(proxy=DestructorProxy,
+                                is_static=decl.is_static(),
+                                is_const=decl.is_const(),
+                                is_volatile=decl.is_volatile(),
+                                is_virtual=decl.is_virtual())
+                        return [spelling]
+                    else:
+                        spelling += '::' + str(uuid.uuid4())
+                        if isinstance(decl, _autowig.clang.CXXConstructorDecl):
+                            self._nodes[spelling] = dict(proxy=ConstructorProxy,
+                                    is_static=decl.is_static(),
+                                    is_const=decl.is_const(),
+                                    is_volatile=decl.is_volatile(),
+                                    is_virtual=decl.is_virtual())
+                            for child in decl.get_children():
+                                self._read_decl(child, spelling)
+                            return [spelling]
+                        elif isinstance(decl, _autowig.clang.CXXConversionDecl):
+                            # TODO
+                            pass
+                        else:
+                            self._nodes[spelling] = dict(proxy=MethodProxy,
+                                is_static=decl.is_static(),
+                                is_const=decl.is_const(),
+                                is_volatile=decl.is_volatile(),
+                                is_virtual=decl.is_virtual())
+                            for child in decl.get_children():
+                                self._read_decl(child, spelling)
+                                # TODO type
+                            return [spelling]
+                else:
+                    return []
+        elif isinstance(decl, _autowig.RecordDecl):
+            if not isinstance(decl, _autowig.CXXRecordDecl): # C STRUCT UNION
+                pass
+            elif not isinstance(decl, _autowig.ClassTemplateSpecializationDecl): # C++ CLASS
+                pass
+            elif not isinstance(decl, _autowig.ClassTemplatePartialSpecializationDecl): # C++ SPECIALIZED CLASS
+                pass
+            else:
+                return []
+        elif isinstance(decl, _autowig.NamespaceDecl):
+            pass
+
+    def _read_cursor(self, cursor, scope='::', **kwargs):
+        """
+        """
+        if not scope.endswith('::'):
+            spelling = scope + "::" + cursor.spelling
+        else:
+            spelling = scope + cursor.spelling
+        #spelling = Scope(spelling).name
+        if cursor.kind is CursorKind.UNEXPOSED_DECL:
+            if cursor.spelling == '':
+                children = []
+                if not spelling == '::':
+                    spelling = spelling[:-2]
+                for child in cursor.get_children():
+                    children.extend(self._read_cursor(child, spelling))
+                return children
+            else:
+                warnings.warn(str(cursor.kind) + ': ' + cursor.spelling, SyntaxWarning)
+                return []
+        elif cursor.kind is CursorKind.ENUM_DECL:
+            if cursor.spelling == '':
+                children = []
+                if not spelling == '::':
+                    spelling = spelling[:-2]
+                for child in cursor.get_children():
+                    children.extend(self._read_cursor(child, spelling))
+                filename = str(path(str(cursor.location.file)).abspath())
+                self.add_file(filename, language=self._language)
+                for childspelling in children:
+                    self._nodes[childspelling]['_header'] = filename
+                return children
+            else:
+                if not spelling in self._nodes :
+                    self._syntax_edges[spelling] = []
+                    self._nodes[spelling] = dict(cursor=cursor,proxy=EnumProxy)
+                    self._syntax_edges[scope].append(spelling)
+                elif not self[spelling].is_complete:
+                    self._syntax_edges[scope].remove(spelling)
+                    self._syntax_edges[scope].append(spelling)
+                if not self[spelling].is_complete:
+                    for child in cursor.get_children():
+                        self._read_cursor(child, spelling)
+                    filename = str(path(str(cursor.location.file)).abspath())
+                    self.add_file(filename, language=self._language)
+                    self._nodes[spelling]['_header'] = filename
+                    return [spelling]
+                else:
+                    return []
+        elif cursor.kind is CursorKind.ENUM_CONSTANT_DECL:
+            self._nodes[spelling] = dict(cursor=cursor,proxy=EnumConstantProxy)
+            self._syntax_edges[scope].append(spelling)
+            return [spelling]
+        elif cursor.kind is CursorKind.TYPEDEF_DECL:
+            if not spelling in self._nodes:
+                self._nodes[spelling] = dict(cursor=cursor,
+                        proxy=TypedefProxy)
+                try:
+                    target, specifiers = self._read_type(cursor.underlying_typedef_type, scope)
+                    self._type_edges[spelling] = dict(target=target, specifiers='')
+                except:
+                    children = [child for child in cursor.get_children()]
+                    if not len(children) == 1:
+                        self._nodes.pop(spelling)
+                        warnings.warn(str(cursor.kind) + ': ' + cursor.spelling, SyntaxWarning)
+                        return []
+                    else:
+                        try:
+                            self._syntax_edges[scope].append(spelling)
+                            child = children.pop()
+                            if child.kind is CursorKind.TYPE_REF:
+                                self._type_edges[spelling]['target'] = self[scope][child.type.spelling].id
+                                filename = str(path(str(cursor.location.file)).abspath())
+                                self.add_file(filename, language=self._language)
+                                self._nodes[spelling]['_header'] = filename
+                            elif child.kind in [CursorKind.UNION_DECL, CursorKind.STRUCT_DECL]:
+                                if child.spelling == '':
+                                    self._nodes[spelling] = dict(cursor=cursor,
+                                            proxy=ClassProxy,
+                                            default_access='public')
+                                    self._syntax_edges[spelling] = []
+                                    self._base_edges[spelling] = []
+                                    for child in child.get_children():
+                                        for childspelling in self._read_cursor(child, spelling):
+                                            self._nodes[childspelling]["access"] = 'public'
+                                            dict.pop(self._nodes[childspelling], "header", None)
+                                else:
+                                    self._type_edges[spelling]['target'] = self[scope][child.type.spelling].id
+                                filename = str(path(str(cursor.location.file)).abspath())
+                                self.add_file(filename, language=self._language)
+                                self._nodes[spelling]['_header'] = filename
+                            elif child.kind is CursorKind.ENUM_DECL:
+                                if child.spelling == '':
+                                    filename = str(path(str(cursor.location.file)).abspath())
+                                    self.add_file(filename, language=self._language)
+                                    self._nodes[spelling] = dict(cursor=cursor,
+                                            proxy=EnumProxy)
+                                    self._syntax_edges[spelling] = []
+                                    for child in child.get_children():
+                                        self._read_cursor(child, spelling)
+                                else:
+                                    self._type_edges[spelling]['target'] = self[scope][child.type.spelling].id
+                                filename = str(path(str(cursor.location.file)).abspath())
+                                self.add_file(filename, language=self._language)
+                                self._nodes[spelling]['_header'] = filename
+                            else:
+                                raise NotImplementedError(str(cursor.kind) + ': ' + cursor.spelling)
+                            return [spelling]
+                        except:
+                            self._nodes.pop(spelling)
+                            self._syntax_edges[scope].remove(spelling)
+                            warnings.warn(str(cursor.kind) + ': ' + cursor.spelling, SyntaxWarning)
+                            return []
+                        else:
+                            filename = str(path(str(cursor.location.file)).abspath())
+                            self.add_file(filename, language=self._language)
+                            self._nodes[spelling]['_header'] = filename
+                            return [spelling]
+                else:
+                    self._syntax_edges[scope].append(spelling)
+                    filename = str(path(str(cursor.location.file)).abspath())
+                    self.add_file(filename, language=self._language)
+                    self._nodes[spelling]['_header'] = filename
+                    return [spelling]
+                # TODO
+            else:
+                return []
+        elif cursor.kind in [CursorKind.VAR_DECL, CursorKind.FIELD_DECL]:
+            if any(child.kind in [CursorKind.TEMPLATE_NON_TYPE_PARAMETER, CursorKind.TEMPLATE_TYPE_PARAMETER, CursorKind.TEMPLATE_TEMPLATE_PARAMETER] for child in cursor.get_children()):
+                return []
+            if cursor.kind is CursorKind.VAR_DECL:
+                self._nodes[spelling] = dict(cursor=cursor,
+                        proxy=VariableProxy,
+                        is_static=False) # TODO
+                filename = str(path(str(cursor.location.file)).abspath())
+                self.add_file(filename, language=self._language)
+                self._nodes[spelling]['_header'] = filename
+            else:
+                self._nodes[spelling] = dict(cursor=cursor,
+                        proxy=FieldProxy,
+                        is_mutable=False, # TODO
+                        is_static=False) # TODO
+            self._syntax_edges[scope].append(spelling)
+            try:
+                target, specifiers = self._read_type(cursor.type, scope)
+                self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+            except Exception as error:
+                self._syntax_edges[scope].remove(spelling)
+                self._nodes.pop(spelling)
+                warnings.warn(str(error), SyntaxWarning)
+                return []
+            else:
+                return [spelling]
+        elif cursor.kind is CursorKind.PARM_DECL:
+            self._nodes[spelling] = dict(proxy = ParameterProxy)
+            self._syntax_edges[scope].append(spelling)
+            try:
+                target, specifiers = self._read_type(cursor.type, scope)
+                self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+            except Exception as error:
+                self._syntax_edges[scope].remove(spelling)
+                self._nodes.pop(spelling)
+                warnings.warn(str(error), SyntaxWarning)
+                return []
+            else:
+                return [spelling]
+        elif cursor.kind in [CursorKind.FUNCTION_DECL, CursorKind.CXX_METHOD, CursorKind.DESTRUCTOR, CursorKind.CONSTRUCTOR]:
+            if cursor.kind in [CursorKind.DESTRUCTOR, CursorKind.CXX_METHOD, CursorKind.CONSTRUCTOR] and cursor.lexical_parent.kind is CursorKind.NAMESPACE:
+                return []
+            if not cursor.kind is CursorKind.DESTRUCTOR:
+                spelling = spelling + '::' + str(uuid.uuid4())
+            if cursor.kind is CursorKind.FUNCTION_DECL:
+                self._nodes[spelling] = dict(cursor=cursor,proxy=FunctionProxy)
+                if not cursor.location is None:
+                    filename = str(path(str(cursor.location.file)).abspath())
+                self.add_file(filename, language=self._language)
+                self._nodes[spelling]['_header'] = filename
+            elif cursor.kind is CursorKind.CXX_METHOD:
+                self._nodes[spelling] = dict(cursor=cursor,proxy=MethodProxy,
+                        is_static=cursor.is_static_method(),
+                        is_virtual=cursor.is_virtual_method(),
+                        is_const=cursor.type.is_const_qualified(),
+                        is_pure_virtual=cursor.is_pure_virtual_method())
+            elif cursor.kind is CursorKind.CONSTRUCTOR:
+                self._nodes[spelling] = dict(cursor=cursor,proxy=ConstructorProxy)
+            else:
+                self._nodes[spelling] = dict(cursor=cursor,proxy=DestructorProxy,
+                        virtual=cursor.is_virtual_method())
+            self._syntax_edges[spelling] = []
+            self._syntax_edges[scope].append(spelling)
+            try:
+                with warnings.catch_warnings() as w:
+                    warnings.simplefilter("error")
+                    for child in cursor.get_children():
+                        if child.kind is CursorKind.PARM_DECL:
+                            self._read_cursor(child, spelling)
+                    if not cursor.kind in [CursorKind.CONSTRUCTOR, CursorKind.DESTRUCTOR]:
+                        target, specifiers = self._read_type(cursor.result_type, spelling)
+                        self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+            except Exception as error:
+                self._syntax_edges[scope].remove(spelling)
+                self._syntax_edges.pop(spelling)
+                self._nodes.pop(spelling)
+                if not spelling.endswith('::'):
+                    spelling += '::'
+                for child in cursor.get_children():
+                    if child.kind is CursorKind.PARM_DECL:
+                        self._nodes.pop(spelling + child.spelling, None)
+                        self._syntax_edges.pop(spelling + child.spelling, None)
+                warnings.warn(str(error), SyntaxWarning)
+                return []
+            else:
+                return [spelling]
+        elif cursor.kind in [CursorKind.STRUCT_DECL, CursorKind.UNION_DECL, CursorKind.CLASS_DECL]:
+            if cursor.spelling == '':
+                return []
+            else:
+                spelling = Scope(cursor.type.spelling)
+                scope = '::' + '::'.join(scope.name for scope in spelling.split()[:-1])
+                if not scope in self:
+                    return []
+                spelling = spelling.name
+                if not spelling.startswith('::'):
+                    spelling = '::' + spelling
+                if not spelling in self._nodes:
+                    if cursor.kind in [CursorKind.STRUCT_DECL, CursorKind.UNION_DECL]:
+                        self._nodes[spelling] = dict(cursor=cursor,proxy=ClassProxy,
+                                default_access='public',
+                                is_abstract=True,
+                                is_copyable=False)
+                    elif cursor.kind is CursorKind.CLASS_DECL:
+                        self._nodes[spelling] = dict(cursor=cursor,proxy=ClassProxy,
+                                    default_access='private',
+                                    is_abstract=True,
+                                    is_copyable=False)
+                    self._syntax_edges[spelling] = []
+                    self._base_edges[spelling] = []
+                    self._syntax_edges[scope].append(spelling)
+                elif not self[spelling].is_complete:
+                    self._syntax_edges[scope].remove(spelling)
+                    self._syntax_edges[scope].append(spelling)
+                if not self[spelling].is_complete:
+                    forward_declaration = True
+                    for child in cursor.get_children():
+                        if child.kind is CursorKind.CXX_BASE_SPECIFIER:
+                            try:
+                                childspelling = Scope(child.type.spelling)
+                                base = self[scope][childspelling]
+                            except:
+                                warnings.warn(str(child.kind) + ": " + childspelling.name, SyntaxWarning)
+                            else:
+                                access = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
+                                self._base_edges[spelling].append(dict(base=base.id,
+                                    access=access))
+                            finally:
+                              forward_declaration = False
+                        elif child.kind in [CursorKind.ENUM_DECL, CursorKind.TYPEDEF_DECL, CursorKind.CXX_METHOD, CursorKind.FIELD_DECL, CursorKind.CONSTRUCTOR, CursorKind.DESTRUCTOR, CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL]:
+                                forward_declaration = False
+                                for childspelling in self._read_cursor(child, spelling):
+                                    self._nodes[childspelling]["access"] = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
+                                    dict.pop(self._nodes[childspelling], "_header", None)
+                        elif child.kind in [CursorKind.FUNCTION_TEMPLATE, CursorKind.CLASS_TEMPLATE, CursorKind.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION]:
+                            forward_declaration = False
+                    if not forward_declaration and not '_header' in self._nodes[spelling]:
+                        self._nodes[spelling]['is_abstract'] = cursor.is_abstract_record()
+                        self._nodes[spelling]['is_copyable'] = cursor.is_copyable_record()
+                        filename = str(path(str(cursor.location.file)).abspath())
+                        self.add_file(filename, language=self._language)
+                        self._nodes[spelling]['_header'] = filename
+                return [spelling]
+        elif cursor.kind is CursorKind.NAMESPACE:
+            if cursor.spelling == '':
+                children = []
+                if not spelling == '::':
+                    spelling = spelling[:-2]
+                for child in cursor.get_children():
+                    children.extend(self._read_cursor(child, spelling))
+                return children
+            else:
+                if not spelling in self._nodes:
+                    self._nodes[spelling] = dict(cursor=cursor,proxy=NamespaceProxy)
+                    self._syntax_edges[spelling] = []
+                if not spelling in self._syntax_edges[scope]:
+                    self._syntax_edges[scope].append(spelling)
+                for child in cursor.get_children():
+                    self._read_cursor(child, spelling)
+                return [spelling]
+        elif cursor.kind is CursorKind.NAMESPACE_ALIAS:
+            try:
+                newscope = ""
+                for child in cursor.get_children():
+                    if child.kind is CursorKind.NAMESPACE_REF:
+                        newscope += child.spelling + '::'
+                    else:
+                        raise NotImplementedError(str(cursor.kind) + ': '+ cursor.spelling)
+                newscope = newscope[:-2]
+            except NotImplementedError as error:
+                warnings.warn(str(error), SyntaxWarning)
+                return []
+            except:
+                raise
+            else:
+                self._nodes[spelling] = dict(cursor=cursor,proxy=AliasProxy,alias=newscope)
+                return [spelling]
+        elif cursor.kind in [CursorKind.FUNCTION_TEMPLATE, CursorKind.USING_DECLARATION, CursorKind.USING_DIRECTIVE, CursorKind.UNEXPOSED_ATTR]:
+            return []
+        else:
+            warnings.warn(str(cursor.kind) + ': ' + cursor.spelling, SyntaxWarning)
+            return []
 
     def __contains__(self, node):
         return node in self._nodes
@@ -1291,31 +1911,25 @@ class AbstractSemanticGraph(object):
                 layout=('graphviz', 'circular', 'random', 'spring', 'spectral'),
                 size=(0., 60., .5),
                 aspect=(0., 1., .01),
+                specialization=True,
+                type=False,
+                base=True,
+                fundamentals=False,
+                parameters=False,
+                directories=True,
+                files=True,
                 pattern='(.*)')
 
-def plot(layout='graphviz', size=16, aspect=.5, invert=False, pattern='(.*)', **kwargs):
+def plot(layout='graphviz', size=16, aspect=.5, invert=False, pattern='(.*)', specialization=True, type=False, base=True, directories=True, files=True, fundamentals=False, parameters=False, **kwargs):
     global __asg__
-    graph = networkx.DiGraph()
-    for node in __asg__._nodes:
-        if not isinstance(node, CxxFundamentalTypeProxy):
-            graph.add_node(node)
-    for source, targets in __asg__._declarationedges.iteritems():
-        for target in targets: graph.add_edge(source, target, color='k', linestyle='solid')
-    for source, targets in __asg__._templateedges.iteritems():
-        for target in targets: graph.add_edge(source, target, color='g', linestyle='solid')
-    for target, sources in __asg__._specializationedges.iteritems():
-        for source in sources: graph.add_edge(source, target, color='y', linestyle='dashed')
-    for source, target in __asg__._typeedges.iteritems():
-        graph.add_edge(source, target['target'], color='r', linestyle='solid')
-    for source, properties in __asg__._nodes.iteritems():
-        if 'instantiation' in properties:
-            graph.add_edge(source, properties['instantiation'], color='y', linestyle='solid')
-    for source, targets in __asg__._diredges.iteritems():
-        for target in targets: graph.add_edge(source, target, color='k', linestyle='solid')
-    for source, targets in __asg__._baseedges.iteritems():
-        for target in targets: graph.add_edge(source, target['base'], color='m', linestyle='solid')
-
-    graph = graph.subgraph([node for node in graph.nodes() if re.match(pattern, node)])
+    graph = __asg__.to_networkx(pattern,
+            specialization=specialization,
+            type=type,
+            base=base,
+            directories=directories,
+            files=files,
+            fundamentals=fundamentals,
+            parameters=parameters)
     mapping = {j : i for i, j in enumerate(graph.nodes())}
     graph = networkx.relabel_nodes(graph, mapping)
     layout = getattr(networkx, layout+'_layout')

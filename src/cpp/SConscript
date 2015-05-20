@@ -1,0 +1,53 @@
+# -*-python-*-
+
+import os
+bn = os.path.basename
+
+Import( "env" )
+
+lib_env = env.Clone()
+
+# Import/Export symbols for windows
+if lib_env['compiler'] == 'mingw':
+    LINKFLAGS=["-enable-stdcall-fixup",
+               "-enable-auto-import",
+               "-enable-runtime-pseudo-reloc",
+               "-s"]
+    lib_env.AppendUnique(LINKFLAGS=LINKFLAGS)
+
+
+
+includes = []
+sources = []
+
+#lib_env.ALEAGlob('*.h*')
+
+#dirs = lib_env.ALEAGlob('SConscript','*') 
+#dirs = filter(lambda x: 'codec' not in x, dirs)
+
+# install headers
+#lib_env.SConscript(dirs, exports = { "env" : lib_env })
+
+
+#sources = lib_env.ALEAGlob('*.cpp')
+
+_dirs = lib_env.ALEAGlobDir('*', dir= '.')
+
+dirs = []
+
+while len(_dirs) != 0:
+    dir = _dirs.pop()
+    dirs.append(dir)
+    _dirs += lib_env.ALEAGlobDir('*', dir=dir)
+
+inc = []
+
+for i in dirs:
+    includes = lib_env.ALEAGlob('*.h*', dir=i)
+    inc += lib_env.ALEAIncludes('autowig'+i[1:], includes) 
+    sources += lib_env.ALEAGlob('*.cpp', dir=i)
+
+sources += lib_env.ALEAGlob('*.cpp', dir='.')
+inc += lib_env.ALEAIncludes('autowig', lib_env.ALEAGlob('*.h*', dir='.'))
+lib = lib_env.ALEALibrary('autowig', sources)
+
