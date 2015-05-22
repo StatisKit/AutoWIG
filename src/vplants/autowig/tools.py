@@ -23,7 +23,25 @@ def split_scopes(name):
     scopes.append(name[previous:current])
     return scopes
 
-def to_path(name, lower=True, directories=False):
+def lower(name):
+    lowername = ''
+    index = 0
+    while index < len(name):
+        if name[index].islower():
+            lowername += name[index]
+            index += 1
+        else:
+            lowername += '_' + name[index].lower()
+            index += 1
+            while index < len(name) and not name[index].islower():
+                lowername += name[index].lower()
+                index += 1
+    if not name.startswith('_'):
+        return lowername.lstrip('_')
+    else:
+        return lowername
+
+def to_path(name, upper=False, directories=False):
     scopes = split_scopes(name)
     for index, scope in enumerate(scopes):
         for delimiter in ['<', '(', '[', ']', ')', '>']:
@@ -33,19 +51,7 @@ def to_path(name, lower=True, directories=False):
         path = os.sep.join(scopes)
     else:
         path = '_'.join(scopes)
-    if lower:
-        lowerpath = ''
-        index = 0
-        while index < len(path):
-            if path[index].islower():
-                lowerpath += path[index]
-                index += 1
-            else:
-                lowerpath += '_' + path[index].lower()
-                index += 1
-                while index < len(path) and not path[index].islower():
-                    lowerpath += path[index].lower()
-                    index += 1
-        return lowerpath.lstrip('_')
+    if not upper:
+        return lower(path)
     else:
         return path
