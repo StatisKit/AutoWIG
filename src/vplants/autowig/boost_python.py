@@ -7,10 +7,11 @@ from path import path
 import anydbm
 import warnings
 
-from .asg import AbstractSemanticGraph, DirectoryProxy, FileProxy, CodeNodeProxy, NamespaceProxy, EnumConstantProxy, EnumProxy, VariableProxy, FunctionProxy, FieldProxy, MethodProxy, ClassProxy
-from .tools import to_path, lower
+from .asg import AbstractSemanticGraph, DirectoryProxy, FileProxy, CodeNodeProxy, FundamentalTypeProxy, NamespaceProxy, EnumConstantProxy, EnumProxy, VariableProxy, FunctionProxy, FieldProxy, MethodProxy, ConstructorProxy, ClassProxy, ClassTemplateSpecializationProxy
+from .tools import to_path, lower, remove_templates
+from .custom_warnings import NotImplementedOperatorWarning
 
-__all__ = ['SmartPointer', 'BoostPythonSharedPointer', 'BoostPythonExportTemplate', 'BoostPythonExportEnumConstantsTemplate', 'BoostPythonExportEnumTemplate', 'BoostPythonExportVariableTemplate', 'BoostPythonExportFunctionsTemplate', 'BoostPythonExportClassTemplate', 'BoostPythonFileProxy']
+__all__ = ['HeldType', 'BoostSharedPointer', 'BoostPythonExportTemplate', 'BoostPythonExportEnumConstantsTemplate', 'BoostPythonExportEnumTemplate', 'BoostPythonExportVariableTemplate', 'BoostPythonExportFunctionsTemplate', 'BoostPythonExportClassTemplate', 'BoostPythonFileProxy']
 
 def get_to_python(self):
     if not hasattr(self, '_to_python'):
@@ -30,41 +31,33 @@ def del_to_python(self):
 CodeNodeProxy.to_python = property(get_to_python, set_to_python, del_to_python)
 del get_to_python, set_to_python, del_to_python
 
-class SmartPointer(object):
+class HeldType(object):
     """
     """
+
+    def include(self):
+        return ''
 
     @staticmethod
     def __call__(cls):
-        return None
+        return cls.globalname + ' *'
 
-def get_smart_pointer(self):
-    if hasattr(self, '_smart_pointer'):
-        return self._smart_pointer(self)
-    else:
-        self.smart_pointer = SmartPointer.default
-        return self.smart_pointer
+    def match(self, cls):
+        return False
 
-SmartPointer.default = SmartPointer()
-
-def set_smart_pointer(self, smart_pointer):
-    if not isinstance(smart_pointer, SmartPointer):
-        raise TypeError('\'smart_pointer\' parameter')
-    self._smart_pointer = smart_pointer
-
-def del_smart_pointer(self):
-    self._asg._nodes[self._node].pop('_smart_pointer', SmartPointer.default)
-
-ClassProxy.smart_pointer = property(get_smart_pointer, set_smart_pointer, del_smart_pointer)
-del get_smart_pointer, set_smart_pointer, del_smart_pointer
-
-class BoostPythonSharedPointer(SmartPointer):
+class BoostSharedPointer(HeldType):
     """
     """
+
+    def include(self):
+        return '\n#include <boost/shared_ptr.hpp>'
 
     @staticmethod
     def __call__(cls):
         return 'boost::shared_ptr< ' + cls.globalname + ' >'
+
+    def match(self, cls):
+        return re.match(cls.globalname, '^boost::shared_ptr<(.*)>$')
 
 def get_return_value_policy(self):
     if hasattr(self, '_return_value_policy'):
@@ -92,7 +85,7 @@ class BoostPythonExportTemplate(object):
         include = kwargs.get('include', None)
         if include is None:
             def include(header):
-                return "\"" + header.globalname + "\""
+                return '<' + re.sub('(.*)include/(.*)', r'\2', header.globalname) + '>'
             self._include = include
         else:
             if not callable(include):
@@ -118,15 +111,15 @@ class BoostPythonExportTemplate(object):
             return lower(scope.localname)
 
     @classmethod
-    def funcname(cls, function):
+    def fctname(cls, function):
         return lower(function.localname)
 
     @classmethod
-    def methodname(cls, method):
-        funcname = method.localname
+    def mtdname(cls, method):
+        fctname = method.localname
         pattern = re.compile('operator(.*)')
-        if pattern.match(funcname):
-            operator = pattern.split(funcname)[1].replace(' ', '')
+        if pattern.match(fctname):
+            operator = pattern.split(fctname)[1].replace(' ', '')
             if operator == '+':
                 return '__add__'
             elif operator == '-':
@@ -140,7 +133,7 @@ class BoostPythonExportTemplate(object):
             elif operator == '==':
                 return '__eq__'
             elif operator == '!=':
-                return '__eq__'
+                return '__neq__'
             elif operator == '>':
                 return '__gt__'
             elif operator == '<':
@@ -195,28 +188,37 @@ class BoostPythonExportTemplate(object):
             elif operator == '()':
                 return '__call__'
             else:
-                raise NotImplementedError()
+                warnings.warn(operator, NotImplementedOperatorWarning)
         else:
-            return cls.funcname(method)
+            return cls.fctname(method)
+
+    def clsname(self, cls):
+        if isinstance(cls, ClassTemplateSpecializationProxy):
+            return remove_templates(cls.localname) + '_' + cls.hash
+        else:
+            return cls.localname
 
 class BoostPythonExportEnumConstantsTemplate(BoostPythonExportTemplate):
 
     template = Template(text=r"""\
-#include <boost/python.hpp>
+#include <boost/python.hpp>\
 % for header in obj.headers:
-${obj.include(header)}
+
+${obj.include(header)}\
 % endfor
 
-void ${obj.filename.replace(obj.suffix, '')}()
+void ${obj.filename}()
 {
 % for scope in obj.scopes:
+    % if not scope.globalname == '::':
     std::string ${scope.localname + '_' + scope.hash}_name = boost::python::extract< std::string >(boost::python::scope().attr("__name__") + ".${obj.scopename(scope)}");
     boost::python::object ${scope.localname + '_' + scope.hash}_module(boost::python::handle<  >(boost::python::borrowed(PyImport_AddModule(${scope.localname + '_' + scope.hash}_name.c_str()))));
     boost::python::scope().attr("${obj.scopename(scope)}") = ${scope.localname + '_' + scope.hash}_module;
     boost::python::scope ${scope.localname + '_' + scope.hash}_scope = ${scope.localname + '_' + scope.hash}_module;
+    % endif
 % endfor
 % for constant in obj.constants:
-    boost::python::scope().attr("${constant.localname}") = ${constant.globalname};
+    boost::python::scope().attr("${constant.localname}") = (int)(${constant.globalname});
 % endfor
 }""")
 
@@ -241,10 +243,12 @@ ${obj.include(obj.header)}
 void ${obj.filename}()
 {
 % for scope in obj.scopes:
+    % if not scope.globalname == '::':
     std::string ${scope.localname + '_' + scope.hash}_name = boost::python::extract< std::string >(boost::python::scope().attr("__name__") + ".${obj.scopename(scope)}");
     boost::python::object ${scope.localname + '_' + scope.hash}_module(boost::python::handle<  >(boost::python::borrowed(PyImport_AddModule(${scope.localname + '_' + scope.hash}_name.c_str()))));
     boost::python::scope().attr("${obj.scopename(scope)}") = ${scope.localname + '_' + scope.hash}_module;
     boost::python::scope ${scope.localname + '_' + scope.hash}_scope = ${scope.localname + '_' + scope.hash}_module;
+    % endif
 % endfor
     boost::python::enum_< ${obj.enum.globalname} >("${obj.enum.localname}")\
     % for constant in obj.enum.constants:
@@ -265,18 +269,21 @@ void ${obj.filename}()
 class BoostPythonExportVariableTemplate(BoostPythonExportTemplate):
 
     template = Template(text=r"""\
-#include <boost/python.hpp>
+#include <boost/python.hpp>\
 % for header in obj.headers:
-${obj.include(header)}
+
+${obj.include(header)}\
 % endfor
 
 void ${obj.filename}()
 {
 % for scope in obj.scopes:
+    % if not scope.globalname == '::':
     std::string ${scope.localname + '_' + scope.hash}_name = boost::python::extract< std::string >(boost::python::scope().attr("__name__") + ".${obj.scopename(scope)}");
     boost::python::object ${scope.localname + '_' + scope.hash}_module(boost::python::handle<  >(boost::python::borrowed(PyImport_AddModule(${scope.localname + '_' + scope.hash}_name.c_str()))));
     boost::python::scope().attr("${obj.scopename(scope)}") = ${scope.localname + '_' + scope.hash}_module;
     boost::python::scope ${scope.localname + '_' + scope.hash}_scope = ${scope.localname + '_' + scope.hash}_module;
+    % endif
 % endfor
     boost::python::scope().attr("${obj.variable.localname}") = ${obj.variable.globalname};
 }""")
@@ -295,18 +302,20 @@ void ${obj.filename}()
         header = self.variable.header
         if not header is None:
             headers[header.globalname] = header
-        header = self.variable.type.target.header
-        if not header is None:
-            headers[header.globalname] = header
+        if not isinstance(self.variable.type.target, FundamentalTypeProxy):
+            header = self.variable.type.target.header
+            if not header is None:
+                headers[header.globalname] = header
         return [header for filename, header in sorted(headers.items())]
 
 
 class BoostPythonExportFunctionsTemplate(BoostPythonExportTemplate):
 
     template = Template(text=r"""\
-#include <boost/python.hpp>
+#include <boost/python.hpp>\
 % for header in obj.headers:
-${obj.include(header)}
+
+${obj.include(header)}\
 % endfor
 
 % if any(function.is_overloaded for function in obj.functions):
@@ -331,13 +340,15 @@ const \
 void ${obj.filename}()
 {
 % for scope in obj.scopes:
+    % if not scope.globalname == '::':
     std::string ${scope.localname + '_' + scope.hash}_name = boost::python::extract< std::string >(boost::python::scope().attr("__name__") + ".${obj.scopename(scope)}");
     boost::python::object ${scope.localname + '_' + scope.hash}_module(boost::python::handle<  >(boost::python::borrowed(PyImport_AddModule(${scope.localname + '_' + scope.hash}_name.c_str()))));
     boost::python::scope().attr("${obj.scopename(scope)}") = ${scope.localname + '_' + scope.hash}_module;
     boost::python::scope ${scope.localname + '_' + scope.hash}_scope = ${scope.localname + '_' + scope.hash}_module;
+    % endif
 % endfor
 % for function in obj.functions:
-    boost::python::def("${obj.funcname(function)}", \
+    boost::python::def("${obj.fctname(function)}", \
     % if function.is_overloaded:
 autowig::${function.localname}_${function.hash}\
     % else:
@@ -361,21 +372,24 @@ ${function.globalname}\
             header = function.header
             if not header is None:
                 headers[header.globalname] = header
-            header = function.result_type.target.header
-            if not header is None:
-                headers[header.globalname] = header
-            for parameter in function.parameters:
-                header = parameter.type.target.header
+            if not isinstance(function.result_type.target, FundamentalTypeProxy):
+                header = function.result_type.target.header
                 if not header is None:
                     headers[header.globalname] = header
+            for parameter in function.parameters:
+                if not isinstance(parameter.type.target, FundamentalTypeProxy):
+                    header = parameter.type.target.header
+                    if not header is None:
+                        headers[header.globalname] = header
         return [header for filename, header in sorted(headers.items())]
 
 class BoostPythonExportClassTemplate(BoostPythonExportTemplate):
 
     template = Template(text=r"""\
-#include <boost/python.hpp>
+#include <boost/python.hpp>\
 % for header in obj.headers:
-${obj.include(header)}
+
+${obj.include(header)}\
 % endfor
 
 % if any(method.is_overloaded for method in obj.cls.methods() if method.access == 'public'):
@@ -383,7 +397,7 @@ namespace autowig
 {
     % for method in obj.cls.methods():
         % if method.access == 'public' and method.is_overloaded:
-    ${method.result_type.globalname} (${obj.cls.globalname}::*${method.localname}_${method.hash})(${", ".join(parameter.type.globalname for parameter in method.parameters)})\
+    ${method.result_type.globalname} (${obj.cls.globalname.replace('class ', '').replace('struct ', '').replace('union ', '')}::*${method.localname}_${method.hash})(${", ".join(parameter.type.globalname for parameter in method.parameters)})\
             % if method.is_const:
  const\
             % endif
@@ -400,24 +414,21 @@ ${method.globalname};
 void ${obj.filename}()
 {
 % for scope in obj.scopes:
+    % if not scope.globalname == '::':
     std::string ${scope.localname + '_' + scope.hash}_name = boost::python::extract< std::string >(boost::python::scope().attr("__name__") + ".${obj.scopename(scope)}");
     boost::python::object ${scope.localname + '_' + scope.hash}_module(boost::python::handle<  >(boost::python::borrowed(PyImport_AddModule(${scope.localname + '_' + scope.hash}_name.c_str()))));
     boost::python::scope().attr("${obj.scopename(scope)}") = ${scope.localname + '_' + scope.hash}_module;
     boost::python::scope ${scope.localname + '_' + scope.hash}_scope = ${scope.localname + '_' + scope.hash}_module;
-% endfor
-    boost::python::scope ${obj.cls.localname + '_' + obj.cls.hash}_class = boost::python::class_< ${obj.cls.globalname}\
-    % if obj.cls.smart_pointer:
-, ${obj.cls.smart_pointer}\
-    % else:
-, ${obj.cls.globalname}*\
     % endif
+% endfor
+    boost::python::class_< ${obj.cls.globalname}, ${obj.cls.globalname} *\
     % if any(base.access == 'public' for base in obj.cls.bases()):
 , boost::python::bases< ${", ".join(base.globalname for base in obj.cls.bases() if base.access == 'public')} >\
     % endif
-    % if obj.cls.is_abstract or not obj.cls.is_copyable:
+    % if not obj.cls.is_copyable:
 , boost::noncopyable\
     % endif
- >("${obj.cls.localname}", boost::python::no_init)\
+ >("${obj.clsname(obj.cls)}", boost::python::no_init)\
     % if not obj.cls.is_abstract:
         % for constructor in obj.cls.constructors:
             % if constructor.access == 'public':
@@ -430,7 +441,7 @@ void ${obj.filename}()
         % if method.access == 'public':
             % if not hasattr(method, 'as_constructor') or not method.as_constructor:
 
-        .def("${obj.methodname(method)}", \
+        .def("${obj.mtdname(method)}", \
                 % if method.is_overloaded:
 autowig::${method.localname}_${method.hash}\
                 % else:
@@ -472,13 +483,6 @@ ${field.globalname})\
         % endif
     % endfor
 ;
-    % if obj.cls.smart_pointer:
-        % for base in obj.cls.bases():
-            % if base.access == 'public':
-        boost::python::implicitly_convertible< ${obj.cls.smart_pointer}, ${base.smart_pointer} >();
-            % endif
-        % endfor
-    % endif
 }""")
 
     def __init__(self, filename, *scopes, **kwargs):
@@ -488,31 +492,140 @@ ${field.globalname})\
     @property
     def headers(self):
         headers = dict()
-        print self.cls.id
         header = self.cls.header
         if not header is None:
             headers[header.globalname] = header
         for field in self.cls.fields():
-            header = field.header
-            if not header is None:
-                headers[header.globalname] = header
-            header = field.type.target.header
-            if not header is None:
-                headers[header.globalname] = header
+            if field.access == 'public':
+                header = field.header
+                if not header is None:
+                    headers[header.globalname] = header
+                if not isinstance(field.type.target, FundamentalTypeProxy):
+                    header = field.type.target.header
+                    if not header is None:
+                        headers[header.globalname] = header
         for method in self.cls.methods():
-            header = method.result_type.target.header
-            if not header is None:
-                headers[header.globalname] = header
-            for parameter in method.parameters:
-                header = parameter.type.target.header
-                if not header is None:
-                    headers[header.globalname] = header
+            if method.access == 'public':
+                if not isinstance(method.result_type.target, FundamentalTypeProxy):
+                    header = method.result_type.target.header
+                    if not header is None:
+                        headers[header.globalname] = header
+                for parameter in method.parameters:
+                    if not isinstance(parameter.type.target, FundamentalTypeProxy):
+                        header = parameter.type.target.header
+                        if not header is None:
+                            headers[header.globalname] = header
         for constructor in self.cls.constructors:
-            for parameter in constructor.parameters:
-                header = parameter.type.target.header
-                if not header is None:
-                    headers[header.globalname] = header
+            if constructor.access == 'public':
+                for parameter in constructor.parameters:
+                    if not isinstance(parameter.type.target, FundamentalTypeProxy):
+                        header = parameter.type.target.header
+                        if not header is None:
+                            headers[header.globalname] = header
         return [header for filename, header in sorted(headers.items())]
+
+class BoostPythonExportClassBoostSharedPtrTemplate(BoostPythonExportClassTemplate):
+
+    template = Template(text=r"""\
+#include <boost/python.hpp>
+#include <boost/shared_ptr.hpp>\
+% for header in obj.headers:
+
+${obj.include(header)}\
+% endfor
+
+% if any(method.is_overloaded for method in obj.cls.methods() if method.access == 'public'):
+namespace autowig
+{
+    % for method in obj.cls.methods():
+        % if method.access == 'public' and method.is_overloaded:
+    ${method.result_type.globalname} (${obj.cls.globalname.replace('class ', '').replace('struct ', '').replace('union ', '')}::*${method.localname}_${method.hash})(${", ".join(parameter.type.globalname for parameter in method.parameters)})\
+            % if method.is_const:
+ const\
+            % endif
+ = \
+            % if not method.is_static:
+&\
+            % endif
+${method.globalname};
+        % endif
+    % endfor
+}
+% endif
+
+void ${obj.filename}()
+{
+% for scope in obj.scopes:
+    % if not scope.globalname == '::':
+    std::string ${scope.localname + '_' + scope.hash}_name = boost::python::extract< std::string >(boost::python::scope().attr("__name__") + ".${obj.scopename(scope)}");
+    boost::python::object ${scope.localname + '_' + scope.hash}_module(boost::python::handle<  >(boost::python::borrowed(PyImport_AddModule(${scope.localname + '_' + scope.hash}_name.c_str()))));
+    boost::python::scope().attr("${obj.scopename(scope)}") = ${scope.localname + '_' + scope.hash}_module;
+    boost::python::scope ${scope.localname + '_' + scope.hash}_scope = ${scope.localname + '_' + scope.hash}_module;
+    % endif
+% endfor
+    boost::python::class_< ${obj.cls.globalname}, boost::shared_ptr< ${obj.cls.globalname} >\
+    % if any(base.access == 'public' for base in obj.cls.bases()):
+, boost::python::bases< ${", ".join(base.globalname for base in obj.cls.bases() if base.access == 'public')} >\
+    % endif
+    % if not obj.cls.is_copyable:
+, boost::noncopyable\
+    % endif
+ >("${obj.cls.localname}", boost::python::no_init)\
+    % if not obj.cls.is_abstract:
+        % for constructor in obj.cls.constructors:
+            % if constructor.access == 'public':
+
+        .def(boost::python::init< ${", ".join(parameter.type.globalname for parameter in constructor.parameters)} >())\
+            % endif
+        % endfor
+    % endif
+    % for method in obj.cls.methods():
+        % if method.access == 'public':
+            % if not hasattr(method, 'as_constructor') or not method.as_constructor:
+
+        .def("${obj.mtdname(method)}", \
+                % if method.is_overloaded:
+autowig::${method.localname}_${method.hash}\
+                % else:
+                    % if not method.is_static:
+&\
+                    % endif
+${method.globalname}\
+                % endif
+                % if method.return_value_policy:
+, ${method.return_value_policy}\
+                % endif
+)\
+            % else:
+
+        .def("__init__", boost::python::make_constructor(\
+                % if method.is_overloaded:
+${method.localname}_${method.hash}
+                % else:
+${method.globalname}\
+))\
+                % endif
+            % endif
+        % endif
+    % endfor
+    % for field in obj.cls.fields():
+        % if field.access == 'public':
+            % if field.type.is_const:
+
+        .def_readonly\
+            % else:
+
+        .def_readwrite\
+            % endif
+("${field.localname}", \
+            % if not field.is_static:
+&\
+            % endif
+${field.globalname})\
+        % endif
+    % endfor
+;
+}""")
 
 class BoostPythonFileProxy(FileProxy):
 
@@ -622,7 +735,7 @@ def boost_python_candidates(self, pattern):
                 if not isinstance(node.parent, ClassProxy) or node.access == 'public':
                     yield node
             elif isinstance(node, VariableProxy):
-                if not isinstance(node, FieldProxy):
+                if not isinstance(node, FieldProxy) and not isinstance(node.parent, (ConstructorProxy, FunctionProxy)):
                     yield node
             elif isinstance(node, FunctionProxy):
                 if not isinstance(node, MethodProxy):
@@ -634,7 +747,27 @@ def boost_python_candidates(self, pattern):
 AbstractSemanticGraph.boost_python_candidates = boost_python_candidates
 del boost_python_candidates
 
-def boost_python_module(self, filename, pattern, force=False, **kwargs):
+def _add_boost_python_module(self, filename, proxy=BoostPythonFileProxy, **kwargs):
+    """
+    """
+    modulenode = self.add_file(filename, proxy=proxy,
+            _is_protected=False)
+    if not '_enum_constants' in self._nodes[modulenode.id]:
+        self._nodes[modulenode.id]['_enum_constants'] = []
+    if not '_enums' in self._nodes[modulenode.id]:
+        self._nodes[modulenode.id]['_enums'] = []
+    if not '_variables' in self._nodes[modulenode.id]:
+        self._nodes[modulenode.id]['_variables'] = []
+    if not '_functions' in self._nodes[modulenode.id]:
+        self._nodes[modulenode.id]['_functions'] = []
+    if not '_classes' in self._nodes[modulenode.id]:
+        self._nodes[modulenode.id]['_classes'] = []
+    return modulenode
+
+AbstractSemanticGraph._add_boost_python_module = _add_boost_python_module
+del _add_boost_python_module
+
+def boost_python_module(self, filename, pattern, force=False, remove=True, **kwargs):
     """
     {
         E [label="Export\nobject", shape="flowchart.condition"];
@@ -650,22 +783,11 @@ def boost_python_module(self, filename, pattern, force=False, **kwargs):
         WRL [label="Reload\nwrapper", shape="flowchart.terminator", color="red"];
     }
     """
-    modulenode = self.add_file(filename, proxy=kwargs.get('proxy', BoostPythonFileProxy),
-            _is_protected=False)
-    if not '_enum_constants' in self._nodes[modulenode.id]:
-        self._nodes[modulenode.id]['_enum_constants'] = []
+    modulenode = self._add_boost_python_module(filename, **kwargs)
     _enum_constants = self._nodes[modulenode.id]['_enum_constants']
-    if not '_enums' in self._nodes[modulenode.id]:
-        self._nodes[modulenode.id]['_enums'] = []
     _enums = self._nodes[modulenode.id]['_enums']
-    if not '_variables' in self._nodes[modulenode.id]:
-        self._nodes[modulenode.id]['_variables'] = []
     _variables = self._nodes[modulenode.id]['_variables']
-    if not '_functions' in self._nodes[modulenode.id]:
-        self._nodes[modulenode.id]['_functions'] = []
     _functions = self._nodes[modulenode.id]['_functions']
-    if not '_classes' in self._nodes[modulenode.id]:
-        self._nodes[modulenode.id]['_classes'] = []
     _classes = self._nodes[modulenode.id]['_classes']
     suffix = modulenode.suffix
     directory = modulenode.parent.globalname
@@ -676,6 +798,7 @@ def boost_python_module(self, filename, pattern, force=False, **kwargs):
     classes = dict()
     for node in self.boost_python_candidates(pattern):
         if isinstance(node, EnumConstantProxy):
+            node.to_python = True
             filename = to_path(node.parent.globalname)
             if filename in enum_constants:
                 enum_constants[filename]['constants'].append(node)
@@ -683,10 +806,13 @@ def boost_python_module(self, filename, pattern, force=False, **kwargs):
                 enum_constants[filename] = dict(scopes = node.ancestors,
                         constants=[node])
         elif isinstance(node, EnumProxy):
+            node.to_python = True
             enums[to_path(node.globalname)] = node
         elif isinstance(node, VariableProxy):
+            node.to_python = True
             variables[to_path(node.globalname)] = node
         elif isinstance(node, FunctionProxy):
+            node.to_python = True
             filename = to_path(node.globalname)
             if filename in functions:
                 functions[filename]['functions'].append(node)
@@ -694,14 +820,20 @@ def boost_python_module(self, filename, pattern, force=False, **kwargs):
                 functions[filename] = dict(scopes = node.ancestors,
                         functions=[node])
         elif isinstance(node, ClassProxy):
-            classes[to_path(node.globalname)] = node
+            node.to_python = True
+            if isinstance(node, ClassTemplateSpecializationProxy):
+                classes[to_path(remove_templates(node.globalname) + '_' + node.hash)] = node
+            else:
+                classes[to_path(node.globalname)] = node
         else:
             raise NotImplementedError()
     database = anydbm.open(directory+kwargs.get('database', '.autowig.db'), 'c')
+    filenames = set()
     include = kwargs.get('include', None)
     template = kwargs.get('enum_constants', BoostPythonExportEnumConstantsTemplate)
     for filename in enum_constants:
         filenode = self.add_file(directory+'export_enum_constants_'+filename+suffix, language='c++', export=True, _is_protected=False)
+        filenames.add(filenode.localname)
         if filenode.on_disk:
             if filenode.localname in database:
                 if database[filenode.localname] == filenode.md5() or force:
@@ -722,6 +854,7 @@ def boost_python_module(self, filename, pattern, force=False, **kwargs):
     template = kwargs.get('enum', BoostPythonExportEnumTemplate)
     for filename, enum in enums.iteritems():
         filenode = self.add_file(directory+'export_enum_'+filename+suffix, language='c++', export=True, _is_protected=False)
+        filenames.add(filenode.localname)
         if filenode.on_disk:
             if filenode.localname in database:
                 if database[filenode.localname] == filenode.md5() or force:
@@ -742,6 +875,7 @@ def boost_python_module(self, filename, pattern, force=False, **kwargs):
     template = kwargs.get('variable', BoostPythonExportVariableTemplate)
     for filename, variable in variables.iteritems():
         filenode = self.add_file(directory+'export_variable_'+filename+suffix, language='c++', export=True, _is_protected=False)
+        filenames.add(filenode.localname)
         if filenode.on_disk:
             if filenode.localname in database:
                 if database[filenode.localname] == filenode.md5() or force:
@@ -754,7 +888,7 @@ def boost_python_module(self, filename, pattern, force=False, **kwargs):
                 else:
                     warnings.warn('\'' + filenode.globalname + '\': not written', UserWarning)
         else:
-            filenode.content = str(template(filenode.localname.replace(filenode.suffix, ''), variable.ancestors,
+            filenode.content = str(template(filenode.localname.replace(filenode.suffix, ''), *variable.ancestors,
                         variable=variable,
                         include=include))
             database[filenode.localname] = filenode.md5()
@@ -762,6 +896,7 @@ def boost_python_module(self, filename, pattern, force=False, **kwargs):
     template = kwargs.get('functions', BoostPythonExportFunctionsTemplate)
     for filename in functions:
         filenode = self.add_file(directory+'export_functions_'+filename+suffix, language='c++', export=True, _is_protected=False)
+        filenames.add(filenode.localname)
         if filenode.on_disk:
             if filenode.localname in database:
                 if database[filenode.localname] == filenode.md5() or force:
@@ -782,6 +917,7 @@ def boost_python_module(self, filename, pattern, force=False, **kwargs):
     template = kwargs.get('cls', BoostPythonExportClassTemplate)
     for filename, cls in classes.iteritems():
         filenode = self.add_file(directory+'export_class_'+filename+suffix, language='c++', export=True, depth=cls.depth, _is_protected=False)
+        filenames.add(filenode.localname)
         if filenode.on_disk:
             if filenode.localname in database:
                 if database[filenode.localname] == filenode.md5() or force:
@@ -799,6 +935,16 @@ def boost_python_module(self, filename, pattern, force=False, **kwargs):
                 include=include))
             database[filenode.localname] = filenode.md5()
         _classes.append(filenode.id)
+    if remove:
+        for filename in database.keys():
+            if not filename in filenames:
+                filenode = self.add_file(directory + filename, language='c++', export=True, _is_protected=False)
+                content = database.pop(filename)
+                if content == filenode.md5() or force:
+                    filenode.remove()
+                else:
+                    warnings.warn('\'' + filenode.globalname + '\': not removed', UserWarning)
+                    database[filenode] = content
     database.close()
     return modulenode
 
