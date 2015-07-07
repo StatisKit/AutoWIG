@@ -1,6 +1,18 @@
 import os
 import re
 
+def subclasses(cls, recursive=True):
+    if recursive:
+        subclasses = []
+        front = [cls]
+        while len(front) > 0:
+            cls = front.pop()
+            front.extend(cls.__subclasses__())
+            subclasses.append(cls)
+        return {subclass.__name__ : subclass for subclass in subclasses}.values()
+    else:
+        return cls.__subclasses__()
+
 def remove_regex(name):
     for specialchar in ['.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '|']:
         name = name.replace(specialchar, '\\' + specialchar)

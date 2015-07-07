@@ -1,17 +1,13 @@
 from pygments import highlight
 from pygments.lexers import CppLexer
 from pygments.formatters import HtmlFormatter
-from clang.cindex import Index, TranslationUnit, CursorKind
+from clang.cindex import Index, TranslationUnit, CursorKind, Cursor
 from ConfigParser import ConfigParser
 import os
 from tempfile import NamedTemporaryFile
 from path import path
 import asciitree
 from itertools import chain, imap
-
-from vplants.autowig import autowig
-
-from .config import Cursor
 
 __all__ = ['AbstractSyntaxTree']
 
@@ -27,77 +23,12 @@ class AbstractSyntaxTree(object):
     """
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self._nodes = dict()
         self._children = dict()
-        flags = dict.pop(kwargs, 'flags', None)
-        if flags is None:
-            language = kwargs.pop('language')
-            if language == 'c++':
-                flags = ['-x', 'c++', '-std=c++11', '-Wdocumentation']
-            elif language == 'c':
-                flags = ['-x', 'c', '-std=c11', '-Wdocumentation']
-        libclang = kwargs.pop('libclang', False)
-        if libclang:
-            index = Index.create()
-            tempfilehandler = NamedTemporaryFile(delete=False)
-            for arg in args:
-                tempfilehandler.write('#include \"' + str(path(arg).abspath()) + '\"\n')
-            tempfilehandler.close()
-            tu = index.parse(tempfilehandler.name, args=flags, unsaved_files=None, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
-            os.unlink(tempfilehandler.name)
-        else:
-            content = ""
-            for arg in args:
-                content += '#include \"' + str(path(arg).abspath()) + '\"\n'
-            tu = autowig.clang.tooling.build_ast_from_code_with_args(content, flags)
-        self._read_translation_unit(tu, libclang)
 
     def __getitem__(self, key):
         return self._nodes[key]
-
-    def _read_translation_unit(self, tu, libclang):
-        """
-        """
-        self._node = 0
-
-        if libclang:
-            node = self._node
-            self._nodes[node] = tu.cursor
-            self._children[node] = []
-            self._node += 1
-            for child in tu.cursor.get_children():
-                self._children[node].append(self._read_decl(child, libclang))
-        else:
-            node = self._node
-            self._nodes[node] = tu
-            self._children[node] = []
-            self._node += 1
-            for child in tu.get_children():
-                self._children[node].append(self._read_decl(child, libclang))
-
-        del self._node
-
-    def _read_decl(self, decl, libclang):
-        """
-        """
-        if libclang:
-            node = self._node
-            self._nodes[node] = decl
-            self._children[node] = []
-            self._node += 1
-            for child in decl.get_children():
-                self._children[node].append(self._read_decl(child, libclang))
-            return node
-        else:
-            node = self._node
-            self._nodes[node] = decl
-            self._children[node] = []
-            self._node += 1
-            if hasattr(decl, 'get_children'):
-                for child in decl.get_children():
-                    self._children[node].append(self._read_decl(child, libclang))
-            return node
 
     def __str__(self):
 

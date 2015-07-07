@@ -12,11 +12,8 @@ import warnings
 import hashlib
 import pdb
 
-from vplants.autowig import autowig
-
-from .config import Cursor
-from .tools import remove_regex, split_scopes, remove_templates
-from .custom_warnings import NotWrittenFileWarning, NoneTypeWarning, NotImplementedTypeWarning, UndeclaredParentWarning, NotImplementedDeclWarning, TemplateParentWarning, NotImplementedDeclWarning, NotImplementedParentWarning, AnonymousFunctionWarning, AnonymousFieldWarning, AnonymousClassWarning, NoDefinitionWarning, MultipleDefinitionWarning, SideEffectWarning
+from .tools import subclasses, remove_regex, split_scopes, remove_templates
+from .custom_warnings import NotWrittenFileWarning, ErrorWarning, NoneTypeWarning,  UndeclaredParentWarning, MultipleDeclaredParentWarning, MultipleDefinitionWarning, NoDefinitionWarning, SideEffectWarning, ProtectedFileWarning, InfoWarning, TemplateParentWarning, TemplateParentWarning, AnonymousWarning, AnonymousFunctionWarning, AnonymousFieldWarning, AnonymousClassWarning, NotImplementedWarning, NotImplementedTypeWarning, NotImplementedDeclWarning, NotImplementedParentWarning, NotImplementedOperatorWarning, NotImplementedTemplateWarning
 
 __all__ = ['AbstractSemanticGraph']
 
@@ -46,7 +43,7 @@ class NodeProxy(object):
         try:
             return self._asg._nodes[self._node][attr]
         except:
-            raise AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
+            raise #AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
 
     def _clean_default(self):
         return True
@@ -86,6 +83,7 @@ del get_traverse, set_traverse, del_traverse
 class EdgeProxy(object):
     """
     """
+
 
 class DirectoryProxy(NodeProxy):
     """
@@ -172,26 +170,27 @@ class DirectoryProxy(NodeProxy):
             for include in includes:
                 self._asg._nodes[include.id]['language'] = 'c++'
             self._asg._language = 'c++'
-        if libclang:
-            index = Index.create()
-            tempfilehandler = NamedTemporaryFile(delete=False)
-            for include in includes:
-                if include.on_disk:
-                    tempfilehandler.write('#include \"' + include.globalname + '\"\n')
-                else:
-                    tempfilehandler.write('\n' + str(include) + '\n')
-            tempfilehandler.close()
-            tu = index.parse(tempfilehandler.name, args=flags, unsaved_files=None, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
-            os.unlink(tempfilehandler.name)
-        else:
-            content = ""
-            for include in includes:
-                if include.on_disk:
-                    content += '#include \"' + include.globalname + '\"\n'
-                else:
-                    content += '\n' + str(include) + '\n'
-            tu = autowig.clang.tooling.build_ast_from_code_with_args(content, flags)
-        self._asg._read_translation_unit(tu, libclang)
+        self._asg._parse(*includes, flags=flags, **kwargs)
+        #if libclang:
+        #    index = Index.create()
+        #    tempfilehandler = NamedTemporaryFile(delete=False)
+        #    for include in includes:
+        #        if include.on_disk:
+        #            tempfilehandler.write('#include \"' + include.globalname + '\"\n')
+        #        else:
+        #            tempfilehandler.write('\n' + str(include) + '\n')
+        #    tempfilehandler.close()
+        #    tu = index.parse(tempfilehandler.name, args=flags, unsaved_files=None, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
+        #    os.unlink(tempfilehandler.name)
+        #else:
+        #    content = ""
+        #    for include in includes:
+        #        if include.on_disk:
+        #            content += '#include \"' + include.globalname + '\"\n'
+        #        else:
+        #            content += '\n' + str(include) + '\n'
+        #    tu = autowig.clang.tooling.build_ast_from_code_with_args(content, flags)
+        #self._asg._read_translation_unit(tu, libclang)
         del self._asg._language
 
 class FileProxy(NodeProxy):
@@ -210,29 +209,66 @@ class FileProxy(NodeProxy):
     def suffix(self):
         return self.localname[self.localname.rfind('.'):]
 
-    def write(self, force=False):
+    def touch(self):
         if not self.is_protected or force:
             parent = self.parent
             if not parent.on_disk:
                 parent.makedirs()
             filehandler = open(self.globalname, 'w')
-            try:
-                filehandler.write(str(self))
-            except:
-                filehandler.close()
-                raise
-            else:
-                filehandler.close()
+            filehandler.close()
         else:
-            raise IOError('Cannot write file \'' + self.globalname + '\' since it is a protected file')
+            warnings.warn('Cannot create file \'' + self.globalname + '\'', ProtectedFileWarning)
+
+    def write(self, force=False):
+        if not self.is_protected or force:
+            if self.is_empty:
+                warnings.warn()
+            else:
+                parent = self.parent
+                if not parent.on_disk:
+                    parent.makedirs()
+                filehandler = open(self.globalname, 'w')
+                try:
+                    filehandler.write(str(self))
+                except:
+                    filehandler.close()
+                    raise
+                else:
+                    filehandler.close()
+        else:
+            warnings.warn('Cannot write file \'' + self.globalname + '\'', ProtectedFileWarning)
 
     def remove(self, force=False):
         if not self.is_protected or force:
             os.remove(self.globalname)
             self._asg._nodes[self.id]['on_disk'] = False
 
+    @property
+    def is_empty(self):
+        return str(self) == ""
+
+    def __repr__(self):
+        return self.id
+
     def __str__(self):
         return self.content
+
+    def _repr_html_(self):
+        from pygments import highlight
+        from pygments.lexers import CLexer, CppLexer, PythonLexer
+        from pygments.formatters import HtmlFormatter
+        if not self.language is None:
+            if self.language == 'c':
+                lexer = CLexer()
+            elif self.language == 'c++':
+                lexer = CppLexer()
+            elif self.language == 'py':
+                lexer = PythonLexer()
+            else:
+                raise NotImplementedError('\'language\': '+str(self.language))
+            return highlight(str(self), lexer, HtmlFormatter(full = True))
+        else:
+            return str(self)
 
     def md5(self):
         return hashlib.md5(str(self)).hexdigest()
@@ -292,8 +328,23 @@ def del_is_protected(self):
 FileProxy.is_protected = property(get_is_protected, set_is_protected, del_is_protected)
 del get_is_protected, set_is_protected, del_is_protected
 
+def get_language(self):
+    if hasattr(self, '_language'):
+        return self._language
+    else:
+        return None
+
+def set_language(self, language):
+    self._asg._nodes[self.id]['_language'] = language
+
+def del_language(self):
+    self._asg._nodes[self.id].pop('_language', None)
+
+FileProxy.language = property(get_language, set_language, del_language)
+del get_language, set_language, del_language
+
 def get_content(self):
-    if not hasattr(self, '_content'):
+    if not hasattr(self, '_content') or self._content == "":
         filepath = path(self.globalname)
         if filepath.exists():
             return "".join(filepath.lines())
@@ -322,6 +373,12 @@ class CodeNodeProxy(NodeProxy):
                 return self.parent.header
             except:
                 return None
+
+    def _headers(self):
+        if self.header is None:
+            return set()
+        else:
+            return set([self.header.globalname])
 
     def _clean_default(self):
         header = self.header
@@ -540,10 +597,6 @@ class TypeSpecifiersProxy(EdgeProxy):
         return self._asg[self._asg._type_edges[self._source]["target"]]
 
     @property
-    def specifiers(self):
-        return self._asg._type_edges[self._source]["specifiers"]
-
-    @property
     def globalname(self):
         return self.target.globalname + self.specifiers
 
@@ -569,8 +622,34 @@ class TypeSpecifiersProxy(EdgeProxy):
         else:
             return self.specifiers.endswith('*')
 
+    @property
+    def nested(self):
+        nested = TypeSpecifiersProxy(self._asg, self._source)
+        nested.specifiers = str(self.specifiers)
+        if self.is_const:
+            nested.specifiers = nested.specifiers[:-6]
+        if self.is_pointer or self.is_reference:
+            nested.specifiers = nested.specifiers[:-2]
+        return nested
+
     def __str__(self):
         return self.globalname
+
+
+def get_specifiers(self):
+    if not hasattr(self, '_specifiers'):
+        return self._asg._type_edges[self._source]["specifiers"]
+    else:
+        return self._specifiers
+
+def set_specifiers(self, specifiers):
+    self._specifiers = specifiers
+
+def del_specifiers(self):
+    del self._specifiers
+
+TypeSpecifiersProxy.specifiers = property(get_specifiers, set_specifiers, del_specifiers)
+del get_specifiers, set_specifiers, del_specifiers
 
 class DeclarationProxy(CodeNodeProxy):
     """
@@ -679,7 +758,7 @@ class ParameterProxy(VariableProxy):
 
     @property
     def is_anonymous(self):
-        return re.match('(.*)_parm_[0-9]*$', self.id)
+        return re.match('(.*)parm_[0-9]*$', self.id)
 
     def rename(self, localname):
         pass
@@ -805,6 +884,14 @@ class MethodProxy(FunctionProxy):
 class ConstructorProxy(DeclarationProxy):
     """
     """
+
+    def _headers(self):
+        headers = set()
+        for prm in self.parameters:
+            headers.update(prm._headers())
+        if not self.header is None:
+            headers.add(self.header.globalname)
+        return headers
 
     @property
     def parent(self):
@@ -995,6 +1082,15 @@ class ClassProxy(DeclarationProxy):
         except:
             return None
 
+def get_is_copyable(self):
+    return self._is_copyable
+
+def set_is_copyable(self, copyable):
+    self._asg._nodes[self.id]['_is_copyable'] = copyable
+
+ClassProxy.is_copyable = property(get_is_copyable, set_is_copyable)
+del get_is_copyable, set_is_copyable
+
 class TemplateTypeSpecifiersProxy(TypeSpecifiersProxy):
 
     def __init__(self, asg, source, target):
@@ -1014,13 +1110,30 @@ class ClassTemplateSpecializationProxy(ClassProxy):
     """
     """
 
-    @property
-    def headers(self):
-        return [self.header] + [template.header for template in self.templates]
+    def _headers(self):
+        headers = super(ClassTemplateSpecializationProxy, self)._headers()
+        for template in self.templates:
+            headers.update(template.target._headers())
+        return headers
 
     @property
     def templates(self):
         return [TemplateTypeSpecifiersProxy(self._asg, self.id, template) for template in self._asg._template_edges[self.id]] #TODO
+
+def get_as_held_type(self):
+    if hasattr(self, '_as_held_type'):
+        return self._as_held_type
+    else:
+        return False
+
+def set_as_held_type(self, as_held_type):
+    self._asg._nodes[self.id]['_as_held_type'] = as_held_type
+
+def del_as_held_type(self):
+    self._asg._nodes[self.id].pop('_as_held_type', False)
+
+ClassTemplateSpecializationProxy.as_held_type = property(get_as_held_type, set_as_held_type, del_as_held_type)
+del get_as_held_type, set_as_held_type, del_as_held_type
 
 class NamespaceProxy(DeclarationProxy):
     """
@@ -1086,10 +1199,23 @@ class AbstractSemanticGraph(object):
         self._base_edges = dict()
         self._type_edges = dict()
         self._template_edges = dict()
+        self._held_types = set()
+        self._boost_python_export_edges = dict()
+        self._boost_python_module_edges = dict()
         self._cleaned = True
 
     def __len__(self):
         return len(self._nodes)
+
+    def register_held_type(self, held_type):
+        if not isinstance(held_type, basestring):
+            raise TypeError('\'held_type\' parameter')
+        self._held_types.add(held_type)
+
+    def _compute_held_types(self):
+        for cls in self.classes(specialized=True):
+            if any(re.match('^(class |struct |union |)' + held_type + '<(.*)>$', cls.globalname) for held_type in self._held_types):
+                cls.as_held_type = True
 
     def add_directory(self, dirname):
         dirname = path(dirname).abspath()
@@ -1140,13 +1266,6 @@ class AbstractSemanticGraph(object):
         else:
             self._nodes[initname].update(kwargs)
         return self[initname]
-
-    def write(self, pattern=None, force=False):
-        for node in self.files(pattern=pattern):
-            try:
-                node.write(force=force)
-            except IOError as error:
-                warnings.warn(error.message, NotWrittenFileWarning)
 
     @property
     def directory(self):
@@ -1240,7 +1359,6 @@ class AbstractSemanticGraph(object):
         else:
             return [node for node in self.classes(specialized=None) if not isinstance(node, ClassTemplateSpecializationProxy)]
 
-
     def namespaces(self, pattern=None):
         class _MetaClass(object):
             __metaclass__ = ABCMeta
@@ -1248,1418 +1366,54 @@ class AbstractSemanticGraph(object):
         metaclass = _MetaClass
         return self.nodes(pattern, metaclass=metaclass)
 
-    def to_object(self, func2method=True):
-        """
-        """
-
-        if func2method:
-            for cls in [cls for cls in self['::'].classes() if hasattr(cls, '_header') and cls.header.language == 'c' and cls.traverse]:
-                for fct in [fct for fct in self['::'].functions() if fct.traverse]:
-                    mv = False
-                    rtype = fct.result_type
-                    if rtype.target.id == cls.id:
-                        self._nodes[fct.id].update(proxy=MethodProxy,
-                                is_static=True,
-                                is_virtual=False,
-                                is_pure_virtual=False,
-                                is_const=ptype.is_const,
-                                as_constructor=True,
-                                access='public')
-                        mv = True
-                    elif fct.nb_parameters > 0:
-                        ptype = fct.parameters[0].type
-                        if ptype.target.id == cls.id and (ptype.is_reference or ptype.is_pointer):
-                            self._nodes[fct.id].update(proxy=MethodProxy,
-                                    is_static=False,
-                                    is_virtual=False,
-                                    is_pure_virtual=False,
-                                    is_const=ptype.is_const,
-                                    access='public')
-                            mv = True
-                    if mv:
-                        self._syntax_edges[fct.parent.id].remove(fct.id)
-                        self._syntax_edges[cls.id].append(fct.id)
-
-    def resolve_overloads(self):
-        if not self._cleaned:
-            for fct in self.functions(free=None):
-                if hasattr(fct, '_is_overloaded') and not fct._is_overloaded:
-                    del fct.is_overloaded
-            for fct in self.functions(free=None):
-                overloads = fct.overloads
-                if len(overloads) == 1:
-                    fct.is_overloaded = False
-                else:
-                    for overload in overloads:
-                        overload.is_overloaded = True
-
-    def remove_invalid_pointers(self):
-        cleanbuffer =  []
-        for node in self.nodes():
-            if hasattr(node, '_clean'):
-                cleanbuffer.append((node, node._clean))
-            node.clean = False
-        for fct in self.functions(free=False):
-            if fct.result_type.is_pointer and isinstance(fct.result_type.target, FundamentalTypeProxy):
-                fct.clean = True
-            elif any(parameter.type.is_pointer and isinstance(parameter.type.target, FundamentalTypeProxy) for parameter in fct.parameters):
-                fct.clean = True
-        for cls in self.classes():
-            for ctr in cls.constructors:
-                if any(parameter.type.is_pointer and isinstance(parameter.type.target, FundamentalTypeProxy) for parameter in ctr.parameters):
-                    ctr.clean = True
-        self._clean(cleanbuffer)
-
-    def _remove_duplicates(self):
-        cleanbuffer =  []
-        for node in self.nodes():
-            if hasattr(node, '_clean'):
-                cleanbuffer.append((node, node._clean))
-            node.clean = False
-        scopes = [self['::']]
-        while len(scopes) > 0:
-            scope = scopes.pop()
-            if isinstance(scope, NamespaceProxy):
-                scopes.extend(scope.namespaces())
-            for cls in scope.classes():
-                classes = cls.id
-                if classes.startswith('class '):
-                    classes = classes[6:]
-                elif classes.startswith('union '):
-                    classes = classes[6:]
-                elif classes.startswith('struct '):
-                    classes = classes[7:]
-                classes = remove_regex(classes)
-                classes = '^(class |struct |union |)' + classes + '$'
-                classes = [cls for cls in scope.classes() if re.match(classes, cls.id)]
-                if len(classes) > 1:
-                    complete = [cls for cls in classes if cls.is_complete]
-                    if len(complete) == 0:
-                        warnings.warn('\'' + '\', \''.join(cls.id for cls in classes) + '\'', NoDefinitionWarning)
-                        ids = [cls.id for cls in classes]
-                        for fct in self.functions(free=False):
-                            if fct.result_type.target.id in ids or any([parameter.type.target.id in ids for parameter in fct.parameters]):
-                                fct.clean = True
-                                warnings.warn('\'' + fct.globalname + '\'', SideEffectWarning)
-                    elif len(complete) == 1:
-                        complete = complete.pop()
-                        classes = [cls for cls in classes if not cls.is_complete]
-                        ids = [cls.id for cls in classes]
-                        for node, edge in self._type_edges.iteritems():
-                            if edge['target'] in ids:
-                                edge['target'] = complete.id
-                        for node, edges in self._base_edges.iteritems():
-                            for index, edge in enumerate(edges):
-                                if edge['base'] in ids:
-                                    edges[index]['base'] = complete.id
-                        scopes.append(complete)
-                    else:
-                        warnings.warn('\'' + '\', \''.join(cls.id for cls in classes) + '\'', MultipleDefinitionWarning)
-                        ids = [cls.id for cls in classes]
-                        for fct in self.functions(free=False):
-                            if fct.result_type.target.id in ids or any([parameter.type.target.id in ids for parameter in fct.parameters]):
-                                fct.clean = True
-                                warnings.warn('\'' + fct.globalname + '\'', SideEffectWarning)
-                    for cls in classes:
-                        cls.clean = True
-                elif len(classes) == 1:
-                    scopes.append(classes.pop())
-        temp = [node for node in self.nodes() if node.clean]
-        colored = set()
-        while len(temp) > 0:
-            node = temp.pop()
-            node.clean = True
-            if not node.id in colored:
-                if isinstance(node, DirectoryProxy):
-                    temp.extend(node.glob())
+    def headers(self, *nodes):
+        white = []
+        for node in nodes:
+            if isinstance(node, basestring):
+                white.extend(self.nodes(node))
+            else:
+                white.append(node)
+        headers = dict()
+        black = set()
+        while len(white) > 0:
+            node = white.pop()
+            if not node.id in black:
+                black.add(node.id)
+                if isinstance(node, FundamentalTypeProxy):
+                    continue
+                elif isinstance(node, EnumConstantProxy):
+                    pass
+                elif isinstance(node, EnumProxy):
+                    pass
+                elif isinstance(node, VariableProxy):
+                    white.append(node.type.target)
                 elif isinstance(node, FunctionProxy):
-                    temp.extend(node.parameters)
+                    white.append(node.result_type.target)
+                    white.extend([prm.type.target for prm in node.parameters])
                 elif isinstance(node, ConstructorProxy):
-                    temp.extend(node.parameters)
+                    white.extend([prm.type.target for prm in node.parameters])
+                elif isinstance(node, DestructorProxy):
+                    pass
                 elif isinstance(node, ClassProxy):
-                    temp.extend(node.declarations())
+                    white.extend(node.bases())
+                    white.extend(node.declarations())
+                    if isinstance(node, ClassTemplateSpecializationProxy):
+                        white.extend([tpl.target for tpl in node.templates])
                 elif isinstance(node, NamespaceProxy):
-                    temp.extend(node.declarations())
-                colored.add(node.id)
-        self._clean(cleanbuffer)
-
-    def _compute_clean(self):
-        if not self._cleaned:
-            cleanbuffer = [(node, node._clean) for node in self.nodes() if hasattr(node, '_clean')]
-            temp = []
-            for node in self.nodes():
-                if node.clean:
-                    node.clean = True
+                    white.extend(node.declarations())
+                elif isinstance(node, TypedefProxy):
+                    white.append(node.type.target)
                 else:
-                    temp.append(node)
-            while len(temp) > 0:
-                node = temp.pop()
-                node.clean = False
-                parent = node.parent
-                if parent.clean:
-                    temp.append(parent)
-                else:
-                    parent.clean = False
-                if hasattr(node, 'header'):
-                    header = node.header
-                    if not header is None:
-                        if header.clean:
-                            temp.append(header)
-                        else:
-                            header.clean = False
-                if isinstance(node, (TypedefProxy, VariableProxy)):
-                    underlying_type = node.type.target
-                    if underlying_type.clean:
-                        temp.append(underlying_type)
-                    else:
-                        underlying_type.clean = False
-                elif isinstance(node, FunctionProxy):
-                    result_type = node.result_type.target
-                    if result_type.clean:
-                        temp.append(result_type)
-                    else:
-                        result_type.clean = False
-                    for parameter in node.parameters:
-                        if parameter.clean:
-                            temp.append(parameter)
-                        else:
-                            parameter.clean = False
-                elif isinstance(node, ConstructorProxy):
-                    for parameter in node.parameters:
-                        if parameter.clean:
-                            temp.append(parameter)
-                        else:
-                            parameter.clean = False
-                elif isinstance(node, ClassProxy):
-                    for base in node.bases():
-                        if base.clean:
-                            temp.append(base)
-                        else:
-                            base.clean = False
-            return cleanbuffer
-        else:
-            return []
-
-    def clean(self):
-        """
-        """
-        if not self._cleaned:
-            previous = len(self)
-            cleanbuffer = self._compute_clean()
-            self.resolve_overloads()
-            self._clean(cleanbuffer)
-            self._cleaned = True
-            return CleanedDiagnostic(previous, len(self))
-        else:
-            return AlreadyCleanedDiagnostic(len(self))
-
-    def _clean(self, cleanbuffer):
-        nodes = [node for node in self.nodes() if node.clean]
-        for node in nodes:
-            if not node.id in ['::', '/']:
-                self._syntax_edges[node.parent.id].remove(node.id)
-        for node in nodes:
-            self._nodes.pop(node.id)
-            self._syntax_edges.pop(node.id, None)
-            self._base_edges.pop(node.id, None)
-            self._type_edges.pop(node.id, None)
-        self._reset_clean(cleanbuffer)
-
-    def _reset_clean(self, cleanbuffer):
-        for node in self.nodes():
-            del node.clean
-        for node, clean in cleanbuffer:
-            if node.id in self:
-                node.clean = clean
+                    raise NotImplementedError(node.__class__.__name__)
+                header = node.header
+                if not header is None:
+                    headers[header.globalname] = header
+        return headers.values()
 
     def check_syntax(self):
         for node in self.nodes():
             if not node.id in ['/', '::'] and not node.id in self._syntax_edges[node.parent.id]:
                 yield node
-
-    def _read_translation_unit(self, tu, libclang):
-        """
-        """
-        self._cleaned = False
-
-        if not '::' in self._nodes:
-            self._nodes['::'] = dict(proxy = NamespaceProxy)
-        if not '::' in self._syntax_edges:
-            self._syntax_edges['::'] = []
-
-        fundamentals = [FundamentalTypeProxy]
-        while len(fundamentals) > 0:
-            fundamental = fundamentals.pop()
-            if hasattr(fundamental, '_node'):
-                if not fundamental._node in self._nodes:
-                    self._nodes[fundamental._node] = dict(proxy = fundamental)
-                if not fundamental._node in self._syntax_edges['::']:
-                    self._syntax_edges['::'].append(fundamental._node)
-            fundamentals.extend(fundamental.__subclasses__())
-
-        if libclang:
-            for child in tu.cursor.get_children():
-                self._read_decl(child, '::', libclang, True)
-        else:
-            with warnings.catch_warnings() as w:
-                warnings.simplefilter('always')
-                for child in tu.get_children():
-                    self._read_decl(child, '::', libclang, True)
-                self._remove_duplicates()
-
-    def _read_qualified_type(self, qtype, libclang):
-        if libclang:
-            specifiers = ''
-            while True:
-                if qtype.kind is TypeKind.POINTER:
-                    specifiers = ' *' + ' const'*qtype.is_const_qualified() + specifiers
-                    qtype = qtype.get_pointee()
-                elif qtype.kind is TypeKind.LVALUEREFERENCE:
-                    specifiers = ' &' + specifiers
-                    qtype = qtype.get_pointee()
-                elif qtype.kind is TypeKind.RVALUEREFERENCE:
-                    specifiers = ' &&' + specifiers
-                    qtype = qtype.get_pointee()
-                elif qtype.kind in [TypeKind.RECORD, TypeKind.TYPEDEF, TypeKind.ENUM, TypeKind.UNEXPOSED]:
-                    spelling = '::' + qtype.get_declaration().type.spelling
-                    if qtype.is_const_qualified():
-                        specifiers = ' const' + specifiers
-                    if qtype.is_volatile_qualified():
-                        specifiers = ' volatile' + specifiers
-                    try:
-                        return self[spelling].id, specifiers
-                    except:
-                        warnings.warn('record not found')
-                        break
-                else:
-                    target, _specifiers = self._read_builtin_type(qtype, libclang)
-                    return target, _specifiers + specifiers
-        else:
-            specifiers = ' const' * qtype.is_const_qualified() + ' volatile' *  qtype.is_volatile_qualified()
-            ttype = qtype.get_type_ptr_or_null()
-            while True:
-                if ttype is None:
-                    raise warnings.warn(qtype.get_as_string(), NoneTypeWarning)
-                elif ttype.get_type_class() is autowig.clang._type.TypeClass.Typedef:
-                    qtype = ttype.get_canonical_type_internal()
-                    specifiers = ' const' * qtype.is_const_qualified() + ' volatile' * qtype.is_volatile_qualified() + specifiers
-                    ttype = qtype.get_type_ptr_or_null()
-                elif any([ttype.is_structure_or_class_type(), ttype.is_enumeral_type(), ttype.is_union_type()]):
-                    with warnings.catch_warnings() as w:
-                        tag = ttype.get_as_tag_decl()
-                        tag = self._read_tag(tag, '', libclang, read=True)
-                        return tag[0], specifiers
-                elif ttype.is_pointer_type():
-                    qtype = ttype.get_pointee_type()
-                    specifiers = ' const' * qtype.is_const_qualified() + ' volatile' * qtype.is_volatile_qualified() + ' *' + specifiers
-                    ttype = qtype.get_type_ptr_or_null()
-                elif ttype.is_rvalue_reference_type():
-                    qtype = ttype.get_pointee_type()
-                    specifiers = ' const' * qtype.is_const_qualified() + ' volatile' * qtype.is_volatile_qualified() + ' &&' + specifiers
-                    ttype = qtype.get_type_ptr_or_null()
-                elif ttype.is_lvalue_reference_type():
-                    qtype = ttype.get_pointee_type()
-                    specifiers = ' const' * qtype.is_const_qualified() + ' volatile' * qtype.is_volatile_qualified() + ' &' + specifiers
-                    ttype = qtype.get_type_ptr_or_null()
-                elif ttype.is_builtin_type():
-                    return self._read_builtin_type(ttype, libclang), specifiers
-                else:
-                    warnings.warn('\'' + str(ttype.get_type_class()) + '\'', NotImplementedTypeWarning)
-                    break
-
-    def _read_builtin_type(self, btype, libclang):
-        if libclang:
-            if btype.kind in [TypeKind.CHAR_U, TypeKind.CHAR_S]:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return CharTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.UCHAR:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return UnsignedCharTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.SCHAR:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return SignedCharTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.CHAR16:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return Char16TypeProxy._node, specifiers
-            elif btype.kind is TypeKind.CHAR32:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return Char32TypeProxy._node, specifiers
-            elif btype.kind is TypeKind.WCHAR:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return WCharTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.SHORT:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return SignedShortIntegerTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.INT:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return SignedIntegerTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.LONG:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return SignedLongIntegerTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.LONGLONG:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return SignedLongLongIntegerTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.USHORT:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return UnsignedShortIntegerTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.UINT:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return UnsignedIntegerTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.ULONG:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return UnsignedLongIntegerTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.ULONGLONG:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return UnsignedLongLongIntegerTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.FLOAT:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return SignedFloatTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.DOUBLE:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return SignedDoubleTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.LONGDOUBLE:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return SignedLongDoubleTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.BOOL:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return BoolTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.COMPLEX:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return ComplexTypeProxy._node, specifiers
-            elif btype.kind is TypeKind.VOID:
-                if btype.is_const_qualified():
-                    specifiers = ' const'
-                else:
-                    specifiers = ''
-                return VoidTypeProxy._node, specifiers
-            else:
-                warnings.warn('\'' + str(btype.kind) + '\'', NotImplementedTypeWarning)
-        else:
-            if btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Bool):
-                return BoolTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Char_U):
-                return UnsignedCharTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Char_S):
-                return CharTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Char32):
-                return Char32TypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Char16):
-                return Char16TypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Double):
-                return SignedDoubleTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Float):
-                return SignedFloatTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Int):
-                return SignedIntegerTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.LongLong):
-                return SignedLongLongIntegerTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Long):
-                return SignedLongIntegerTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.LongDouble):
-                return SignedLongDoubleTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.NullPtr):
-                return NullPtrTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Short):
-                return SignedShortIntegerTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.SChar):
-                return SignedCharTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.ULongLong):
-                return UnsignedLongLongIntegerTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.UChar):
-                return UnsignedCharTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.ULong):
-                return UnsignedLongIntegerTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.UInt):
-                return UnsignedIntegerTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.UShort):
-                return UnsignedShortIntegerTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.Void):
-                return VoidTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.WChar_S):
-                return WCharTypeProxy._node
-            elif btype.is_specific_builtin_type(autowig.clang._builtin_type.Kind.WChar_U):
-                return WCharTypeProxy._node
-            else:
-                warnings.warn('\'' + str(btype.get_class_type()) + '\'', NotImplementedTypeWarning)
-
-    def _read_enum(self, decl, scope, libclang, read):
-        if libclang:
-            if not scope.endswith('::'):
-                spelling = scope + "::" + decl.spelling
-            else:
-                spelling = scope + decl.spelling
-            if decl.spelling == '':
-                children = []
-                decls = []
-                if not spelling == '::':
-                    spelling = spelling[:-2]
-                for child in decl.get_children():
-                    if child.kind is CursorKind.ENUM_CONSTANT_DECL:
-                        children.extend(self._read_enum_constant(child, spelling, libclang))
-                        decls.append(child)
-                filename = str(path(str(decl.location.file)).abspath())
-                self.add_file(filename, language=self._language)
-                for childspelling, child in zip(children, decls):
-                    self._nodes[childspelling]['_header'] = filename
-                    self._nodes[spelling]['decl'] = child
-                return children
-            else:
-                if not spelling in self._nodes :
-                    self._syntax_edges[spelling] = []
-                    self._nodes[spelling] = dict(proxy=EnumProxy)
-                    self._syntax_edges[scope].append(spelling)
-                elif not self[spelling].is_complete:
-                    self._syntax_edges[scope].remove(spelling)
-                    self._syntax_edges[scope].append(spelling)
-                if not self[spelling].is_complete:
-                    for child in decl.get_children():
-                        self._read_enum_constant(child, spelling, libclang)
-                if self[spelling].is_complete:
-                    filename = str(path(str(decl.location.file)).abspath())
-                    self.add_file(filename, language=self._language)
-                    self._nodes[spelling]['_header'] = filename
-                    self._nodes[spelling]['decl'] = decl
-                return [spelling]
-        else:
-            filename = str(path(str(decl.get_filename())).abspath())
-            self.add_file(filename, language=self._language)
-            if decl.get_name() == '':
-                children = []
-                decls = []
-                for child in decl.get_children():
-                    children.extend(self._read_enum_constant(child, '', libclang))
-                    decls.append(child)
-                for childspelling, child in zip(children, decls):
-                    self._nodes[childspelling]['_header'] = filename
-                    self._nodes[childspelling]['decl'] = child
-                return children
-            else:
-                try:
-                    with warnings.catch_warnings() as w:
-                        warnings.simplefilter("error")
-                        parent = self._read_syntaxic_parent(decl, libclang)
-                except Warning as warning:
-                    warnings.warn(warning.message + ' for enum \'' + decl.get_name() + '\'', warning.__class__)
-                    return []
-                else:
-                    if isinstance(parent, autowig.clang.TranslationUnitDecl):
-                        scope = '::'
-                        spelling = scope + decl.get_name()
-                    else:
-                        scope = self._read_decl(parent, '', libclang, read=False)
-                        if len(scope) == 0:
-                            warnings.warn(spelling, UndeclaredParentWarning)
-                            return []
-                        elif len(scope) == 1:
-                            scope = scope[0]
-                        else:
-                            warnings.warn(spelling, MultipleDeclaredParentWarning)
-                            return []
-                        spelling = scope + '::' + decl.get_name()
-                        if spelling.startswith('class '):
-                            spelling = spelling[6:]
-                        elif spelling.startswith('union '):
-                            spelling = spelling[6:]
-                        elif spelling.startswith('struct '):
-                            spelling = spelling[7:]
-                    if not spelling.startswith('enum '):
-                        spelling = 'enum ' + spelling
-                    if not spelling in self._nodes:
-                        self._nodes[spelling] = dict(proxy=EnumProxy)
-                        self._syntax_edges[spelling] = []
-                        self._syntax_edges[scope].append(spelling)
-                    elif not self[spelling].is_complete:
-                        self._syntax_edges[scope].remove(spelling)
-                        self._syntax_edges[scope].append(spelling)
-                    if read and not self[spelling].is_complete:
-                        for child in decl.get_children():
-                            self._read_enum_constant(child, spelling, libclang)
-                    if read and self[spelling].is_complete:
-                        self._nodes[spelling]['_header'] = filename
-                        self._nodes[spelling]['decl'] = decl
-                    return [spelling]
-
-    def _read_enum_constant(self, decl, scope, libclang):
-        if libclang:
-            if not scope.endswith('::'):
-                spelling = scope + "::" + decl.spelling
-            else:
-                spelling = scope + decl.spelling
-            self._nodes[spelling] = dict(proxy=EnumConstantProxy)
-            self._syntax_edges[scope].append(spelling)
-            return [spelling]
-        else:
-            try:
-                with warnings.catch_warnings() as w:
-                    warnings.simplefilter("error")
-                    parent = self._read_context_parent(decl, libclang)
-            except Warning as warning:
-                warnings.warn(warning.message + ' for enum constant \'' + decl.get_name() + '\'', warning.__class__)
-                return []
-            else:
-                if isinstance(parent, autowig.clang.TranslationUnitDecl):
-                    scope = '::'
-                    spelling = scope + decl.get_name()
-                else:
-                    scope = self._read_decl(parent, '', libclang, read=False)
-                    if len(scope) == 0:
-                        warnings.warn(spelling, UndeclaredParentWarning)
-                        return []
-                    elif len(scope) == 1:
-                        scope = scope[0]
-                    else:
-                        warnings.warn(spelling, MultipleDeclaredParentWarning)
-                        return []
-                    spelling = scope + '::' + decl.get_name()
-                    if spelling.startswith('enum '):
-                        spelling = spelling[5:]
-                self._nodes[spelling] = dict(proxy=EnumConstantProxy)
-                self._syntax_edges[scope].append(spelling)
-                return [spelling]
-
-    def _read_typedef(self, typedef, scope, libclang):
-        if libclang:
-            if not scope.endswith('::'):
-                spelling = scope + "::" + typedef.spelling
-            else:
-                spelling = scope + typedef.spelling
-            if not spelling in self._nodes:
-                try:
-                    with warnings.catch_warnings() as w:
-                        warnings.simplefilter("error")
-                        target, specifiers = self._read_qualified_type(typedef.underlying_typedef_type, libclang)
-                except Warning as warning:
-                    warnings.warn(warning.message + ' for typedef \'' + spelling + '\'', warning.__class__)
-                    return []
-                else:
-                    self._nodes[spelling] = dict(proxy=TypedefProxy)
-                    self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
-                    self._syntax_edges[scope].append(spelling)
-                    filename = str(path(str(typedef.location.file)).abspath())
-                    self.add_file(filename, language=self._language)
-                    self._nodes[spelling]['_header'] = filename
-                    return [spelling]
-            else:
-                return [spelling]
-        else:
-            warnings.warn(typedef.get_name(), NotImplementedDeclWarning)
-            return []
-
-    def _read_variable(self, decl, scope, libclang):
-        if libclang:
-            if any(child.kind in [CursorKind.TEMPLATE_NON_TYPE_PARAMETER, CursorKind.TEMPLATE_TYPE_PARAMETER, CursorKind.TEMPLATE_TEMPLATE_PARAMETER] for child in decl.get_children()):
-                return []
-            else:
-                if not scope.endswith('::'):
-                    spelling = scope + "::" + decl.spelling
-                else:
-                    spelling = scope + decl.spelling
-                try:
-                    with warnings.catch_warnings() as warning:
-                        warnings.simplefilter("error")
-                        target, specifiers = self._read_qualified_type(decl.type, libclang)
-                        self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
-                except Warning as warning:
-                    warnings.warn(warning.message + ' for variable \'' + spelling + '\'', warning.__class__)
-                    return []
-                else:
-                    self._nodes[spelling] = dict(proxy=VariableProxy)
-                    filename = str(path(str(decl.location.file)).abspath())
-                    self.add_file(filename, language=self._language)
-                    self._nodes[spelling]['_header'] = filename
-                    self._nodes[spelling]['decl'] = decl
-                    self._syntax_edges[scope].append(spelling)
-                    return [spelling]
-        else:
-            if isinstance(decl, (autowig.clang.VarTemplateDecl, autowig.clang.VarTemplateSpecializationDecl)):
-                return []
-            else:
-                try:
-                    with warnings.catch_warnings() as w:
-                        warnings.simplefilter("error")
-                        parent = self._read_context_parent(decl, libclang)
-                except Warning as warning:
-                    warnings.warn(warning.message + ' for variable \'' + decl.get_name() + '\'', warning.__class__)
-                    return []
-                else:
-                    if isinstance(parent, autowig.clang.TranslationUnitDecl):
-                        scope = '::'
-                        spelling = scope + decl.get_name()
-                    else:
-                        scope = self._read_decl(parent, '', libclang, read=False)
-                        if len(scope) == 0:
-                            warnings.warn(spelling, UndeclaredParentWarning)
-                            return []
-                        elif len(scope) == 1:
-                            scope = scope[0]
-                        else:
-                            warnings.warn(spelling, MultipleDeclaredParentWarning)
-                            return []
-                        spelling = scope + '::' + decl.get_name()
-                    try:
-                        with warnings.catch_warnings() as warning:
-                            warnings.simplefilter("error")
-                            target, specifiers = self._read_qualified_type(decl.get_type(), libclang)
-                            self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
-                    except Warning as warning:
-                        warnings.warn(warning.message + ' for variable \'' + spelling + '\'', warning.__class__)
-                        return []
-                    else:
-                        self._nodes[spelling] = dict(proxy=VariableProxy)
-                        self._syntax_edges[scope].append(spelling)
-                        filename = str(path(str(decl.get_filename())).abspath())
-                        self.add_file(filename, language=self._language)
-                        self._nodes[spelling]['_header'] = filename
-                        self._nodes[spelling]['decl'] = decl
-                        return [spelling]
-
-    def _read_function(self, decl, scope, libclang):
-        if libclang:
-            if not scope.endswith('::'):
-                spelling = scope + "::" + decl.spelling
-            else:
-                spelling = scope + decl.spelling
-            if decl.kind in [CursorKind.DESTRUCTOR, CursorKind.CXX_METHOD, CursorKind.CONSTRUCTOR] and decl.lexical_parent.kind is CursorKind.NAMESPACE:
-                return []
-            else:
-                if not decl.kind is CursorKind.DESTRUCTOR:
-                    spelling = spelling + '::' + str(uuid.uuid4())
-                if decl.kind is CursorKind.FUNCTION_DECL:
-                    self._nodes[spelling] = dict(proxy=FunctionProxy, decl=decl)
-                    if not decl.location is None:
-                        filename = str(path(str(decl.location.file)).abspath())
-                        self.add_file(filename, language=self._language)
-                        self._nodes[spelling]['_header'] = filename
-                elif decl.kind is CursorKind.CXX_METHOD:
-                    self._nodes[spelling] = dict(proxy=MethodProxy,
-                            is_static=decl.is_static_method(),
-                            is_virtual=True,
-                            is_const=False,
-                            is_pure_virtual=True,
-                            decl=decl)
-                elif decl.kind is CursorKind.CONSTRUCTOR:
-                    self._nodes[spelling] = dict(proxy=ConstructorProxy,
-                            decl=decl)
-                else:
-                    self._nodes[spelling] = dict(proxy=DestructorProxy,
-                            is_virtual=True,
-                            decl=decl)
-                self._syntax_edges[spelling] = []
-                self._syntax_edges[scope].append(spelling)
-                try:
-                    with warnings.catch_warnings() as w:
-                        warnings.simplefilter("error")
-                        for child in decl.get_children():
-                            if child.kind is CursorKind.PARM_DECL:
-                                self._read_variable(child, spelling, libclang)
-                        if not decl.kind in [CursorKind.CONSTRUCTOR, CursorKind.DESTRUCTOR]:
-                            target, specifiers = self._read_qualified_type(decl.result_type, libclang)
-                            self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
-                except Warning as warning:
-                    self._syntax_edges[scope].remove(spelling)
-                    self._syntax_edges.pop(spelling)
-                    self._nodes.pop(spelling)
-                    if not spelling.endswith('::'):
-                        spelling += '::'
-                    for child in decl.get_children():
-                        if child.kind is CursorKind.PARM_DECL:
-                            self._nodes.pop(spelling + child.spelling, None)
-                            self._syntax_edges.pop(spelling + child.spelling, None)
-                            self._type_edges.pop(spelling, None)
-                    warnings.warn(warning.message, warning.__class__)
-                    return []
-                else:
-                    return [spelling]
-        else:
-            if isinstance(decl, autowig.clang.FunctionTemplateDecl) or decl.is_implicit() or decl.is_deleted():
-                return []
-            if decl.get_name() == '':
-                warnings.warn('', AnonymousFunctionWarning)
-                return []
-            try:
-                with warnings.catch_warnings() as w:
-                    warnings.simplefilter('error')
-                    if isinstance(decl, autowig.clang.CXXMethodDecl):
-                        parent = self._read_lexical_parent(decl, libclang)
-                        if isinstance(parent, autowig.clang.NamespaceDecl):
-                            return []
-                    parent = self._read_syntaxic_parent(decl, libclang)
-            except Warning as warning:
-                warnings.warn(warning.message + ' for function \'' + decl.get_name() + '\'', warning.__class__)
-                return []
-            else:
-                if isinstance(parent, autowig.clang.TranslationUnitDecl):
-                    scope = '::'
-                    spelling = scope + decl.get_name()
-                else:
-                    scope = self._read_decl(parent, '', libclang, read=False)
-                    if len(scope) == 0:
-                        warnings.warn(spelling, UndeclaredParentWarning)
-                        return []
-                    elif len(scope) == 1:
-                        scope = scope[0]
-                    else:
-                        warnings.warn(spelling, MultipleDeclaredParentWarning)
-                        return []
-                    spelling =  scope + '::' + decl.get_name()
-                if not isinstance(decl, autowig.clang.CXXDestructorDecl):
-                    spelling += '::' + str(uuid.uuid5(uuid.NAMESPACE_X500, decl.get_mangling()))
-                    #spelling =  spelling + '::' + str(uuid.uuid4())
-                if not spelling in self._nodes:
-                    if isinstance(decl, autowig.clang.CXXMethodDecl):
-                        if spelling.startswith('class '):
-                            spelling = spelling[6:]
-                        elif spelling.startswith('union '):
-                            spelling = spelling[6:]
-                        elif spelling.startswith('struct '):
-                            spelling = spelling[7:]
-                        if isinstance(decl, autowig.clang.CXXConversionDecl):
-                            warnings.warn(autowig.clang.CXXConversionDecl.__class__.__name__.split('.')[-1] + ' for function \'' + spelling + '\'',
-                                    NotImplementedDeclWarning)
-                            return []
-                        elif isinstance(self[scope], NamespaceProxy):
-                            return []
-                        else:
-                            if not isinstance(decl, autowig.clang.CXXDestructorDecl):
-                                self._syntax_edges[spelling] = []
-                                try:
-                                    with warnings.catch_warnings() as warning:
-                                        warnings.simplefilter("error")
-                                        for index, child in enumerate(decl.get_children()):
-                                            childspelling = spelling + child.spelling()
-                                            if childspelling.endswith('::'):
-                                                childspelling += 'parm_' + str(index)
-                                            target, specifiers = self._read_qualified_type(child.get_type(),
-                                                    libclang)
-                                            self._type_edges[childspelling] = dict(target=target,
-                                                    specifiers=specifiers)
-                                            self._nodes[childspelling] = dict(proxy=VariableProxy)
-                                            self._syntax_edges[spelling].append(childspelling)
-                                except Warning as warning:
-                                    message = warning.message + ' for parameter \'' + childspelling + '\''
-                                    self._syntax_edges.pop(spelling)
-                                    for index, child in enumerate(decl.get_children()):
-                                        childspelling = spelling + child.spelling()
-                                        if childspelling.endswith('::'):
-                                            childspelling += 'parm_' + str(index)
-                                        self._nodes.pop(childspelling, None)
-                                        self._type_edges.pop(childspelling, None)
-                                    warnings.warn(message,
-                                            warning.__class__)
-                                    return []
-                                else:
-                                    if not isinstance(decl, autowig.clang.CXXConstructorDecl):
-                                        try:
-                                            with warnings.catch_warnings() as warning:
-                                                warnings.simplefilter("error")
-                                                target, specifiers = self._read_qualified_type(decl.get_return_type(),
-                                                        libclang)
-                                        except Warning as warning:
-                                            self._syntax_edges.pop(spelling)
-                                            for index, child in enumerate(decl.get_children()):
-                                                childspelling = spelling + child.spelling()
-                                                if childspelling.endswith('::'):
-                                                    childspelling += 'parm_' + str(index)
-                                                self._nodes.pop(childspelling, None)
-                                                self._type_edges.pop(childspelling, None)
-                                            warnings.warn(warning.message + ' for function \'' + spelling + '\' return type',
-                                                    warning.__class__)
-                                            return []
-                                        else:
-                                            self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
-                                            self._nodes[spelling] = dict(proxy=MethodProxy,
-                                                    is_static=decl.is_static(),
-                                                    is_const=decl.is_const(),
-                                                    is_volatile=decl.is_volatile(),
-                                                    is_virtual=decl.is_virtual(),
-                                                    decl=decl)
-                                    else:
-                                        self._nodes[spelling] = dict(proxy=ConstructorProxy,
-                                                is_virtual=decl.is_virtual(),
-                                                decl=decl)
-                                    self._syntax_edges[scope].append(spelling)
-                                    return [spelling]
-                            else:
-                                if not spelling in self._nodes:
-                                    self._nodes[spelling] = dict(proxy=DestructorProxy,
-                                            virtual=decl.is_virtual(),
-                                            decl=decl)
-                                    self._syntax_edges[scope].append(spelling)
-                                return [spelling]
-                    else:
-                        self._syntax_edges[spelling] = []
-                        try:
-                            with warnings.catch_warnings() as warning:
-                                warnings.simplefilter("error")
-                                for index, child in enumerate(decl.get_children()):
-                                    childspelling = spelling + child.spelling()
-                                    if childspelling.endswith('::'):
-                                        childspelling += 'parm_' + str(index)
-                                    target, specifiers = self._read_qualified_type(child.get_type(),
-                                            libclang)
-                                    self._type_edges[childspelling] = dict(target=target,
-                                            specifiers=specifiers)
-                                    self._nodes[childspelling] = dict(proxy=VariableProxy)
-                                    self._syntax_edges[spelling].append(childspelling)
-                        except Warning as warning:
-                            message = warning.message + ' for parameter \'' + childspelling + '\''
-                            self._syntax_edges.pop(spelling)
-                            for index, child in enumerate(decl.get_children()):
-                                childspelling = spelling + child.spelling()
-                                if childspelling.endswith('::'):
-                                    childspelling += 'parm_' + str(index)
-                                self._nodes.pop(childspelling, None)
-                                self._type_edges.pop(childspelling, None)
-                            warnings.warn(message,
-                                    warning.__class__)
-                            return []
-                        else:
-                            try:
-                                with warnings.catch_warnings() as warning:
-                                    warnings.simplefilter("error")
-                                    target, specifiers = self._read_qualified_type(decl.get_return_type(),
-                                            libclang)
-                            except Warning as warning:
-                                message = warning.message + ' for function \'' + spelling + '\''
-                                self._syntax_edges.pop(spelling)
-                                for index, child in enumerate(decl.get_children()):
-                                    childspelling = spelling + child.spelling()
-                                    if childspelling.endswith('::'):
-                                        childspelling += 'parm_' + str(index)
-                                    self._nodes.pop(childspelling, None)
-                                    self._type_edges.pop(childspelling, None)
-                                self._type_edges.pop(spelling, None)
-                                warnings.warn(message,
-                                        warning.__class__)
-                                return []
-                            else:
-                                self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
-                                self._nodes[spelling] = dict(proxy=FunctionProxy,
-                                        decl=decl)
-                                self._syntax_edges[scope].append(spelling)
-                                return [spelling]
-
-    def _read_field(self, decl, scope, libclang):
-        if libclang:
-            if not scope.endswith('::'):
-                spelling = scope + "::" + decl.spelling
-            else:
-                spelling = scope + decl.spelling
-            self._nodes[spelling] = dict(proxy=FieldProxy,
-                    is_mutable=False,
-                    is_static=False,
-                    decl=decl)
-            self._syntax_edges[scope].append(spelling)
-            try:
-                with warnings.catch_warnings() as warning:
-                    warnings.simplefilter("error")
-                    target, specifiers = self._read_qualified_type(decl.type, libclang)
-                    self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
-            except Exception as error:
-                self._syntax_edges[scope].remove(spelling)
-                self._nodes.pop(spelling)
-                warnings.warn(str(error))
-                return []
-            else:
-                return [spelling]
-        else:
-            if decl.get_name() == '':
-                warnings.warn('', AnonymousFieldWarning)
-                return []
-            try:
-                with warnings.catch_warnings() as w:
-                    warnings.simplefilter('error')
-                    parent = self._read_context_parent(decl, libclang)
-            except Warning as warning:
-                warnings.warn(warning.message + ' for field \'' + decl.get_name() + '\'', warning.__class__)
-                return []
-            else:
-                if isinstance(parent, autowig.clang.TranslationUnitDecl):
-                    scope = '::'
-                    spelling = scope + decl.get_name()
-                else:
-                    scope = self._read_decl(parent, '', libclang, read=False)
-                    if len(scope) == 0:
-                        warnings.warn(spelling, UndeclaredParentWarning)
-                        return []
-                    elif len(scope) == 1:
-                        scope = scope[0]
-                    else:
-                        warnings.warn(spelling, MultipleDeclaredParentWarning)
-                        return []
-                    spelling = scope + '::' + decl.get_name()
-                    if spelling.startswith('class '):
-                        spelling = spelling[6:]
-                    elif spelling.startswith('union '):
-                        spelling = spelling[6:]
-                    elif spelling.startswith('struct '):
-                        spelling = spelling[7:]
-                try:
-                    with warnings.catch_warnings() as warning:
-                        warnings.simplefilter("error")
-                        target, specifiers = self._read_qualified_type(decl.get_type(), libclang)
-                except Warning as warning:
-                    warnings.warn(warning.message + ' for field \'' + spelling + '\'', warning.__class__)
-                    return []
-                else:
-                    self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
-                    self._nodes[spelling] = dict(proxy=FieldProxy,
-                            is_mutable=decl.is_mutable(),
-                            is_static=False, # TODO
-                            decl=decl)
-                    self._syntax_edges[scope].append(spelling)
-                    return [spelling]
-
-    def _read_tag(self, decl, scope, libclang, read):
-        if libclang:
-            if decl.kind is CursorKind.ENUM_DECL:
-                return self._read_enum(decl, scope, libclang, read)
-            else:
-                if decl.spelling == '':
-                    warnings.warn('Anonymous struc/union/class in scope \'' + scope + '\' not read')
-                    return []
-                elif not decl.spelling == decl.displayname:
-                    warnings.warn('Class template specialization \'' + scope + '::' + decl.displayname + '\' not read')
-                    return []
-                if not scope.endswith('::'):
-                    spelling = scope + "::" + decl.spelling
-                else:
-                    spelling = scope + decl.spelling
-                if not spelling in self._nodes:
-                    if decl.kind in [CursorKind.STRUCT_DECL, CursorKind.UNION_DECL]:
-                        self._nodes[spelling] = dict(proxy=ClassProxy,
-                                default_access='public',
-                                is_abstract=True,
-                                is_copyable=False,
-                                is_complete=False)
-                    elif decl.kind is CursorKind.CLASS_DECL:
-                        self._nodes[spelling] = dict(proxy=ClassProxy,
-                                    default_access='private',
-                                    is_abstract=True,
-                                    is_copyable=False,
-                                    is_complete=False)
-                    self._syntax_edges[spelling] = []
-                    self._base_edges[spelling] = []
-                    self._syntax_edges[scope].append(spelling)
-                elif not self[spelling].is_complete:
-                    self._syntax_edges[scope].remove(spelling)
-                    self._syntax_edges[scope].append(spelling)
-                if not self[spelling].is_complete:
-                    for child in decl.get_children():
-                        if child.kind is CursorKind.CXX_BASE_SPECIFIER:
-                            childspelling = '::' + child.type.spelling
-                            if childspelling in self._nodes:
-                                access = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
-                                self._base_edges[spelling].append(dict(base=self[childspelling].id,
-                                    access=access,
-                                    is_virtual=False))
-                            else:
-                                warnings.warn('Base not found')
-                        else:
-                            for childspelling in self._read_decl(child, spelling, libclang, read):
-                                self._nodes[childspelling]["access"] = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
-                                dict.pop(self._nodes[childspelling], "_header", None)
-                    self._nodes[spelling]['is_complete'] = len(self._base_edges[spelling]) + len(self._syntax_edges[spelling]) > 0
-                    if self[spelling].is_complete:
-                        filename = str(path(str(decl.location.file)).abspath())
-                        self.add_file(filename, language=self._language)
-                        self._nodes[spelling]['_header'] = filename
-                        self._nodes[spelling]['decl'] = decl
-                return [spelling]
-        else:
-            if isinstance(decl, autowig.clang.EnumDecl):
-                return self._read_enum(decl, scope, libclang, read)
-            elif isinstance(decl, (autowig.clang.ClassTemplateDecl, autowig.clang.ClassTemplatePartialSpecializationDecl)):
-                return []
-            if not decl.has_name_for_linkage():
-                warnings.warn('in scope \'' + scope + '\'', AnonymousClassWarning)
-                return []
-            if not decl.get_typedef_name_for_anon_decl() is None:
-                try:
-                    with warnings.catch_warnings() as w:
-                        warnings.simplefilter('error')
-                        parent = self._read_syntaxic_parent(decl, libclang)
-                except Warning as warning:
-                    warnings.warn(warning.message + ' for class \'' + decl.get_typedef_name_for_anon_decl().get_name() + '\'', warning.__class__)
-                    return []
-                else:
-                    if isinstance(parent, autowig.clang.TranslationUnitDecl):
-                        scope = '::'
-                        spelling = scope + decl.get_typedef_name_for_anon_decl().get_name()
-                    else:
-                        scope = self._read_decl(parent, '', libclang, read=False)
-                        if len(scope) == 0:
-                            warnings.warn(spelling, UndeclaredParentWarning)
-                            return []
-                        elif len(scope) == 1:
-                            scope = scope[0]
-                        else:
-                            warnings.warn(spelling, MultipleDeclaredParentWarning)
-                            return []
-                        spelling = scope + '::' + decl.get_typedef_name_for_anon_decl().get_name()
-                        if spelling.startswith('class '):
-                            spelling = spelling[6:]
-                        elif spelling.startswith('union '):
-                            spelling = spelling[6:]
-                        elif spelling.startswith('struct '):
-                            spelling = spelling[7:]
-            elif decl.get_name() == '':
-                warnings.warn('in scope \'' + scope + '\'', AnonymousClassWarning)
-                return []
-            else:
-                try:
-                    with warnings.catch_warnings() as w:
-                        warnings.simplefilter('error')
-                        parent = self._read_syntaxic_parent(decl, libclang)
-                except Warning as warning:
-                    warnings.warn(warning.message + ' for class \'' + decl.get_typedef_name_for_anon_decl().get_name() + '\'', warning.__class__)
-                    return []
-                else:
-                    if isinstance(parent, autowig.clang.TranslationUnitDecl):
-                        scope = '::'
-                        spelling = scope + decl.get_name()
-                    else:
-                        scope = self._read_decl(parent, '', libclang, read=False)
-                        if len(scope) == 0:
-                            warnings.warn(spelling, UndeclaredParentWarning)
-                            return []
-                        elif len(scope) == 1:
-                            scope = scope[0]
-                        else:
-                            warnings.warn(spelling, MultipleDeclaredParentWarning)
-                            return []
-                        spelling = scope + '::' + decl.get_name()
-                        if spelling.startswith('class '):
-                            spelling = spelling[6:]
-                        elif spelling.startswith('union '):
-                            spelling = spelling[6:]
-                        elif spelling.startswith('struct '):
-                            spelling = spelling[7:]
-                    if decl.is_class():
-                        spelling = 'class ' + spelling
-                    elif decl.is_struct():
-                        spelling = 'struct ' + spelling
-                    elif decl.is_union():
-                        spelling = 'union ' + spelling
-                    else:
-                        warnings.warn(spelling, NotImplementedDeclWarning)
-                        return []
-            if not spelling in self._nodes:
-                if decl.is_class():
-                    default_access = 'private'
-                else:
-                    default_access = 'public'
-                if isinstance(decl, autowig.clang.ClassTemplateSpecializationDecl):
-                    self._nodes[spelling] = dict(proxy=ClassTemplateSpecializationProxy,
-                        _scope = scope,
-                        default_access=default_access,
-                        is_abstract=False,
-                        is_copyable=True,
-                        is_complete=False)
-                    self._template_edges[spelling] = []
-                    templates = decl.get_template_args()
-                    for template in [templates.get(index) for index in range(templates.size())]:
-                        if template.get_kind() is autowig.clang._template_argument.ArgKind.Type:
-                            target, specifiers = self._read_qualified_type(template.get_as_type(), libclang)
-                            self._template_edges[spelling].append(dict(target = target, specifiers = specifiers))
-                        elif template.get_kind() is autowig.clang._template_argument.ArgKind.Declaration:
-                            target, specifiers = self._read_qualifier_type(template.get_as_decl().get_type(), libclang)
-                            self._template_edges[spelling].append(dict(target = target, specifiers = specifiers))
-                        else:
-                            print spelling
-                            print template.get_kind()
-                else:
-                    self._nodes[spelling] = dict(proxy=ClassProxy,
-                        _scope = scope,
-                        default_access=default_access,
-                        is_abstract=False,
-                        is_copyable=True,
-                        is_complete=False)
-                self._syntax_edges[spelling] = []
-                self._base_edges[spelling] = []
-                self._syntax_edges[scope].append(spelling)
-            if read and not self[spelling].is_complete and decl.is_complete_definition():
-                self._syntax_edges[scope].remove(spelling)
-                self._syntax_edges[scope].append(spelling)
-                if isinstance(decl, autowig.clang.CXXRecordDecl):
-                    self._nodes[spelling]['is_abstract'] = decl.is_abstract()
-                    self._nodes[spelling]['is_copyable'] = decl.is_copyable()
-                else:
-                    self._nodes[spelling]['is_abstract'] = False
-                    self._nodes[spelling]['is_copyable'] = True
-            if read and not self[spelling].is_complete and decl.is_complete_definition():
-                self._nodes[spelling]['is_complete'] = True
-                with warnings.catch_warnings() as w:
-                    warnings.simplefilter('always')
-                    self._base_edges[spelling] = []
-                    for base in decl.get_bases():
-                        basespelling, specifiers = self._read_qualified_type(base.get_type(), libclang)
-                        self._base_edges[spelling].append(dict(base=self[basespelling].id,
-                            access=str(base.get_access_specifier()).strip('AS_'),
-                            is_virtual=False))
-                    for base in decl.get_virtual_bases():
-                        basespelling, specifiers = self._read_qualified_type(base.get_type(), libclang)
-                        self._base_edges[spelling].append(dict(base=self[basespelling].id,
-                            access=str(base.get_access_specifier()).strip('AS_'),
-                            is_virtual=True))
-                    for child in decl.get_children():
-                        access = str(child.get_access_unsafe()).strip('AS_')
-                        for childspelling in self._read_decl(child, spelling, libclang, read):
-                            self._nodes[childspelling]["access"] = access
-                            dict.pop(self._nodes[childspelling], "_header", None)
-                self._nodes[spelling]['is_complete'] = len(self._syntax_edges[spelling])+len(self._base_edges[spelling]) > 0
-                if self[spelling].is_complete:
-                    filename = str(path(str(decl.get_filename())).abspath())
-                    self.add_file(filename, language=self._language)
-                    self._nodes[spelling]['_header'] = filename
-                    self._nodes[spelling]['decl'] = decl
-            return [spelling]
-
-    def _read_namespace(self, decl, scope, libclang, read):
-        if libclang:
-            if not scope.endswith('::'):
-                spelling = scope + "::" + decl.spelling
-            else:
-                spelling = scope + decl.spelling
-            if decl.spelling == '':
-                children = []
-                if not spelling == '::':
-                    spelling = spelling[:-2]
-                with warnings.catch_warnings() as w:
-                    warnings.simplefilter('always')
-                    for child in decl.get_children():
-                        children.extend(self._read_decl(child, spelling, libclang, read))
-                return children
-            else:
-                if not spelling in self._nodes:
-                    self._nodes[spelling] = dict(proxy=NamespaceProxy)
-                    self._syntax_edges[spelling] = []
-                if not spelling in self._syntax_edges[scope]:
-                    self._syntax_edges[scope].append(spelling)
-                with warnings.catch_warnings() as w:
-                    warnings.simplefilter('always')
-                    for child in decl.get_children():
-                        self._read_decl(child, spelling, libclang, read)
-                return [spelling]
-        else:
-            if decl.get_name() == '':
-                with warnings.catch_warnings() as w:
-                    warnings.simplefilter('always')
-                    children = []
-                    for child in decl.get_children():
-                        children.extend(self._read_decl(child, '', libclang, read))
-                    return children
-            else:
-                try:
-                    with warnings.catch_warnings() as w:
-                        warnings.simplefilter('error')
-                        parent = self._read_syntaxic_parent(decl, libclang)
-                except Warning as warning:
-                    warnings.warn(warning.message + ' for namespace \'' + decl.get_name() + '\'', warning.__class__)
-                    return []
-                else:
-                    if isinstance(parent, autowig.clang.TranslationUnitDecl):
-                        scope = '::'
-                        spelling = scope + decl.get_name()
-                    else:
-                        scope = self._read_decl(parent, '', libclang, read=False)
-                        if len(scope) == 0:
-                            warnings.warn(spelling, UndeclaredParentWarning)
-                            return []
-                        elif len(scope) == 1:
-                            scope = scope[0]
-                        else:
-                            warnings.warn(spelling, MultipleDeclaredParentWarning)
-                            return []
-                        spelling = scope + '::' + decl.get_name()
-                    if not spelling in self._nodes:
-                        self._nodes[spelling] = dict(proxy=NamespaceProxy)
-                        self._syntax_edges[spelling] = []
-                    if not spelling in self._syntax_edges[scope]:
-                        self._syntax_edges[scope].append(spelling)
-                    if read:
-                        with warnings.catch_warnings() as w:
-                            warnings.simplefilter('always')
-                            for child in decl.get_children():
-                                self._read_decl(child, spelling, libclang, read)
-                    return [spelling]
-
-    def _read_decl(self, decl, scope, libclang, read):
-        """
-        """
-        if libclang:
-            if decl.kind is CursorKind.UNEXPOSED_DECL:
-                if decl.spelling == '':
-                    children = []
-                    for child in decl.get_children():
-                        children.extend(self._read_decl(child, scope, libclang, read))
-                    return children
-                else:
-                    warnings.warn('Named unexposed declaration not read')
-                    return []
-            elif decl.kind is CursorKind.TYPEDEF_DECL:
-                return self._read_typedef(decl, scope, libclang)
-            elif decl.kind in [CursorKind.VAR_DECL, CursorKind.PARM_DECL]:
-                return self._read_variable(decl, scope, libclang)
-            elif decl.kind in [CursorKind.FUNCTION_DECL, CursorKind.CXX_METHOD,
-                    CursorKind.DESTRUCTOR, CursorKind.CONSTRUCTOR]:
-                return self._read_function(decl, scope, libclang)
-            elif decl.kind is CursorKind.FIELD_DECL:
-                return self._read_field(decl, scope, libclang)
-            elif decl.kind in [CursorKind.ENUM_DECL, CursorKind.STRUCT_DECL,
-                    CursorKind.UNION_DECL, CursorKind.CLASS_DECL]:
-                return self._read_tag(decl, scope, libclang, read)
-            elif decl.kind is CursorKind.NAMESPACE:
-                return self._read_namespace(decl, scope, libclang, read)
-            elif decl.kind in [CursorKind.NAMESPACE_ALIAS, CursorKind.FUNCTION_TEMPLATE,
-                    CursorKind.USING_DECLARATION, CursorKind.USING_DIRECTIVE,
-                    CursorKind.UNEXPOSED_ATTR, CursorKind.CLASS_TEMPLATE,
-                    CursorKind.CLASS_TEMPLATE_PARTIAL_SPECIALIZATION,
-                    CursorKind.CXX_ACCESS_SPEC_DECL, CursorKind.CONVERSION_FUNCTION]:
-                return []
-            else:
-                warnings.warn('Undefined behaviour for \'' + str(decl.kind) + '\' declaration')
-                return []
-        else:
-            if isinstance(decl, autowig.clang.LinkageSpecDecl):
-                language = self._language
-                if decl.get_language() is autowig.clang._linkage_spec_decl.LanguageIDs.lang_c:
-                    self._language = 'c'
-                else:
-                    self._language = 'c++'
-                children = []
-                for child in decl.get_children():
-                    children = self._read_decl(child, scope, libclang, read)
-                self._language = language
-                return children
-            elif isinstance(decl, autowig.clang.VarDecl):
-                return self._read_variable(decl, scope, libclang)
-            elif isinstance(decl, autowig.clang.FunctionDecl):
-                return self._read_function(decl, scope, libclang)
-            elif isinstance(decl, autowig.clang.FieldDecl):
-                return self._read_field(decl, scope, libclang)
-            elif isinstance(decl, autowig.clang.TagDecl):
-                return self._read_tag(decl, scope, libclang, read)
-            elif isinstance(decl, autowig.clang.NamespaceDecl):
-                return self._read_namespace(decl, scope, libclang, read)
-            elif isinstance(decl, (autowig.clang.AccessSpecDecl,
-                autowig.clang.BlockDecl, autowig.clang.CapturedDecl,
-                autowig.clang.ClassScopeFunctionSpecializationDecl,
-                autowig.clang.EmptyDecl, autowig.clang.FileScopeAsmDecl,
-                autowig.clang.FriendDecl, autowig.clang.FriendTemplateDecl,
-                autowig.clang.StaticAssertDecl, autowig.clang.LabelDecl,
-                autowig.clang.NamespaceAliasDecl, autowig.clang.TemplateDecl,
-                autowig.clang.TemplateTypeParmDecl, autowig.clang.UsingDecl,
-                autowig.clang.UsingDirectiveDecl, autowig.clang.UsingShadowDecl,
-                autowig.clang.IndirectFieldDecl, autowig.clang.UnresolvedUsingValueDecl, autowig.clang.TypedefNameDecl)):
-                return []
-            else:
-                warnings.warn(decl.__class__.__name__, NotImplementedDeclWarning) #.split('.')[-1]
-                return []
-
-    def _read_lexical_parent(self, decl, libclang):
-        if libclang:
-            raise NotImplementedError()
-        else:
-            return self._read_parent(decl.get_lexical_parent(), libclang)
-
-    def _read_syntaxic_parent(self, decl, libclang):
-        if libclang:
-            raise NotImplementedError()
-        else:
-            return self._read_parent(decl.get_parent(), libclang)
-
-    def _read_context_parent(self, decl, libclang):
-        if libclang:
-            raise NotImplementedError()
-        else:
-            return self._read_parent(decl.get_decl_context(), libclang)
-
-    def _read_parent(self, parent, libclang):
-        if libclang:
-            raise NotImplementedError()
-        else:
-            kind = parent.get_decl_kind()
-            if kind is autowig.clang._decl.Kind.Namespace:
-                parent = autowig.clang.cast.cast_as_namespace_decl(parent)
-                if parent.get_name() == '':
-                    parent = self._read_parent(parent.get_parent(), libclang)
-                return parent
-            elif kind in [autowig.clang._decl.Kind.CXXRecord, autowig.clang._decl.Kind.Record, autowig.clang._decl.Kind.firstCXXRecord, autowig.clang._decl.Kind.firstClassTemplateSpecialization, autowig.clang._decl.Kind.firstRecord]:
-                parent = autowig.clang.cast.cast_as_record_decl(parent)
-                if parent.get_name() == '':
-                    parent = self._read_parent(parent.get_parent(), libclang)
-                return parent
-            elif kind in [autowig.clang._decl.Kind.Enum]:
-                parent = autowig.clang.cast.cast_as_enum_decl(parent)
-                if parent.get_name() == '':
-                    parent = self._read_parent(parent.get_parent(), libclang)
-                return parent
-            elif kind is autowig.clang._decl.Kind.LinkageSpec:
-                return self._read_parent(self._read_parent(parent.get_parent(), libclang), libclang)
-            elif kind in [autowig.clang._decl.Kind.TranslationUnit, autowig.clang._decl.Kind.lastDecl]:
-                return autowig.clang.cast.cast_as_translation_unit_decl(parent)
-            elif kind in [autowig.clang._decl.Kind.ClassTemplatePartialSpecialization, autowig.clang._decl.Kind.firstTemplate, autowig.clang._decl.Kind.firstVarTemplateSpecialization, autowig.clang._decl.Kind.lastTag, autowig.clang._decl.Kind.lastRedeclarableTemplate, autowig.clang._decl.Kind.lastTemplate]:
-                warnings.warn('', TemplateParentWarning)
-            else:
-                warnings.warn(kind, NotImplementedParentWarning)
 
     def __contains__(self, node):
         return node in self._nodes
@@ -2668,12 +1422,7 @@ class AbstractSemanticGraph(object):
         if not isinstance(node, basestring):
             raise TypeError('`node` parameter')
         if not node in self._nodes:
-            try:
-                pattern = re.compile(node)
-                return [self[_node] for _node in sorted(self._nodes) if pattern.match(_node)]
-            except:
-                raise
-                #ValueError('`node` parameter is not a valid regex pattern')
+            raise KeyError('\'' + node + '\' parameter')
         else:
             return self._nodes[node]["proxy"](self, node)
 
@@ -2693,19 +1442,5 @@ class AbstractSemanticGraph(object):
     #            files=True,
     #            pattern='/(.*)')
 
-class CleanedDiagnostic(object):
-
-    def __init__(self, previous, current):
-        self.previous = previous
-        self.current = current
-
-    def __repr__(self):
-        return 'Previous number of nodes: ' + str(self.previous) + '\nCurrent number of nodes: ' + str(self.current) + '\nPercentage of nodes cleaned: ' + str(round((self.previous-self.current)/float(self.previous)*100, 2)) + '%'
-
-class AlreadyCleanedDiagnostic(object):
-
-    def __init__(self, current):
-        self.current = current
-
-    def __repr__(self):
-        return 'Number of nodes: ' + self.current
+__all__ += [subclass.__name__.rsplit('.', 1).pop() for subclass in subclasses(NodeProxy)]
+__all__ += [subclass.__name__.rsplit('.', 1).pop() for subclass in subclasses(EdgeProxy)]
