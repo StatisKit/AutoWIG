@@ -1,5 +1,39 @@
 import os
 import re
+import inspect
+
+class FactoryDocstring(object):
+
+    def __init__(self, method):
+        self.method = method
+
+    def __str__(self):
+        docstring = 'This method is controlled by the following identifiers:'
+        for name, method in inspect.getmembers(self.method.im_class, predicate=inspect.ismethod):
+            if re.match('^_(.*)_' + self.method.im_func.__name__+'$', name):
+                docstring += '\n - \"' + re.sub('^_(.*)_' + self.method.im_func.__name__+'$', r'\1', name) + '\"'
+        return docstring
+
+    @staticmethod
+    def as_factory(method):
+        method.im_func.func_doc = FactoryDocstring(method)
+
+    def expandtabs(self, tabsize):
+        return str(self).expandtabs(tabsize)
+
+inspect.types.StringTypes += (FactoryDocstring,)
+
+def subclasses(cls, recursive=True):
+    if recursive:
+        subclasses = []
+        front = [cls]
+        while len(front) > 0:
+            cls = front.pop()
+            front.extend(cls.__subclasses__())
+            subclasses.append(cls)
+        return {subclass.__name__ : subclass for subclass in subclasses}.values()
+    else:
+        return cls.__subclasses__()
 
 def remove_regex(name):
     for specialchar in ['.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '|']:
@@ -66,22 +100,18 @@ def lower(name):
     lowername = lowername.lstrip('_')
     return lowername
 
-def to_path(name, upper=False, directories=False):
-    if name.startswith('enum '):
-        name = name[5:]
-    elif name.startswith('class '):
-        name = name[5:]
-    elif name.startswith('union '):
-        name = name[5:]
-    elif name.startswith('struct '):
-        name = name[6:]
-    name = re.sub('(\s|\(|\)|>)', '', name)
-    if directories:
-        path = re.sub(':+', os.sep, name)
-        path.lstrip(os.sep)
-    path = re.sub('[:<,]+', '_', name)
-    path.lstrip('_')
+
+def to_path(node, upper=False):
+    path = compute_path(node).lstrip('_')
     if not upper:
         return lower(path)
     else:
         return path
+
+def compute_path(node):
+    if node.localname == '':
+        return ''
+    elif node.localname.endswith('>'):
+        return compute_path(node.parent) + '_' + remove_templates(node.localname) + '_' + node.hash
+    else:
+        return compute_path(node.parent) + '_' + node.localname

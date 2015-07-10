@@ -2,35 +2,55 @@ class NotWrittenFileWarning(UserWarning):
     """
     """
 
-class NoneTypeWarning(UserWarning):
+class ErrorWarning(UserWarning):
     """
     """
 
-class NotImplementedTypeWarning(UserWarning):
+class NoneTypeWarning(ErrorWarning):
     """
     """
 
-class UndeclaredParentWarning(UserWarning):
+class UndeclaredParentWarning(ErrorWarning):
     """
     """
 
-class MultipleDeclaredParentWarning(UserWarning):
+class MultipleDeclaredParentWarning(ErrorWarning):
     """
     """
 
-class TemplateParentWarning(UndeclaredParentWarning):
+class MultipleDefinitionWarning(ErrorWarning):
     """
     """
 
-class NotImplementedDeclWarning(UserWarning):
+class NoDefinitionWarning(ErrorWarning):
     """
     """
 
-class NotImplementedParentWarning(UserWarning):
+class SideEffectWarning(ErrorWarning):
     """
     """
 
-class AnonymousWarning(UserWarning):
+class InheritanceWarning(ErrorWarning):
+    """
+    """
+
+class ProtectedFileWarning(ErrorWarning):
+    """
+    """
+
+class InfoWarning(UserWarning):
+    """
+    """
+
+class BackEndWarning(InfoWarning):
+    """
+    """
+
+class TemplateParentWarning(InfoWarning):
+    """
+    """
+
+class AnonymousWarning(InfoWarning):
     """
     """
 
@@ -46,18 +66,26 @@ class AnonymousClassWarning(AnonymousWarning):
     """
     """
 
-class MultipleDefinitionWarning(UserWarning):
+class NotImplementedWarning(UserWarning):
     """
     """
 
-class NoDefinitionWarning(UserWarning):
+class NotImplementedTypeWarning(NotImplementedWarning):
     """
     """
 
-class SideEffectWarning(UserWarning):
+class NotImplementedDeclWarning(NotImplementedWarning):
     """
     """
 
-class NotImplementedOperatorWarning(UserWarning):
+class NotImplementedParentWarning(NotImplementedWarning):
+    """
+    """
+
+class NotImplementedOperatorWarning(NotImplementedWarning):
+    """
+    """
+
+class NotImplementedTemplateWarning(NotImplementedWarning):
     """
     """
