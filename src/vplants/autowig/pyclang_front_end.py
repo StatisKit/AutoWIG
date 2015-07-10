@@ -3,125 +3,34 @@ import uuid
 import pyclang
 from path import path
 
-from .ast import AbstractSyntaxTree
-from .asg import (AbstractSemanticGraph,
-        NodeProxy,
-        EdgeProxy,
-        DirectoryProxy,
-        FileProxy,
-        CodeNodeProxy,
-        FundamentalTypeProxy,
-        UnexposedTypeProxy,
-        CharacterFundamentalTypeProxy,
-        CharTypeProxy,
-        UnsignedCharTypeProxy,
-        SignedCharTypeProxy,
-        Char16TypeProxy,
-        Char32TypeProxy,
-        WCharTypeProxy,
-        SignedIntegerTypeProxy,
-        SignedShortIntegerTypeProxy,
-        SignedIntegerTypeProxy,
-        SignedLongIntegerTypeProxy,
-        SignedLongLongIntegerTypeProxy,
-        UnsignedIntegerTypeProxy,
-        UnsignedShortIntegerTypeProxy,
-        UnsignedLongIntegerTypeProxy,
-        UnsignedLongLongIntegerTypeProxy,
-        SignedFloatingPointTypeProxy,
-        SignedFloatTypeProxy,
-        SignedDoubleTypeProxy,
-        SignedLongDoubleTypeProxy,
-        BoolTypeProxy,
-        NullPtrTypeProxy,
-        VoidTypeProxy,
-        TypeSpecifiersProxy,
-        DeclarationProxy,
-        EnumConstantProxy,
-        EnumProxy,
-        TypedefProxy,
-        VariableProxy,
-        ParameterProxy,
-        FieldProxy,
-        FunctionProxy,
-        MethodProxy,
-        ConstructorProxy,
-        DestructorProxy,
-        ClassProxy,
-        ClassTemplateSpecializationProxy,
-        NamespaceProxy)
+from .ast import *
+from .asg import *
 from .tools import remove_regex, split_scopes, remove_templates
 from .custom_warnings import NotWrittenFileWarning, ErrorWarning, NoneTypeWarning,  UndeclaredParentWarning, MultipleDeclaredParentWarning, MultipleDefinitionWarning, NoDefinitionWarning, SideEffectWarning, ProtectedFileWarning, InfoWarning, TemplateParentWarning, TemplateParentWarning, AnonymousWarning, AnonymousFunctionWarning, AnonymousFieldWarning, AnonymousClassWarning, NotImplementedWarning, NotImplementedTypeWarning, NotImplementedDeclWarning, NotImplementedParentWarning, NotImplementedOperatorWarning, NotImplementedTemplateWarning
 
 __all__ = ['AbstractSyntaxTree', 'AbstractSemanticGraph']
 
-def _read_args(self, *args, **kwargs):
-    flags = kwargs.pop('flags')
-    content = ""
-    for arg in args:
-        content += '#include \"' + str(path(arg).abspath()) + '\"\n'
+def _pyclang_front_end(self, content, flags, *args, **kwargs):
     tu = pyclang.clang.tooling.build_ast_from_code_with_args(content, flags)
-    self._read_translation_unit(tu)
+    self._pyclang_read_translation_unit(tu)
 
-AbstractSyntaxTree._read_args = _read_args
-del _read_args
+AbstractSemanticGraph._pyclang_front_end = _pyclang_front_end
+del _pyclang_front_end
 
-def _read_translation_unit(self, tu):
-    self._node = 0
-    node = self._node
-    self._nodes[node] = tu
-    self._children[node] = []
-    self._node += 1
-    for child in tu.get_children():
-        self._children[node].append(self._read_decl(child))
-    del self._node
-
-AbstractSyntaxTree._read_translation_unit = _read_translation_unit
-del _read_translation_unit
-
-def _read_decl(self, decl):
-    node = self._node
-    self._nodes[node] = decl
-    self._children[node] = []
-    self._node += 1
-    if hasattr(decl, 'get_children'):
-        for child in decl.get_children():
-            self._children[node].append(self._read_decl(child))
-    return node
-
-AbstractSyntaxTree._read_decl = _read_decl
-del _read_decl
-
-def _parse(self, *args, **kwargs):
-    flags = kwargs.pop('flags')
-    content = ""
-    for arg in args:
-        if arg.on_disk:
-            content += '#include \"' + arg.globalname + '\"\n'
-        else:
-            content += '\n' + str(arg) + '\n'
-    tu = pyclang.clang.tooling.build_ast_from_code_with_args(content, flags)
-    self._read_fundamentals()
-    self._read_translation_unit(tu)
-
-AbstractSemanticGraph._parse = _parse
-del _parse
-
-def _read_translation_unit(self, tu):
+def _pyclang_read_translation_unit(self, tu):
         """
         """
         with warnings.catch_warnings():
             warnings.simplefilter('always')
             self._read = set()
             for child in tu.get_children():
-                self._read_decl(child)
-            self._remove_duplicates()
+                self._pyclang_read_decl(child)
             del self._read
 
-AbstractSemanticGraph._read_translation_unit = _read_translation_unit
-del _read_translation_unit
+AbstractSemanticGraph._pyclang_read_translation_unit = _pyclang_read_translation_unit
+del _pyclang_read_translation_unit
 
-def _read_qualified_type(self, qtype):
+def _pyclang_read_qualified_type(self, qtype):
     specifiers = ' const' * qtype.is_const_qualified() + ' volatile' *  qtype.is_volatile_qualified()
     ttype = qtype.get_type_ptr_or_null()
     while True:
@@ -136,7 +45,7 @@ def _read_qualified_type(self, qtype):
                 with warnings.catch_warnings():
                     warnings.simplefilter('error')
                     tag = ttype.get_as_tag_decl()
-                    tag = self._read_tag(tag)
+                    tag = self._pyclang_read_tag(tag)
                     return tag[0], specifiers
             except Warning as warning:
                 warnings.warn(str(warning), warning.__class__)
@@ -154,15 +63,15 @@ def _read_qualified_type(self, qtype):
             specifiers = ' const' * qtype.is_const_qualified() + ' volatile' * qtype.is_volatile_qualified() + ' &' + specifiers
             ttype = qtype.get_type_ptr_or_null()
         elif ttype.is_builtin_type():
-            return self._read_builtin_type(ttype), specifiers
+            return self._pyclang_read_builtin_type(ttype), specifiers
         else:
             warnings.warn('\'' + str(ttype.get_type_class()) + '\'', NotImplementedTypeWarning)
             break
 
-AbstractSemanticGraph._read_qualified_type = _read_qualified_type
-del _read_qualified_type
+AbstractSemanticGraph._pyclang_read_qualified_type = _pyclang_read_qualified_type
+del _pyclang_read_qualified_type
 
-def _read_builtin_type(self, btype):
+def _pyclang_read_builtin_type(self, btype):
     if btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Bool):
         return BoolTypeProxy._node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Char_U):
@@ -210,17 +119,17 @@ def _read_builtin_type(self, btype):
     else:
         warnings.warn('\'' + str(btype.get_class_type()) + '\'', NotImplementedTypeWarning)
 
-AbstractSemanticGraph._read_builtin_type = _read_builtin_type
-del _read_builtin_type
+AbstractSemanticGraph._pyclang_read_builtin_type = _pyclang_read_builtin_type
+del _pyclang_read_builtin_type
 
-def _read_enum(self, decl):
+def _pyclang_read_enum(self, decl):
     filename = str(path(str(decl.get_filename())).abspath())
     self.add_file(filename, language=self._language)
     if decl.get_name() == '':
         children = []
         decls = []
         for child in decl.get_children():
-            children.extend(self._read_enum_constant(child))
+            children.extend(self._pyclang_read_enum_constant(child))
             decls.append(child)
         for childspelling, child in zip(children, decls):
             self._nodes[childspelling]['_header'] = filename
@@ -230,7 +139,7 @@ def _read_enum(self, decl):
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
-                parent = self._read_syntaxic_parent(decl)
+                parent = self._pyclang_read_syntaxic_parent(decl)
         except Warning as warning:
             warnings.warn(str(warning) + ' for enum \'' + decl.get_name() + '\'', warning.__class__)
             return []
@@ -239,7 +148,7 @@ def _read_enum(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_name()
             else:
-                scope = self._read_decl(parent)
+                scope = self._pyclang_read_decl(parent)
                 if len(scope) == 0:
                     warnings.warn(spelling, UndeclaredParentWarning)
                     return []
@@ -266,21 +175,21 @@ def _read_enum(self, decl):
                 self._syntax_edges[scope].remove(spelling)
                 self._syntax_edges[scope].append(spelling)
                 for child in decl.get_children():
-                    self._read_enum_constant(child)
+                    self._pyclang_read_enum_constant(child)
                 if self[spelling].is_complete:
                     self._nodes[spelling]['_header'] = filename
                     self._nodes[spelling]['decl'] = decl
                 self._read.remove(spelling)
             return [spelling]
 
-AbstractSemanticGraph._read_enum = _read_enum
-del _read_enum
+AbstractSemanticGraph._pyclang_read_enum = _pyclang_read_enum
+del _pyclang_read_enum
 
-def _read_enum_constant(self, decl):
+def _pyclang_read_enum_constant(self, decl):
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            parent = self._read_context_parent(decl)
+            parent = self._pyclang_read_context_parent(decl)
     except Warning as warning:
         warnings.warn(str(warning) + ' for enum constant \'' + decl.get_name() + '\'', warning.__class__)
         return []
@@ -289,7 +198,7 @@ def _read_enum_constant(self, decl):
             scope = '::'
             spelling = scope + decl.get_name()
         else:
-            scope = self._read_decl(parent)
+            scope = self._pyclang_read_decl(parent)
             if len(scope) == 0:
                 warnings.warn(spelling, UndeclaredParentWarning)
                 return []
@@ -306,23 +215,23 @@ def _read_enum_constant(self, decl):
             self._syntax_edges[scope].append(spelling)
         return [spelling]
 
-AbstractSemanticGraph._read_enum_constant = _read_enum_constant
-del _read_enum_constant
+AbstractSemanticGraph._pyclang_read_enum_constant = _pyclang_read_enum_constant
+del _pyclang_read_enum_constant
 
-def _read_typedef(self, typedef):
+def _pyclang_read_typedef(self, typedef):
     return []
 
-AbstractSemanticGraph._read_typedef = _read_typedef
-del _read_typedef
+AbstractSemanticGraph._pyclang_read_typedef = _pyclang_read_typedef
+del _pyclang_read_typedef
 
-def _read_variable(self, decl):
+def _pyclang_read_variable(self, decl):
     if isinstance(decl, (pyclang.clang.VarTemplateDecl, pyclang.clang.VarTemplateSpecializationDecl)):
         return []
     else:
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
-                parent = self._read_context_parent(decl)
+                parent = self._pyclang_read_context_parent(decl)
         except Warning as warning:
             warnings.warn(str(warning) + ' for variable \'' + decl.get_name() + '\'', warning.__class__)
             return []
@@ -331,7 +240,7 @@ def _read_variable(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_name()
             else:
-                scope = self._read_decl(parent)
+                scope = self._pyclang_read_decl(parent)
                 if len(scope) == 0:
                     warnings.warn(decl.get_name(), UndeclaredParentWarning)
                     return []
@@ -344,7 +253,7 @@ def _read_variable(self, decl):
             try:
                 with warnings.catch_warnings() as warning:
                     warnings.simplefilter("error")
-                    target, specifiers = self._read_qualified_type(decl.get_type())
+                    target, specifiers = self._pyclang_read_qualified_type(decl.get_type())
                     self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
             except Warning as warning:
                 warnings.warn(str(warning) + ' for variable \'' + spelling + '\'', warning.__class__)
@@ -359,10 +268,10 @@ def _read_variable(self, decl):
                 self._nodes[spelling]['decl'] = decl
                 return [spelling]
 
-AbstractSemanticGraph._read_variable = _read_variable
-del _read_variable
+AbstractSemanticGraph._pyclang_read_variable = _pyclang_read_variable
+del _pyclang_read_variable
 
-def _read_function(self, decl):
+def _pyclang_read_function(self, decl):
     if isinstance(decl, pyclang.clang.FunctionTemplateDecl) or decl.is_implicit() or decl.is_deleted():
         return []
     if decl.get_name() == '':
@@ -372,10 +281,10 @@ def _read_function(self, decl):
         with warnings.catch_warnings():
             warnings.simplefilter('error')
             if isinstance(decl, pyclang.clang.CXXMethodDecl):
-                parent = self._read_lexical_parent(decl)
+                parent = self._pyclang_read_lexical_parent(decl)
                 if isinstance(parent, pyclang.clang.NamespaceDecl):
                     return []
-            parent = self._read_syntaxic_parent(decl)
+            parent = self._pyclang_read_syntaxic_parent(decl)
     except Warning as warning:
         warnings.warn(str(warning) + ' for function \'' + decl.get_name() + '\'', warning.__class__)
         return []
@@ -384,7 +293,7 @@ def _read_function(self, decl):
             scope = '::'
             spelling = scope + decl.get_name()
         else:
-            scope = self._read_decl(parent)
+            scope = self._pyclang_read_decl(parent)
             if len(scope) == 0:
                 warnings.warn(spelling, UndeclaredParentWarning)
                 return []
@@ -421,7 +330,7 @@ def _read_function(self, decl):
                                     childspelling = spelling + child.spelling()
                                     if childspelling.endswith('::'):
                                         childspelling += 'parm_' + str(index)
-                                    target, specifiers = self._read_qualified_type(child.get_type())
+                                    target, specifiers = self._pyclang_read_qualified_type(child.get_type())
                                     self._type_edges[childspelling] = dict(target=target,
                                             specifiers=specifiers)
                                     self._nodes[childspelling] = dict(proxy=VariableProxy)
@@ -443,7 +352,7 @@ def _read_function(self, decl):
                                 try:
                                     with warnings.catch_warnings() as warning:
                                         warnings.simplefilter("error")
-                                        target, specifiers = self._read_qualified_type(decl.get_return_type())
+                                        target, specifiers = self._pyclang_read_qualified_type(decl.get_return_type())
                                 except Warning as warning:
                                     self._syntax_edges.pop(spelling)
                                     for index, child in enumerate(decl.get_children()):
@@ -485,7 +394,7 @@ def _read_function(self, decl):
                             childspelling = spelling + child.spelling()
                             if childspelling.endswith('::'):
                                 childspelling += 'parm_' + str(index)
-                            target, specifiers = self._read_qualified_type(child.get_type())
+                            target, specifiers = self._pyclang_read_qualified_type(child.get_type())
                             self._type_edges[childspelling] = dict(target=target,
                                     specifiers=specifiers)
                             self._nodes[childspelling] = dict(proxy=VariableProxy)
@@ -506,7 +415,7 @@ def _read_function(self, decl):
                     try:
                         with warnings.catch_warnings() as warning:
                             warnings.simplefilter("error")
-                            target, specifiers = self._read_qualified_type(decl.get_return_type())
+                            target, specifiers = self._pyclang_read_qualified_type(decl.get_return_type())
                     except Warning as warning:
                         message = str(warning) + ' for function \'' + spelling + '\''
                         self._syntax_edges.pop(spelling)
@@ -530,17 +439,17 @@ def _read_function(self, decl):
                         self._nodes[spelling]['_header'] = filename
                         return [spelling]
 
-AbstractSemanticGraph._read_function = _read_function
-del _read_function
+AbstractSemanticGraph._pyclang_read_function = _pyclang_read_function
+del _pyclang_read_function
 
-def _read_field(self, decl):
+def _pyclang_read_field(self, decl):
     if decl.get_name() == '':
         warnings.warn('', AnonymousFieldWarning)
         return []
     try:
         with warnings.catch_warnings():
             warnings.simplefilter('error')
-            parent = self._read_context_parent(decl)
+            parent = self._pyclang_read_context_parent(decl)
     except Warning as warning:
         warnings.warn(str(warning) + ' for field \'' + decl.get_name() + '\'', warning.__class__)
         return []
@@ -549,7 +458,7 @@ def _read_field(self, decl):
             scope = '::'
             spelling = scope + decl.get_name()
         else:
-            scope = self._read_decl(parent)
+            scope = self._pyclang_read_decl(parent)
             if len(scope) == 0:
                 warnings.warn(spelling, UndeclaredParentWarning)
                 return []
@@ -568,7 +477,7 @@ def _read_field(self, decl):
         try:
             with warnings.catch_warnings() as warning:
                 warnings.simplefilter("error")
-                target, specifiers = self._read_qualified_type(decl.get_type())
+                target, specifiers = self._pyclang_read_qualified_type(decl.get_type())
         except Warning as warning:
             warnings.warn(str(warning) + ' for field \'' + spelling + '\'', warning.__class__)
             return []
@@ -581,12 +490,12 @@ def _read_field(self, decl):
             self._syntax_edges[scope].append(spelling)
             return [spelling]
 
-AbstractSemanticGraph._read_field = _read_field
-del _read_field
+AbstractSemanticGraph._pyclang_read_field = _pyclang_read_field
+del _pyclang_read_field
 
-def _read_tag(self, decl):
+def _pyclang_read_tag(self, decl):
     if isinstance(decl, pyclang.clang.EnumDecl):
-        return self._read_enum(decl)
+        return self._pyclang_read_enum(decl)
     elif isinstance(decl, (pyclang.clang.ClassTemplateDecl, pyclang.clang.ClassTemplatePartialSpecializationDecl)):
         return []
     if not decl.has_name_for_linkage():
@@ -596,7 +505,7 @@ def _read_tag(self, decl):
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter('error')
-                parent = self._read_syntaxic_parent(decl)
+                parent = self._pyclang_read_syntaxic_parent(decl)
         except Warning as warning:
             warnings.warn(str(warning) + ' for class \'' + decl.get_typedef_name_for_anon_decl().get_name() + '\'', warning.__class__)
             return []
@@ -605,7 +514,7 @@ def _read_tag(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_typedef_name_for_anon_decl().get_name()
             else:
-                scope = self._read_decl(parent)
+                scope = self._pyclang_read_decl(parent)
                 if len(scope) == 0:
                     warnings.warn(spelling, UndeclaredParentWarning)
                     return []
@@ -628,7 +537,7 @@ def _read_tag(self, decl):
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter('error')
-                parent = self._read_syntaxic_parent(decl)
+                parent = self._pyclang_read_syntaxic_parent(decl)
         except Warning as warning:
             warnings.warn(str(warning) + ' for class \'' + decl.get_typedef_name_for_anon_decl().get_name() + '\'', warning.__class__)
             return []
@@ -637,7 +546,7 @@ def _read_tag(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_name()
             else:
-                scope = self._read_decl(parent)
+                scope = self._pyclang_read_decl(parent)
                 if len(scope) == 0:
                     warnings.warn(spelling, UndeclaredParentWarning)
                     return []
@@ -684,13 +593,13 @@ def _read_tag(self, decl):
                     templates = decl.get_template_args()
                     for template in [templates.get(index) for index in range(templates.size())]:
                         if template.get_kind() is pyclang.clang._template_argument.ArgKind.Type:
-                            target, specifiers = self._read_qualified_type(template.get_as_type())
+                            target, specifiers = self._pyclang_read_qualified_type(template.get_as_type())
                             self._template_edges[spelling].append(dict(target = target, specifiers = specifiers))
                         elif template.get_kind() is pyclang.clang._template_argument.ArgKind.Declaration:
-                            target, specifiers = self._read_qualified_type(template.get_as_decl().get_type())
+                            target, specifiers = self._pyclang_read_qualified_type(template.get_as_decl().get_type())
                             self._template_edges[spelling].append(dict(target = target, specifiers = specifiers))
                         elif template.get_kind() is pyclang.clang._template_argument.ArgKind.Integral:
-                            target, specifiers = self._read_qualified_type(template.get_integral_type())
+                            target, specifiers = self._pyclang_read_qualified_type(template.get_integral_type())
                             self._template_edges[spelling].append(dict(target = target, specifiers = specifiers))
 
                         else:
@@ -731,7 +640,7 @@ def _read_tag(self, decl):
                 try:
                     with warnings.catch_warnings():
                         warnings.simplefilter('error')
-                        basespelling, specifiers = self._read_qualified_type(base.get_type())
+                        basespelling, specifiers = self._pyclang_read_qualified_type(base.get_type())
                         self._base_edges[spelling].append(dict(base=self[basespelling].id,
                             access=str(base.get_access_specifier()).strip('AS_'),
                             is_virtual=False))
@@ -741,7 +650,7 @@ def _read_tag(self, decl):
                 try:
                     with warnings.catch_warnings():
                         warnings.simplefilter('error')
-                        basespelling, specifiers = self._read_qualified_type(base.get_type())
+                        basespelling, specifiers = self._pyclang_read_qualified_type(base.get_type())
                         self._base_edges[spelling].append(dict(base=self[basespelling].id,
                             access=str(base.get_access_specifier()).strip('AS_'),
                             is_virtual=True))
@@ -749,7 +658,7 @@ def _read_tag(self, decl):
                     warnings.warn(str(warning), warning.__class__)
             for child in decl.get_children():
                 access = str(child.get_access_unsafe()).strip('AS_')
-                for childspelling in self._read_decl(child):
+                for childspelling in self._pyclang_read_decl(child):
                     self._nodes[childspelling]["access"] = access
                     dict.pop(self._nodes[childspelling], "_header", None)
             self._nodes[spelling]['is_complete'] = len(self._syntax_edges[spelling])+len(self._base_edges[spelling]) > 0
@@ -768,22 +677,22 @@ def _read_tag(self, decl):
             self._nodes[spelling]['decl'] = decl
     return [spelling]
 
-AbstractSemanticGraph._read_tag = _read_tag
-del _read_tag
+AbstractSemanticGraph._pyclang_read_tag = _pyclang_read_tag
+del _pyclang_read_tag
 
-def _read_namespace(self, decl):
+def _pyclang_read_namespace(self, decl):
     if decl.get_name() == '':
         with warnings.catch_warnings():
             warnings.simplefilter('always')
             children = []
             for child in decl.get_children():
-                children.extend(self._read_decl(child))
+                children.extend(self._pyclang_read_decl(child))
             return children
     else:
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter('error')
-                parent = self._read_syntaxic_parent(decl)
+                parent = self._pyclang_read_syntaxic_parent(decl)
         except Warning as warning:
             warnings.warn(str(warning) + ' for namespace \'' + decl.get_name() + '\'', warning.__class__)
             return []
@@ -792,7 +701,7 @@ def _read_namespace(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_name()
             else:
-                scope = self._read_decl(parent)
+                scope = self._pyclang_read_decl(parent)
                 if len(scope) == 0:
                     warnings.warn(spelling, UndeclaredParentWarning)
                     return []
@@ -812,14 +721,14 @@ def _read_namespace(self, decl):
                 with warnings.catch_warnings():
                     warnings.simplefilter('always')
                     for child in decl.get_children():
-                        self._read_decl(child)
+                        self._pyclang_read_decl(child)
                 self._read.remove(spelling)
             return [spelling]
 
-AbstractSemanticGraph._read_namespace = _read_namespace
-del _read_namespace
+AbstractSemanticGraph._pyclang_read_namespace = _pyclang_read_namespace
+del _pyclang_read_namespace
 
-def _read_decl(self, decl):
+def _pyclang_read_decl(self, decl):
     """
     """
     if isinstance(decl, pyclang.clang.LinkageSpecDecl):
@@ -830,19 +739,19 @@ def _read_decl(self, decl):
             self._language = 'c++'
         children = []
         for child in decl.get_children():
-            children = self._read_decl(child)
+            children = self._pyclang_read_decl(child)
         self._language = language
         return children
     elif isinstance(decl, pyclang.clang.VarDecl):
-        return self._read_variable(decl)
+        return self._pyclang_read_variable(decl)
     elif isinstance(decl, pyclang.clang.FunctionDecl):
-        return self._read_function(decl)
+        return self._pyclang_read_function(decl)
     elif isinstance(decl, pyclang.clang.FieldDecl):
-        return self._read_field(decl)
+        return self._pyclang_read_field(decl)
     elif isinstance(decl, pyclang.clang.TagDecl):
-        return self._read_tag(decl)
+        return self._pyclang_read_tag(decl)
     elif isinstance(decl, pyclang.clang.NamespaceDecl):
-        return self._read_namespace(decl)
+        return self._pyclang_read_namespace(decl)
     elif isinstance(decl, (pyclang.clang.AccessSpecDecl,
         pyclang.clang.BlockDecl, pyclang.clang.CapturedDecl,
         pyclang.clang.ClassScopeFunctionSpecializationDecl,
@@ -858,46 +767,46 @@ def _read_decl(self, decl):
         warnings.warn(decl.__class__.__name__, NotImplementedDeclWarning) #.split('.')[-1]
         return []
 
-AbstractSemanticGraph._read_decl = _read_decl
-del _read_decl
+AbstractSemanticGraph._pyclang_read_decl = _pyclang_read_decl
+del _pyclang_read_decl
 
-def _read_lexical_parent(self, decl):
-    return self._read_parent(decl.get_lexical_parent())
+def _pyclang_read_lexical_parent(self, decl):
+    return self._pyclang_read_parent(decl.get_lexical_parent())
 
-AbstractSemanticGraph._read_lexical_parent = _read_lexical_parent
-del _read_lexical_parent
+AbstractSemanticGraph._pyclang_read_lexical_parent = _pyclang_read_lexical_parent
+del _pyclang_read_lexical_parent
 
-def _read_syntaxic_parent(self, decl):
-    return self._read_parent(decl.get_parent())
+def _pyclang_read_syntaxic_parent(self, decl):
+    return self._pyclang_read_parent(decl.get_parent())
 
-AbstractSemanticGraph._read_syntaxic_parent = _read_syntaxic_parent
-del _read_syntaxic_parent
+AbstractSemanticGraph._pyclang_read_syntaxic_parent = _pyclang_read_syntaxic_parent
+del _pyclang_read_syntaxic_parent
 
-def _read_context_parent(self, decl):
-    return self._read_parent(decl.get_decl_context())
+def _pyclang_read_context_parent(self, decl):
+    return self._pyclang_read_parent(decl.get_decl_context())
 
-AbstractSemanticGraph._read_context_parent = _read_context_parent
-del _read_context_parent
+AbstractSemanticGraph._pyclang_read_context_parent = _pyclang_read_context_parent
+del _pyclang_read_context_parent
 
-def _read_parent(self, parent):
+def _pyclang_read_parent(self, parent):
     kind = parent.get_decl_kind()
     if kind is pyclang.clang._decl.Kind.Namespace:
         parent = pyclang.clang.cast.cast_as_namespace_decl(parent)
         if parent.get_name() == '':
-            parent = self._read_parent(parent.get_parent())
+            parent = self._pyclang_read_parent(parent.get_parent())
         return parent
     elif kind in [pyclang.clang._decl.Kind.CXXRecord, pyclang.clang._decl.Kind.Record, pyclang.clang._decl.Kind.firstCXXRecord, pyclang.clang._decl.Kind.firstClassTemplateSpecialization, pyclang.clang._decl.Kind.firstRecord]:
         parent = pyclang.clang.cast.cast_as_record_decl(parent)
         #if parent.get_name() == '':
-        #    parent = self._read_parent(parent.get_parent())
+        #    parent = self._pyclang_read_parent(parent.get_parent())
         return parent
     elif kind in [pyclang.clang._decl.Kind.Enum]:
         parent = pyclang.clang.cast.cast_as_enum_decl(parent)
         if parent.get_name() == '':
-            parent = self._read_parent(parent.get_parent())
+            parent = self._pyclang_read_parent(parent.get_parent())
         return parent
     elif kind is pyclang.clang._decl.Kind.LinkageSpec:
-        return self._read_parent(self._read_parent(parent.get_parent()))
+        return self._pyclang_read_parent(self._pyclang_read_parent(parent.get_parent()))
     elif kind in [pyclang.clang._decl.Kind.TranslationUnit, pyclang.clang._decl.Kind.lastDecl]:
         return pyclang.clang.cast.cast_as_translation_unit_decl(parent)
     elif kind in [pyclang.clang._decl.Kind.ClassTemplatePartialSpecialization, pyclang.clang._decl.Kind.firstTemplate, pyclang.clang._decl.Kind.firstVarTemplateSpecialization, pyclang.clang._decl.Kind.lastTag, pyclang.clang._decl.Kind.lastRedeclarableTemplate, pyclang.clang._decl.Kind.lastTemplate]:
@@ -905,5 +814,5 @@ def _read_parent(self, parent):
     else:
         warnings.warn(kind, NotImplementedParentWarning)
 
-AbstractSemanticGraph._read_parent = _read_parent
-del _read_parent
+AbstractSemanticGraph._pyclang_read_parent = _pyclang_read_parent
+del _pyclang_read_parent

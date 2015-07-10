@@ -1,9 +1,11 @@
-from .boost_python_back_end import set_boost_python_back_end
+from .tools import FactoryDocstring
+from .boost_python_back_end import *
+from .bootstrap_back_end import *
 
-def set_back_end(back_end, *args, **kwargs):
-    if back_end == 'boost_python':
-        set_boost_python_back_end(*args, **kwargs)
-    else:
-        raise ValueError('\'back_end\' parameter')
+def back_end(self, identifier=None, *args, **kwargs):
+    back_end = getattr(self, '_' + identifier + '_back_end')
+    return back_end(*args, **kwargs)
 
-set_back_end('boost_python')
+AbstractSemanticGraph.back_end = back_end
+del back_end
+FactoryDocstring.as_factory(AbstractSemanticGraph.back_end)

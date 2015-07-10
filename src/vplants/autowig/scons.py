@@ -5,7 +5,6 @@ from abc import ABCMeta
 import subprocess
 
 from .asg import FileProxy, AbstractSemanticGraph
-from .boost_python import BoostPythonModuleFileProxy
 
 __all__ = []
 
