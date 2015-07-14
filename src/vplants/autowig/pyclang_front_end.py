@@ -73,49 +73,49 @@ del _pyclang_read_qualified_type
 
 def _pyclang_read_builtin_type(self, btype):
     if btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Bool):
-        return BoolTypeProxy._node
+        return BoolTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Char_U):
-        return UnsignedCharTypeProxy._node
+        return UnsignedCharTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Char_S):
-        return CharTypeProxy._node
+        return CharTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Char32):
-        return Char32TypeProxy._node
+        return Char32TypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Char16):
-        return Char16TypeProxy._node
+        return Char16TypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Double):
-        return SignedDoubleTypeProxy._node
+        return SignedDoubleTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Float):
-        return SignedFloatTypeProxy._node
+        return SignedFloatTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Int):
-        return SignedIntegerTypeProxy._node
+        return SignedIntegerTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.LongLong):
-        return SignedLongLongIntegerTypeProxy._node
+        return SignedLongLongIntegerTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Long):
-        return SignedLongIntegerTypeProxy._node
+        return SignedLongIntegerTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.LongDouble):
-        return SignedLongDoubleTypeProxy._node
+        return SignedLongDoubleTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.NullPtr):
-        return NullPtrTypeProxy._node
+        return NullPtrTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Short):
-        return SignedShortIntegerTypeProxy._node
+        return SignedShortIntegerTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.SChar):
-        return SignedCharTypeProxy._node
+        return SignedCharTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.ULongLong):
-        return UnsignedLongLongIntegerTypeProxy._node
+        return UnsignedLongLongIntegerTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.UChar):
-        return UnsignedCharTypeProxy._node
+        return UnsignedCharTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.ULong):
-        return UnsignedLongIntegerTypeProxy._node
+        return UnsignedLongIntegerTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.UInt):
-        return UnsignedIntegerTypeProxy._node
+        return UnsignedIntegerTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.UShort):
-        return UnsignedShortIntegerTypeProxy._node
+        return UnsignedShortIntegerTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.Void):
-        return VoidTypeProxy._node
+        return VoidTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.WChar_S):
-        return WCharTypeProxy._node
+        return WCharTypeProxy.node
     elif btype.is_specific_builtin_type(pyclang.clang._builtin_type.Kind.WChar_U):
-        return WCharTypeProxy._node
+        return WCharTypeProxy.node
     else:
         warnings.warn('\'' + str(btype.get_class_type()) + '\'', NotImplementedTypeWarning)
 
@@ -641,7 +641,7 @@ def _pyclang_read_tag(self, decl):
                     with warnings.catch_warnings():
                         warnings.simplefilter('error')
                         basespelling, specifiers = self._pyclang_read_qualified_type(base.get_type())
-                        self._base_edges[spelling].append(dict(base=self[basespelling].id,
+                        self._base_edges[spelling].append(dict(base=self[basespelling].node,
                             access=str(base.get_access_specifier()).strip('AS_'),
                             is_virtual=False))
                 except Warning as warning:
@@ -651,7 +651,7 @@ def _pyclang_read_tag(self, decl):
                     with warnings.catch_warnings():
                         warnings.simplefilter('error')
                         basespelling, specifiers = self._pyclang_read_qualified_type(base.get_type())
-                        self._base_edges[spelling].append(dict(base=self[basespelling].id,
+                        self._base_edges[spelling].append(dict(base=self[basespelling].node,
                             access=str(base.get_access_specifier()).strip('AS_'),
                             is_virtual=True))
                 except Warning as warning:

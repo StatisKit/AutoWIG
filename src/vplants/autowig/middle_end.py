@@ -19,7 +19,7 @@ class MiddleEndDiagnostic(object):
     @property
     def total(self):
         if not self.processing is None:
-            return self.cleaning + self.invalidating + self.preprocessing.total
+            return self.cleaning + self.invalidating + self.preprocessing
         else:
             return self.cleaning + self.invalidating
 
@@ -27,7 +27,10 @@ def middle_end(self, identifier=None, *args, **kwargs):
     diagnostic = MiddleEndDiagnostic()
     if not identifier is None:
         middle_end = getattr(self, '_' + identifier + '_middle_end')
-        diagnostic.preprocessing = middle_end(*args, **kwargs)
+        prev = time.time()
+        middle_end(*args, **kwargs)
+        curr = time.time()
+        diagnostic.preprocessing = curr - prev
     self.clean(diagnostic=diagnostic)
     self.mark_invalid_pointers(diagnostic=diagnostic)
     return diagnostic
@@ -95,6 +98,8 @@ def _clean_default(self):
 EnumProxy._clean_default = property(_clean_default)
 ClassProxy._clean_default = property(_clean_default)
 del _clean_default
+
+#ClassTemplateSpecializationProxy._clean_default = False
 
 def get_clean(self):
     if not hasattr(self, '_clean'):

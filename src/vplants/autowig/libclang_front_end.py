@@ -51,6 +51,8 @@ del is_copyable_record
 
 class LibclangDiagnostic(object):
 
+    name = 'libclang'
+
     def __init__(self):
         self.parsing = 0.
         self.translating = 0.
@@ -65,7 +67,7 @@ class LibclangDiagnostic(object):
         string += "\n" + " * Translating: " + str(self.translating)
         return string
 
-def _libclang_front_end(self, content, flags, libpath=None):
+def _libclang_front_end(self, content, flags, libpath=None, silent=False):
     diagnostic = LibclangDiagnostic()
     step = []
     prev = time.time()
@@ -92,7 +94,12 @@ def _libclang_front_end(self, content, flags, libpath=None):
     curr = time.time()
     diagnostic.parsing = curr - prev
     prev = time.time()
-    self._libclang_read_translation_unit(tu)
+    with warnings.catch_warnings() as cw:
+        if silent:
+            warnings.simplefilter('ignore')
+        else:
+            warnings.simplefilter('always')
+        self._libclang_read_translation_unit(tu)
     curr = time.time()
     diagnostic.translating = curr - prev
     return diagnostic
@@ -561,10 +568,8 @@ def _libclang_read_namespace(self, cursor, scope):
             children = []
             if not spelling == '::':
                 spelling = spelling[:-2]
-            with warnings.catch_warnings():
-                warnings.simplefilter('always')
-                for child in cursor.get_children():
-                    children.extend(self._libclang_read_cursor(child, spelling))
+            for child in cursor.get_children():
+                children.extend(self._libclang_read_cursor(child, spelling))
             return children
         else:
             if not spelling in self:
@@ -572,10 +577,8 @@ def _libclang_read_namespace(self, cursor, scope):
                 self._syntax_edges[spelling] = []
             if not spelling in self._syntax_edges[scope]:
                 self._syntax_edges[scope].append(spelling)
-            with warnings.catch_warnings():
-                warnings.simplefilter('always')
-                for child in cursor.get_children():
-                    self._libclang_read_cursor(child, spelling)
+            for child in cursor.get_children():
+                self._libclang_read_cursor(child, spelling)
             return [spelling]
 
 AbstractSemanticGraph._libclang_read_namespace = _libclang_read_namespace

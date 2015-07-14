@@ -4,7 +4,8 @@ from .asg import AbstractSemanticGraph, FileProxy
 from .tools import lower
 
 def _bootstrap_back_end(self, *args, **kwargs):
-    modulenode = self.back_end('boost_python', *args, **kwargs)
+    diagnostic = self.back_end('boost_python', *args, **kwargs)
+    modulenode = diagnostic[0]
     content = "#include <boost/python.hpp>\n"
     declcontext = self.classes('^(class |struct |)::clang::DeclContext$').pop()
     inheritors = [inheritor for inheritor in declcontext.inheritors(True)
@@ -38,7 +39,7 @@ def _bootstrap_back_end(self, *args, **kwargs):
         exportnode.write()
     if on_disk:
         modulenode.write()
-    return modulenode
+    return diagnostic
 
 AbstractSemanticGraph._bootstrap_back_end = _bootstrap_back_end
 del _bootstrap_back_end

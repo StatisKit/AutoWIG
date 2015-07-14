@@ -13,7 +13,6 @@ class FrontEndDiagnostic(object):
     def __init__(self):
         self.preprocessing = 0.
         self.processing = None
-        self.checking = 0.
         self.postprocessing = PostProcessingDiagnostic()
 
     @property
@@ -24,24 +23,25 @@ class FrontEndDiagnostic(object):
         string = "Front-end: " + str(self.total)
         string += "\n * Pre-processing: " + str(self.preprocessing)
         string += "\n * Processing: " + str(self.processing.total)
-        string += "\n * Checking: " + str(self.checking) +"\n"
         string += "\n * Post-Processing: " + str(self.postprocessing.total)
         return string
 
 class PostProcessingDiagnostic(object):
 
     def __init__(self):
+        self.checking = 0.
         self.overloading = 0.
-        self.purging = 0.
+        self.discarding = 0.
 
     @property
     def total(self):
-        return self.overloading + self.purging
+        return self.checking + self.overloading + self.discarding
 
     def __str__(self):
         string = "Front-end post-processing: " + str(self.total)
+        string += "\n * Checking: " + str(self.checking)
         string += "\n * Overloading: " + str(self.overloading)
-        string += "\n * Purging: " + str(self.purging)
+        string += "\n * Discarding: " + str(self.discarding)
         return string
 
 def front_end(self, identifier, *args, **kwargs):
@@ -106,15 +106,15 @@ def front_end(self, identifier, *args, **kwargs):
         #       warnings.warn()
 
     curr = time.time()
-    diagnostic.checking = curr - prev
+    diagnostic.postprocessing.checking = curr - prev
     prev = time.time()
     self._compute_overloads()
     curr = time.time()
     diagnostic.postprocessing.overloading = curr - prev
     prev = time.time()
-    self._remove_duplicates()
+    self._discard_duplicates()
     curr = time.time()
-    diagnostic.postprocessing.purging = curr - prev
+    diagnostic.postprocessing.discarding = curr - prev
     return diagnostic
 
 AbstractSemanticGraph.front_end = front_end
@@ -139,7 +139,7 @@ def front_end(self, identifier, *args, **kwargs):
     for arg in args:
         content += "#include \"" + arg.abspath() + "\"\n"
     front_end = getattr(self, '_' + identifier + '_front_end')
-    front_end(content, flags=flags, **kwargs)
+    front_end(content, *args, flags=flags, **kwargs)
 
 AbstractSyntaxTree.front_end = front_end
 del front_end
@@ -177,7 +177,7 @@ def _compute_overloads(self):
 AbstractSemanticGraph._compute_overloads = _compute_overloads
 del _compute_overloads
 
-def _remove_duplicates(self):
+def _discard_duplicates(self):
     for cls in self.classes():
         parent = cls.parent
         duplicates = [pcl for pcl in parent.classes() if pcl.localname == cls.localname]
@@ -211,5 +211,5 @@ def _remove_duplicates(self):
             for duplicate in duplicates:
                 duplicate._remove()
 
-AbstractSemanticGraph._remove_duplicates = _remove_duplicates
-del _remove_duplicates
+AbstractSemanticGraph._discard_duplicates = _discard_duplicates
+del _discard_duplicates

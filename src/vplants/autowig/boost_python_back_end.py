@@ -1,3 +1,4 @@
+import time
 from mako.template import Template
 import re
 from path import path
@@ -19,12 +20,12 @@ def get_to_python(self):
 
 def set_to_python(self, to_python):
     if to_python:
-        self._asg._nodes[self.id]['_to_python'] = True
+        self._asg._nodes[self.node]['_to_python'] = True
     else:
         del self._to_python
 
 def del_to_python(self):
-    self._asg._nodes[self._id].pop('_to_python', True)
+    self._asg._nodes[self.node].pop('_to_python', True)
 
 CodeNodeProxy.to_python = property(get_to_python, set_to_python, del_to_python)
 del get_to_python, set_to_python, del_to_python
@@ -179,11 +180,11 @@ ${field.globalname})\
         super(BoostPythonExportFileProxy, self).__init__(asg, node)
 
     def add_wrap(self, wrap):
-        self._asg._boost_python_export_edges[self.id].append(wrap.id)
+        self._asg._boost_python_export_edges[self.node].append(wrap.node)
 
     @property
     def wraps(self):
-        wraps = [self._asg[wrap] for wrap in self._asg._boost_python_export_edges[self.id]]
+        wraps = [self._asg[wrap] for wrap in self._asg._boost_python_export_edges[self.node]]
         return [wrap for wrap in wraps if not isinstance(wrap, ClassProxy) if wrap.to_python] + sorted([wrap for wrap in wraps if isinstance(wrap, ClassProxy) and wrap.to_python], key = lambda cls: cls.depth)
 
     @property
@@ -243,11 +244,11 @@ ${field.globalname})\
         #headers = dict()
         #for wrap in self.wraps:
         #    if not wrap.header is None:
-        #        headers[wrap.header.id] = wrap.header
+        #        headers[wrap.header.node] = wrap.header
         #    if isinstance(wrap, ClassTemplateSpecializationProxy):
         #        for template in wrap.templates:
         #            if not template.header is None:
-        #                headers[template.header.id] = template.header
+        #                headers[template.header.node] = template.header
         #return headers.values()
         return self._asg.headers(*self.wraps)
 
@@ -441,7 +442,7 @@ BOOST_PYTHON_MODULE(_${obj.localname.replace(obj.suffix, '')})
     #                        raise
     #                    else:
     #                        if self.database:
-    #                            self.database[export.id] = export.md5()
+    #                            self.database[export.node] = export.md5()
     #    except Warning:
     #        pass
     #    except:
@@ -449,25 +450,25 @@ BOOST_PYTHON_MODULE(_${obj.localname.replace(obj.suffix, '')})
 
     def add_export(self, filename, proxy=BoostPythonExportFileProxy, **kwargs):
         filenode = self._asg.add_file(filename, proxy=proxy, **kwargs)
-        if not filenode.id in self._asg._boost_python_export_edges:
-            self._asg._boost_python_export_edges[filenode.id] = []
+        if not filenode.node in self._asg._boost_python_export_edges:
+            self._asg._boost_python_export_edges[filenode.node] = []
         if not isinstance(filenode, BoostPythonExportFileProxy) and not 'depth' in kwargs:
-            self._asg._nodes[filenode.id]['depth'] = 0
-        self._asg._boost_python_module_edges[self.id].add(filenode.id)
+            self._asg._nodes[filenode.node]['depth'] = 0
+        self._asg._boost_python_module_edges[self.node].add(filenode.node)
         return filenode
 
     @property
     def exports(self):
-        return [export for export in sorted([self._asg[export] for export in self._asg._boost_python_module_edges[self.id]], key = attrgetter('depth')) if not export.is_empty]
+        return [export for export in sorted([self._asg[export] for export in self._asg._boost_python_module_edges[self.node]], key = attrgetter('depth')) if not export.is_empty]
 
     def check_inheritance(self):
         black = set()
         for export in self.exports:
             for cls in self.wraps:
                 if isinstance(cls, ClassProxy):
-                    black.add(cls.id)
+                    black.add(cls.node)
                     for bse in cls.bases():
-                        if bse.to_python and not bse.id in black:
+                        if bse.to_python and not bse.node in black:
                             warnings.warn('Base class \'' + base.globalname + '\' of class \'' + cls.globalname + '\'', InheritanceWarning)
 
 def boost_python_modules(self, pattern=None):
@@ -481,6 +482,7 @@ AbstractSemanticGraph.boost_python_modules = boost_python_modules
 del boost_python_modules
 
 def _boost_python_back_end(self, filename=None, *args, **kwargs):
+    prev = time.time()
     modulenode = self.add_file(filename, proxy=kwargs.pop('module', BoostPythonModuleFileProxy))
     export = kwargs.pop('export', BoostPythonExportFileProxy)
     include = kwargs.pop('include', None)
@@ -529,6 +531,10 @@ def _boost_python_back_end(self, filename=None, *args, **kwargs):
                         node.to_python = True
                         exportnode = modulenode.add_export(directory + 'export_class_' + to_path(node) + suffix, proxy = export)
                         exportnode.add_wrap(node)
+    curr = time.time()
+    diagnostic = BackEndDiagnostic(self)
+    diagnostic.elapsed = curr - prev
+    diagnostic._files = [modulenode.node] + [exportnode.node for exportnode in modulenode.exports]
     if kwargs.pop('on_disk', True):
         database = kwargs.pop('database', None)#'.autowig.db')
         if database is None:
@@ -539,40 +545,40 @@ def _boost_python_back_end(self, filename=None, *args, **kwargs):
             raise NotImplementedError()
     if kwargs.pop('check', True):
         for fdt in subclasses(FundamentalTypeProxy):
-            if hasattr(fdt, '_node') and fdt._node in self:
-                self[fdt._node].to_python = True
+            if isinstance(fdt.node, basestring) and fdt.node in self:
+                self[fdt.node].to_python = True
         for nsp in self.namespaces():
             for var in nsp.variables():
                 if var.to_python:
                     if not var.type.target.to_python:
-                        warnings.warn(str(var.type.target.id), BackEndWarning)
+                        warnings.warn(str(var.type.target.node), BackEndWarning)
             for fct in nsp.functions():
                 if fct.to_python:
                     if not fct.result_type.target.to_python:
-                        warnings.warn(str(fct.result_type.target.id), BackEndWarning)
+                        warnings.warn(str(fct.result_type.target.node), BackEndWarning)
                     for prm in fct.parameters:
                         if not prm.type.target.to_python:
-                            warnings.warn(str(prm.type.target.id), BackEndWarning)
+                            warnings.warn(str(prm.type.target.node), BackEndWarning)
         for cls in self.classes():
             for bse in cls.bases():
                 if bse.access == 'public' and bse.traverse and not bse.to_python:
-                    warnings.warn(bse.id, BackEndWarning)
+                    warnings.warn(bse.node, BackEndWarning)
             for ctr in cls.constructors:
                 if ctr.access == 'public' and ctr.traverse:
                     for prm in ctr.parameters:
                         if not prm.type.target.to_python:
-                            warnings.warn(str(prm.type.target.id), BackEndWarning)
+                            warnings.warn(str(prm.type.target.node), BackEndWarning)
             for fld in cls.fields():
                 if fld.access == 'public' and fld.traverse and not flt.type.target.to_python:
-                    warnings.warn(str(fld.type.target.id), BackEndWarning)
+                    warnings.warn(str(fld.type.target.node), BackEndWarning)
             for mtd in cls.methods():
                 if mtd.access == 'public' and mtd.traverse:
                     if not mtd.result_type.target.to_python:
-                        warnings.warn(str(mtd.result_type.target.id), BackEndWarning)
+                        warnings.warn(str(mtd.result_type.target.node), BackEndWarning)
                     for prm in mtd.parameters:
                         if not prm.type.target.to_python:
-                            warnings.warn(str(prm.type.target.id), BackEndWarning)
-    return modulenode
+                            warnings.warn(str(prm.type.target.node), BackEndWarning)
+    return diagnostic
 
 AbstractSemanticGraph._boost_python_back_end = _boost_python_back_end
 del _boost_python_back_end
@@ -584,12 +590,14 @@ def get_database(self):
         return None
 
 def set_database(self, database):
-    self._asg._nodes[self.id]['_database'] = anydbm.open(str(self.parent) + database, 'c')
+    self._asg._nodes[self.node]['_database'] = anydbm.open(str(self.parent) + database, 'c')
 
 def del_database(self):
     if self.database:
         self.database.close()
-        self._asg._nodes[self.id].pop('_database')
+        self._asg._nodes[self.node].pop('_database')
 
 BoostPythonModuleFileProxy.database = property(get_database, set_database, del_database)
 del get_database, set_database, del_database
+
+from .back_end import BackEndDiagnostic

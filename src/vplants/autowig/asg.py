@@ -995,7 +995,7 @@ class ClassTemplateSpecializationProxy(ClassProxy):
         return [TemplateTypeSpecifiersProxy(self.asg, self.node, template) for template in self.asg._template_edges[self.node]] #TODO
 
     def _remove(self):
-        super(ClassTemplateSpecialization, self)._remove()
+        super(ClassTemplateSpecializationProxy, self)._remove()
         self._templates_edges.pop(self.node)
 
 def get_as_held_type(self):
