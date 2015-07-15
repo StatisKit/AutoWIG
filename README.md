@@ -18,8 +18,11 @@ Therefore you only need to follow instructions on the *Getting Started page of L
 Nevertheless, since PyClangLite needs LLVM/Clang install with shared libraries, you should type
 
 ```
-make ENABLE_OPTIMIZED=1 SHARED_LIBRARY=1
+cmake -G "Unix Makefiles" -DBUILD_SHARED_LIBS=1 ../llvm
+make
+sudo make install
 ```
+
 You will probably need to copy the Clang python bindings (libclang) into your Python library directory or change your PYTHONPATH.
 
 - PyClangLite (https://github.com/pfernique/pyclanglite)
