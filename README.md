@@ -7,11 +7,15 @@ Official documentation is available at [virtualplants.github.io](http://virtualp
 ## Install
 
 To install VPlants.AutoWIG, you need to install these dependencies:
-  - deploy (https://github.com/openalea/deploy)
-  - openalea.core (https://github.com/openalea/openalea/tree/master/core)
+  - llvm ()
   - clang (https://github.com/llvm-mirror/clang.git)
-  - asciitree (https://github.com/mbr/asciitree)
   - boost_python (https://github.com/boostorg/python)
+  
+To install LLVM and Clang, you can clone this [personal repository](git@github.com:pfernique/llvm.git) where Clang is added as a submodule of LLVM.
+Therefore you only need to follow instructions on the *Getting Started page of LLVM* (http://llvm.org/docs/GettingStarted.html) to install both LLVM and Clang.
+
+Additional softwares can be installed
+  - asciitree (https://github.com/mbr/asciitree)
   - ipython
 
 ## Contribute
