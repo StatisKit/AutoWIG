@@ -23,6 +23,10 @@ make
 sudo make install
 ```
 
+```
+cmake -G "Unix Makefiles" -DBUILD_SHARED_LIBS=1 -DLLVM_ENABLE_RTTI=1 ../llvm
+```
+
 You will probably need to copy the Clang python bindings (libclang) into your Python library directory or change your PYTHONPATH.
 
 - PyClangLite (https://github.com/pfernique/pyclanglite)
