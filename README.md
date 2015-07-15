@@ -11,7 +11,7 @@ To install VPlants.AutoWIG, you need to install these dependencies:
   - clang (https://github.com/llvm-mirror/clang.git)
   - boost_python (https://github.com/boostorg/python)
   
-To install LLVM and Clang, you can clone this [personal repository](git@github.com:pfernique/llvm.git) where Clang is added as a submodule of LLVM.
+To install LLVM and Clang, you can clone this [personal repository](https://github.com/pfernique/llvm) where Clang is added as a submodule of LLVM.
 Therefore you only need to follow instructions on the *Getting Started page of LLVM* (http://llvm.org/docs/GettingStarted.html) to install both LLVM and Clang.
 
 Additional softwares can be installed
