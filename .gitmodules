@@ -1,3 +1,0 @@
-[submodule "share/llvm"]
-	path = share/llvm
-	url = git@github.com:llvm-mirror/llvm.git

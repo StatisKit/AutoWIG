@@ -242,6 +242,8 @@ def _discard_forward_declarations(self):
                         for index, edge in enumerate(edges):
                             if edge['target'] == duplicate:
                                 edges[index]['target'] = complete
+                    if 'access' in self._nodes[duplicate]:
+                        self._nodes[complete]['access'] = self._nodes[duplicate]['access']
                     black.add(duplicate)
         #if not cls.node in black:
         #    parent = cls.parent

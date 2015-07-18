@@ -1370,65 +1370,69 @@ class AbstractSemanticGraph(object):
             metaclass = _MetaClass
             return self.nodes(pattern, metaclass=metaclass)
 
-    def classes(self, pattern=None, specialized=None, templated=False):
-        if templated is None:
-            if specialized is None:
-                class _MetaClass(object):
-                    __metaclass__ = ABCMeta
-                _MetaClass.register(ClassProxy)
-                _MetaClass.register(ClassTemplatePartialSpecializationProxy)
-                _MetaClass.register(ClassTemplateProxy)
-                metaclass = _MetaClass
-                return self.nodes(pattern, metaclass=metaclass)
-            elif specialized:
-                class _MetaClass(object):
-                    __metaclass__ = ABCMeta
-                _MetaClass.register(ClassTemplateSpecializationProxy)
-                _MetaClass.register(ClassTemplatePartialSpecializationProxy)
-                metaclass = _MetaClass
-                return self.nodes(pattern, metaclass=metaclass)
+    def classes(self, pattern=None, specialized=None, templated=False, free=None):
+        if free is None:
+            if templated is None:
+                if specialized is None:
+                    class _MetaClass(object):
+                        __metaclass__ = ABCMeta
+                    _MetaClass.register(ClassProxy)
+                    _MetaClass.register(ClassTemplatePartialSpecializationProxy)
+                    _MetaClass.register(ClassTemplateProxy)
+                    metaclass = _MetaClass
+                    return self.nodes(pattern, metaclass=metaclass)
+                elif specialized:
+                    class _MetaClass(object):
+                        __metaclass__ = ABCMeta
+                    _MetaClass.register(ClassTemplateSpecializationProxy)
+                    _MetaClass.register(ClassTemplatePartialSpecializationProxy)
+                    metaclass = _MetaClass
+                    return self.nodes(pattern, metaclass=metaclass)
+                else:
+                    class _MetaClass(object):
+                        __metaclass__ = ABCMeta
+                    _MetaClass.register(ClassProxy)
+                    _MetaClass.register(ClassTemplateProxy)
+                    return [node for node in self.classes(specialized=None) if not isinstance(node, ClassTemplateSpecializationProxy)]
+            elif templated:
+                if specialized is None:
+                    class _MetaClass(object):
+                        __metaclass__ = ABCMeta
+                    _MetaClass.register(ClassTemplateProxy)
+                    _MetaClass.register(ClassTemplatePartialSpecializationProxy)
+                    metaclass = _MetaClass
+                    return self.nodes(pattern, metaclass=metaclass)
+                elif specialized:
+                    class _MetaClass(object):
+                        __metaclass__ = ABCMeta
+                    _MetaClass.register(ClassTemplateSpecializationProxy)
+                    metaclass = _MetaClass
+                    return self.nodes(pattern, metaclass=metaclass)
+                else:
+                    class _MetaClass(object):
+                        __metaclass__ = ABCMeta
+                    _MetaClass.register(ClassTemplateProxy)
+                    metaclass = _MetaClass
+                    return self.nodes(pattern, metaclass=metaclass)
             else:
-                class _MetaClass(object):
-                    __metaclass__ = ABCMeta
-                _MetaClass.register(ClassProxy)
-                _MetaClass.register(ClassTemplateProxy)
-                return [node for node in self.classes(specialized=None) if not isinstance(node, ClassTemplateSpecializationProxy)]
-        elif templated:
-            if specialized is None:
-                class _MetaClass(object):
-                    __metaclass__ = ABCMeta
-                _MetaClass.register(ClassTemplateProxy)
-                _MetaClass.register(ClassTemplatePartialSpecializationProxy)
-                metaclass = _MetaClass
-                return self.nodes(pattern, metaclass=metaclass)
-            elif specialized:
-                class _MetaClass(object):
-                    __metaclass__ = ABCMeta
-                _MetaClass.register(ClassTemplateSpecializationProxy)
-                metaclass = _MetaClass
-                return self.nodes(pattern, metaclass=metaclass)
-            else:
-                class _MetaClass(object):
-                    __metaclass__ = ABCMeta
-                _MetaClass.register(ClassTemplateProxy)
-                metaclass = _MetaClass
-                return self.nodes(pattern, metaclass=metaclass)
+                if specialized is None:
+                    class _MetaClass(object):
+                        __metaclass__ = ABCMeta
+                    _MetaClass.register(ClassProxy)
+                    metaclass = _MetaClass
+                    return self.nodes(pattern, metaclass=metaclass)
+                elif specialized:
+                    class _MetaClass(object):
+                        __metaclass__ = ABCMeta
+                    _MetaClass.register(ClassTemplateSpecializationProxy)
+                    metaclass = _MetaClass
+                    return self.nodes(pattern, metaclass=metaclass)
+                else:
+                    return [node for node in self.classes(specialized=None) if not isinstance(node, ClassTemplateSpecializationProxy)]
+        elif free:
+            return [cls for cls in self.classes(specialized=specialized, templated=templated, free=None) if isinstance(cls.parent, NamespaceProxy)]
         else:
-            if specialized is None:
-                class _MetaClass(object):
-                    __metaclass__ = ABCMeta
-                _MetaClass.register(ClassProxy)
-                metaclass = _MetaClass
-                return self.nodes(pattern, metaclass=metaclass)
-            elif specialized:
-                class _MetaClass(object):
-                    __metaclass__ = ABCMeta
-                _MetaClass.register(ClassTemplateSpecializationProxy)
-                metaclass = _MetaClass
-                return self.nodes(pattern, metaclass=metaclass)
-            else:
-                return [node for node in self.classes(specialized=None) if not isinstance(node, ClassTemplateSpecializationProxy)]
-
+            return [cls for cls in self.classes(specialized=specialized, templated=templated, free=None) if isinstance(cls.parent, ClassProxy)]
 
     def template_classes(self, pattern=None, specialized=None):
         if specialized is None:
