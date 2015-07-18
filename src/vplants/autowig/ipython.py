@@ -54,6 +54,57 @@ def load_ipython_extension(ipython):
     except:
         raise
     else:
+        from .asg import AbstractSemanticGraph, FileProxy, CodeNodeProxy, FundamentalTypeProxy
+        from .tools import subclasses, lower
+
+        def plot(self, viewpoint='code', axes=None, norm=False, width=.8, rotation=30, *args, **kwargs):
+            if axes is None:
+                axes = plt.subplot(1,1,1)
+            elif not isinstance(axes, plt.Axes):
+                raise TypeError('`axes` parameter')
+            if viewpoint == 'code':
+                classes = subclasses(CodeNodeProxy, True)
+                y = [0] * len(classes)
+                for node in self.nodes(metaclass=CodeNodeProxy):
+                    y[classes.index(node.__class__)] += 1
+                y, classes = zip(*[(value, cls) for value, cls in zip(y, classes) if not issubclass(cls, FundamentalTypeProxy) and issubclass(cls, CodeNodeProxy)])
+                xlabels = [lower(cls.__name__.replace('Proxy', '')).replace('_', ' ').capitalize().replace('template partial specialization', 'TpS').replace('template specialization', 'TS').replace('constant', 'cst') for cls in classes]
+                y, xlabels = zip(*[(value, xlabel) for value, xlabel in zip(y, xlabels) if value > 0])
+            elif viewpoint == 'file':
+                files = self.files()
+                xlabels = {str(f.language) : 0 for f in files}
+                for f in files:
+                    xlabels[str(f.language)] += 1
+                y, xlabels = xlabels.values(), xlabels.keys()
+            else:
+                raise ValueError('\'viewpoint\' parameter')
+            axes.bar([i-width/2. for i in range(len(y))], y, *args, **kwargs)
+            axes.set_xticks(range(len(y)))
+            axes.set_xticklabels(xlabels, rotation=rotation)
+            if norm:
+                axes.set_ylabel('Number of nodes (%)')
+            else:
+                axes.set_ylabel('Number of nodes (#)')
+            return axes
+
+        AbstractSemanticGraph.plot = plot
+        del plot
+
+        def _repr_png_(self):
+            fig = Figure()
+            axes = self.plot('code', axes=fig.add_subplot(1,2,1))
+            axes.set_title('Code nodes')
+            axes = self.plot('file', axes=fig.add_subplot(1,2,2))
+            axes.set_title('File languages')
+            canvas = FigureCanvasAgg(fig)
+            filehandler = NamedTemporaryFile(suffix='.png')
+            canvas.print_figure(filehandler.name)
+            ip_img = display.Image(filename=filehandler.name, format='png', embed=True)
+            return ip_img._repr_png_()
+
+        AbstractSemanticGraph._repr_png_ = _repr_png_
+        del _repr_png_
+
         from .front_end import FrontEndDiagnostic, PostProcessingDiagnostic
 
         def plot(self, axes=None, norm=False, width=.8, rotation=0, *args, **kwargs):
@@ -98,12 +149,12 @@ def load_ipython_extension(ipython):
                 axes = plt.subplot(1,1,1)
             elif not isinstance(axes, plt.Axes):
                 raise TypeError('`axes` parameter')
-            y = [self.checking, self.overloading, self.discarding]
+            y = [self.overloading, self.discarding]
             if norm:
                 y = [i/self.total*100 for i in y]
             axes.bar([i-width/2. for i in range(len(y))], y, *args, **kwargs)
             axes.set_xticks(range(len(y)))
-            axes.set_xticklabels(['Checking', 'Overloading', 'Discarding'], rotation=rotation)
+            axes.set_xticklabels(['Overloading', 'Discarding'], rotation=rotation)
             if norm:
                 axes.set_ylabel('Elapsed time (%)')
             else:
@@ -148,6 +199,28 @@ def load_ipython_extension(ipython):
         LibclangDiagnostic.plot = plot
         del plot
 
+        from .pyclang_front_end import PyClangDiagnostic
+
+        def plot(self, axes=None, norm=False, width=.8, rotation=0, *args, **kwargs):
+            if axes is None:
+                axes = plt.subplot(1,1,1)
+            elif not isinstance(axes, plt.Axes):
+                raise TypeError('`axes` parameter')
+            y = [self.parsing, self.translating, self.completing]
+            if norm:
+                y = [i/self.total*100 for i in y]
+            axes.bar([i-width/2. for i in range(len(y))], y, *args, **kwargs)
+            axes.set_xticks(range(len(y)))
+            axes.set_xticklabels(['Parsing', 'Translating', 'Completing'], rotation=rotation)
+            if norm:
+                axes.set_ylabel('Elapsed time (%)')
+            else:
+                axes.set_ylabel('Elapsed time (s)')
+            return axes
+
+        PyClangDiagnostic.plot = plot
+        del plot
+
         def _repr_png_(self):
             fig = Figure()
             axes = self.plot(axes=fig.add_subplot(1,1,1))
@@ -159,6 +232,7 @@ def load_ipython_extension(ipython):
             return ip_img._repr_png_()
 
         LibclangDiagnostic._repr_png_ = _repr_png_
+        PyClangDiagnostic._repr_png_ = _repr_png_
         del _repr_png_
 
         from .middle_end import MiddleEndDiagnostic
@@ -182,7 +256,7 @@ def load_ipython_extension(ipython):
                 colors = [colors[label] for label in labels]
                 axes.pie(values, *args, labels=labels, colors=colors, **kwargs)
                 axes.axis('equal')
-            elif viewpoint == 'timings':
+            elif viewpoint == 'steps':
                 y = [self.cleaning, self.invalidating]
                 xlabels = ['Cleaning', 'Invalidating']
                 if not self.preprocessing is None:
@@ -208,10 +282,10 @@ def load_ipython_extension(ipython):
 
         def _repr_png_(self):
             fig = Figure()
-            axes = self.plot('timings', axes=fig.add_subplot(1,2,1))
+            axes = self.plot('steps', axes=fig.add_subplot(1,2,1))
             axes.set_title('Middle-end steps')
             axes = self.plot('nodes', axes=fig.add_subplot(1,2,2))
-            axes.set_title('Middle-end cleaning step')
+            axes.set_title('Nodes status')
             canvas = FigureCanvasAgg(fig)
             filehandler = NamedTemporaryFile(suffix='.png')
             canvas.print_figure(filehandler.name)
