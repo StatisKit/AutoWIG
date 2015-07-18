@@ -559,7 +559,7 @@ def _boost_python_back_end(self, filename=None, *args, **kwargs):
                     for prm in fct.parameters:
                         if not prm.type.target.to_python:
                             warnings.warn(str(prm.type.target.node), BackEndWarning)
-        for cls in self.classes():
+        for cls in self.classes(templated=False):
             for bse in cls.bases():
                 if bse.access == 'public' and bse.traverse and not bse.to_python:
                     warnings.warn(bse.node, BackEndWarning)

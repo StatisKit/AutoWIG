@@ -193,6 +193,7 @@ def clean(self, diagnostic=None):
         self._syntax_edges.pop(node.node, None)
         self._base_edges.pop(node.node, None)
         self._type_edges.pop(node.node, None)
+        self._specialization_edges.pop(node.node, None)
     for node in self.nodes():
         del node.clean
     for node, clean in cleanbuffer:

@@ -906,20 +906,45 @@ class ClassProxy(DeclarationProxy):
     def enums(self, inherited=False):
         return [enm for enm in self.declarations(inherited) if isinstance(enm, EnumProxy)]
 
+    def enum_constants(self, inherited=False):
+        return [cst for cst in self.declarations(inherited) if isinstance(cst, EnumConstantProxy)]
+
     def fields(self, inherited=False):
         return [field for field in self.declarations(inherited) if isinstance(field, FieldProxy)]
 
     def methods(self, inherited=False):
         return [method for method in self.declarations(inherited) if isinstance(method, MethodProxy)]
 
-    def classes(self, inherited=False, recursive=False):
+    def classes(self, inherited=False, recursive=False, templated=None, specialized=None):
         if recursive:
-            classes = self.classes(inherited=inherited, recursive=False)
+            classes = self.classes(inherited=inherited, recursive=False, templated=templated, specialized=specialized)
             for cls in classes:
-                classes += cls.classes(inherited=inherited, recursive=True)
+                if isinstance(cls, ClassProxy):
+                    classes += cls.classes(inherited=inherited, recursive=True, templated=templated, specialized=specialized)
             return classes
         else:
-            return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassProxy)]
+            if templated is None:
+                if specialized is None:
+                    return [cls for cls in self.declarations(inherited) if isinstance(cls, (ClassProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy))]
+                elif specialized:
+                    return [cls for cls in self.declarations(inherited) if isinstance(cls, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy))]
+                else:
+                    return [cls for cls in self.declarations(inherited) if isinstance(cls, (ClassProxy, ClassTemplateProxy)) and not isinstance(cls, ClassTemplateSpecializationProxy)]
+            elif templated:
+                if specialized is None:
+                    return [cls for cls in self.declarations(inherited) if isinstance(cls, (ClassTemplateProxy, ClassTemplatePartialSpecializationProxy))]
+                elif specialized:
+                    return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassTemplatePartialSpecializationProxy)]
+                else:
+                    return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassTemplateProxy)]
+            else:
+                if specialized is None:
+                    return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassProxy)]
+                elif specialized:
+                    return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassTemplateSpecializationProxy)]
+                else:
+                    return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassProxy) and not isinstance(cls, ClassTemplateSpecializationProxy)]
+
 
     @property
     def constructors(self):
@@ -996,7 +1021,7 @@ class ClassTemplateSpecializationProxy(ClassProxy):
 
     def _remove(self):
         super(ClassTemplateSpecializationProxy, self)._remove()
-        self._templates_edges.pop(self.node)
+        self.asg._template_edges.pop(self.node)
 
 def get_as_held_type(self):
     if hasattr(self, '_as_held_type'):
@@ -1012,6 +1037,89 @@ def del_as_held_type(self):
 
 ClassTemplateSpecializationProxy.as_held_type = property(get_as_held_type, set_as_held_type, del_as_held_type)
 del get_as_held_type, set_as_held_type, del_as_held_type
+
+class ClassTemplatePartialSpecializationProxy(DeclarationProxy):
+    """
+    """
+
+    @property
+    def parent(self):
+        parent = remove_templates(self.globalname)
+        if parent.startswith('class '):
+            parent = parent[6:]
+        elif parent.startswith('union '):
+            parent = parent[6:]
+        elif parent.startswith('struct '):
+            parent = parent[7:]
+        parent = parent[:parent.rindex(':')-1]
+        if parent == '':
+            return self.asg['::']
+        else:
+            for decorator in ['class', 'struct', 'union']:
+                decorator += ' ' + parent
+                if decorator in self.asg._nodes:
+                    parent = self.asg[decorator]
+                    break
+            if not isinstance(parent, NodeProxy):
+                if not parent in self.asg._nodes:
+                    raise ValueError('\'' + self.globalname + '\' parent (\'' + parent + '\') was not found')
+                parent = self.asg[parent]
+            return parent
+
+class ClassTemplateProxy(DeclarationProxy):
+    """
+    """
+
+    @property
+    def parent(self):
+        parent = remove_templates(self.globalname)
+        if parent.startswith('class '):
+            parent = parent[6:]
+        elif parent.startswith('union '):
+            parent = parent[6:]
+        elif parent.startswith('struct '):
+            parent = parent[7:]
+        parent = parent[:parent.rindex(':')-1]
+        if parent == '':
+            return self.asg['::']
+        else:
+            for decorator in ['class', 'struct', 'union']:
+                decorator += ' ' + parent
+                if decorator in self.asg._nodes:
+                    parent = self.asg[decorator]
+                    break
+            if not isinstance(parent, NodeProxy):
+                if not parent in self.asg._nodes:
+                    raise ValueError('\'' + self.globalname + '\' parent (\'' + parent + '\') was not found')
+                parent = self.asg[parent]
+            return parent
+
+    def specializations(self, partial=None):
+        if partial is None:
+            return [self.asg[spc] for spc in self.asg._specialization_edges[self.node]]
+        elif partial:
+            return [spec for spec in self.specializations(None) if isinstance(spec, ClassTemplatePartialSpecializationProxy)]
+        else:
+            return [spec for spec in self.specializations(None) if isinstance(spec, ClassTemplateSpecializationProxy)]
+
+def get_as_smart_pointer(self):
+    if hasattr(self, '_as_smart_pointer'):
+        return self._as_smart_pointer
+    else:
+        return False
+
+def set_as_smart_pointer(self, as_smart_pointer):
+    self.asg._nodes[self.node]['_as_smart_pointer'] = as_smart_pointer
+    for spc in self.specializations(False):
+        spc.is_smart_pointer = as_smart_pointer
+
+def del_as_smart_pointer(self):
+    self.asg._nodes[self.node].pop('_as_smart_pointer', False)
+    for spc in self.specializations(False):
+        del spc.is_smart_pointer
+
+ClassTemplateProxy.as_smart_pointer = property(get_as_smart_pointer, set_as_smart_pointer, del_as_smart_pointer)
+del get_as_smart_pointer, set_as_smart_pointer, del_as_smart_pointer
 
 class NamespaceProxy(DeclarationProxy):
     """
@@ -1076,6 +1184,24 @@ class NamespaceProxy(DeclarationProxy):
         super(NamespaceProxy, self)._remove()
         self.asg._syntax_edges.pop(self.node)
 
+#import pdb
+#from functools import wraps
+#
+#class dicttest(dict):
+#
+#    def pop(self, key, *args):
+#        return super(dicttest, self).pop(key, *args)
+#
+#def wrapper(f):
+#    @wraps(f)
+#    def pop(self, key, *args):
+#        if key ==  'class ::std::error_condition':
+#            pdb.set_trace()
+#        return f(self, key, *args)
+#    return pop
+#
+#dicttest.pop = wrapper(dicttest.pop)
+
 class AbstractSemanticGraph(object):
 
     def __init__(self, *args, **kwargs):
@@ -1085,6 +1211,7 @@ class AbstractSemanticGraph(object):
         self._type_edges = dict()
         self._template_edges = dict()
         self._held_types = set()
+        self._specialization_edges = dict()
         self._boost_python_export_edges = dict()
         self._boost_python_module_edges = dict()
 
@@ -1243,21 +1370,81 @@ class AbstractSemanticGraph(object):
             metaclass = _MetaClass
             return self.nodes(pattern, metaclass=metaclass)
 
-    def classes(self, pattern=None, specialized=None):
+    def classes(self, pattern=None, specialized=None, templated=False):
+        if templated is None:
+            if specialized is None:
+                class _MetaClass(object):
+                    __metaclass__ = ABCMeta
+                _MetaClass.register(ClassProxy)
+                _MetaClass.register(ClassTemplatePartialSpecializationProxy)
+                _MetaClass.register(ClassTemplateProxy)
+                metaclass = _MetaClass
+                return self.nodes(pattern, metaclass=metaclass)
+            elif specialized:
+                class _MetaClass(object):
+                    __metaclass__ = ABCMeta
+                _MetaClass.register(ClassTemplateSpecializationProxy)
+                _MetaClass.register(ClassTemplatePartialSpecializationProxy)
+                metaclass = _MetaClass
+                return self.nodes(pattern, metaclass=metaclass)
+            else:
+                class _MetaClass(object):
+                    __metaclass__ = ABCMeta
+                _MetaClass.register(ClassProxy)
+                _MetaClass.register(ClassTemplateProxy)
+                return [node for node in self.classes(specialized=None) if not isinstance(node, ClassTemplateSpecializationProxy)]
+        elif templated:
+            if specialized is None:
+                class _MetaClass(object):
+                    __metaclass__ = ABCMeta
+                _MetaClass.register(ClassTemplateProxy)
+                _MetaClass.register(ClassTemplatePartialSpecializationProxy)
+                metaclass = _MetaClass
+                return self.nodes(pattern, metaclass=metaclass)
+            elif specialized:
+                class _MetaClass(object):
+                    __metaclass__ = ABCMeta
+                _MetaClass.register(ClassTemplateSpecializationProxy)
+                metaclass = _MetaClass
+                return self.nodes(pattern, metaclass=metaclass)
+            else:
+                class _MetaClass(object):
+                    __metaclass__ = ABCMeta
+                _MetaClass.register(ClassTemplateProxy)
+                metaclass = _MetaClass
+                return self.nodes(pattern, metaclass=metaclass)
+        else:
+            if specialized is None:
+                class _MetaClass(object):
+                    __metaclass__ = ABCMeta
+                _MetaClass.register(ClassProxy)
+                metaclass = _MetaClass
+                return self.nodes(pattern, metaclass=metaclass)
+            elif specialized:
+                class _MetaClass(object):
+                    __metaclass__ = ABCMeta
+                _MetaClass.register(ClassTemplateSpecializationProxy)
+                metaclass = _MetaClass
+                return self.nodes(pattern, metaclass=metaclass)
+            else:
+                return [node for node in self.classes(specialized=None) if not isinstance(node, ClassTemplateSpecializationProxy)]
+
+
+    def template_classes(self, pattern=None, specialized=None):
         if specialized is None:
             class _MetaClass(object):
                 __metaclass__ = ABCMeta
-            _MetaClass.register(ClassProxy)
+            _MetaClass.register(ClassTemplatePartialSpecializationProxy)
             metaclass = _MetaClass
             return self.nodes(pattern, metaclass=metaclass)
         elif specialized:
+            return [node for node in self.classes(specialized=None) if not isinstance(node, ClassTemplateProxy)]
+        else:
             class _MetaClass(object):
                 __metaclass__ = ABCMeta
-            _MetaClass.register(ClassTemplateSpecializationProxy)
+            _MetaClass.register(ClassTemplateProxy)
             metaclass = _MetaClass
             return self.nodes(pattern, metaclass=metaclass)
-        else:
-            return [node for node in self.classes(specialized=None) if not isinstance(node, ClassTemplateSpecializationProxy)]
 
     def namespaces(self, pattern=None):
         class _MetaClass(object):
@@ -1285,6 +1472,9 @@ class AbstractSemanticGraph(object):
                     pass
                 elif isinstance(node, EnumProxy):
                     pass
+                elif isinstance(node, ClassTemplatePartialSpecializationProxy):
+                    # TODO templates !
+                    pass
                 elif isinstance(node, VariableProxy):
                     white.append(node.type.target)
                 elif isinstance(node, FunctionProxy):
@@ -1299,6 +1489,8 @@ class AbstractSemanticGraph(object):
                     white.extend(node.declarations())
                     if isinstance(node, ClassTemplateSpecializationProxy):
                         white.extend([tpl.target for tpl in node.templates])
+                elif isinstance(node, ClassTemplateProxy):
+                    white.extend(node.specializations())
                 elif isinstance(node, NamespaceProxy):
                     white.extend(node.declarations())
                 elif isinstance(node, TypedefProxy):

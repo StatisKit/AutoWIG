@@ -7,7 +7,7 @@ class BackEndDiagnostic(object):
         self._asg = asg
         self._files = []
         self.elapsed = 0.0
-        self.project = "detached"
+        self.project = "semi-detached"
         self.salary = 56286
         self.overhead = 2.4
 
@@ -28,7 +28,7 @@ class BackEndDiagnostic(object):
     def effort(self):
         if self.project == 'organic':
             return 2.4 * (self.sloc/1000.) ** 1.05
-        elif self.project == 'detached':
+        elif self.project == 'semi-detached':
             return 3.0 * (self.sloc/1000.) ** 1.12
         elif self.project == 'embedded':
             return 3.6 * (self.sloc/1000.) ** 1.20
@@ -37,7 +37,7 @@ class BackEndDiagnostic(object):
     def schedule(self):
         if self.project == 'organic':
             return 2.5 * self.effort ** (.38)
-        elif self.project == 'detached':
+        elif self.project == 'semi-detached':
             return 2.5 * self.effort ** (.35)
         elif self.project == 'embedded':
             return 2.5 * self.effort ** (.32)
@@ -63,7 +63,7 @@ def get_project(self):
 def set_project(self, project):
     if not isinstance(project, basestring):
         raise TypeError('\'project\' parameter')
-    if not project in ['organic', 'detached', 'embedded']:
+    if not project in ['organic', 'semi-detached', 'embedded']:
         raise ValueError('\'project\' parameter')
     self._project = project
 

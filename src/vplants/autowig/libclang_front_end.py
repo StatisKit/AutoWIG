@@ -142,18 +142,21 @@ def _libclang_read_qualified_type(self, qtype):
             qtype = qtype.get_pointee()
         elif qtype.kind in [TypeKind.RECORD, TypeKind.TYPEDEF, TypeKind.ENUM, TypeKind.UNEXPOSED]:
             cursor = qtype.get_declaration()
-            spelling = '::' + cursor.type.spelling
-            if cursor.kind is CursorKind.ENUM_DECL:
-                spelling = 'enum ' + spelling
-            if qtype.is_const_qualified():
-                specifiers = ' const' + specifiers
-            if qtype.is_volatile_qualified():
-                specifiers = ' volatile' + specifiers
-            try:
-                return self[spelling].node, specifiers
-            except:
-                warnings.warn('record not found')
-                break
+            if cursor.kind is CursorKind.TYPEDEF_DECL:
+                qtype = cursor.underlying_typedef_type
+            else:
+                spelling = '::' + cursor.type.spelling
+                if cursor.kind is CursorKind.ENUM_DECL:
+                    spelling = 'enum ' + spelling
+                if qtype.is_const_qualified():
+                    specifiers = ' const' + specifiers
+                if qtype.is_volatile_qualified():
+                    specifiers = ' volatile' + specifiers
+                try:
+                    return self[spelling].node, specifiers
+                except:
+                    warnings.warn('record not found')
+                    break
         else:
             target, _specifiers = self._libclang_read_builtin_type(qtype)
             return target, _specifiers + specifiers
@@ -303,7 +306,7 @@ def _libclang_read_enum(self, cursor, scope):
                 children.extend(self._libclang_read_enum_constant(child, spelling))
                 decls.append(child)
         filename = str(path(str(cursor.location.file)).abspath())
-        self.add_file(filename, language=self._language)
+        self.add_file(filename, _language=self._language)
         for childspelling, child in zip(children, decls):
             self._nodes[childspelling]['_header'] = filename
             self._nodes[spelling]['cursor'] = child
@@ -322,7 +325,7 @@ def _libclang_read_enum(self, cursor, scope):
                 self._libclang_read_enum_constant(child, spelling)
         if self[spelling].is_complete:
             filename = str(path(str(cursor.location.file)).abspath())
-            self.add_file(filename, language=self._language)
+            self.add_file(filename, _language=self._language)
             self._nodes[spelling]['_header'] = filename
             self._nodes[spelling]['cursor'] = cursor
         return [spelling]
@@ -361,7 +364,7 @@ def _libclang_read_typedef(self, typedef, scope):
             self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
             self._syntax_edges[scope].append(spelling)
             filename = str(path(str(typedef.location.file)).abspath())
-            self.add_file(filename, language=self._language)
+            self.add_file(filename, _language=self._language)
             self._nodes[spelling]['_header'] = filename
             return [spelling]
     else:
@@ -389,7 +392,7 @@ def _libclang_read_variable(self, cursor, scope):
         else:
             self._nodes[spelling] = dict(proxy=VariableProxy)
             filename = str(path(str(cursor.location.file)).abspath())
-            self.add_file(filename, language=self._language)
+            self.add_file(filename, _language=self._language)
             self._nodes[spelling]['_header'] = filename
             self._nodes[spelling]['cursor'] = cursor
             self._syntax_edges[scope].append(spelling)
@@ -412,7 +415,7 @@ def _libclang_read_function(self, cursor, scope):
             self._nodes[spelling] = dict(proxy=FunctionProxy, cursor=cursor)
             if not cursor.location is None:
                 filename = str(path(str(cursor.location.file)).abspath())
-                self.add_file(filename, language=self._language)
+                self.add_file(filename, _language=self._language)
                 self._nodes[spelling]['_header'] = filename
         elif cursor.kind is CursorKind.CXX_METHOD:
             self._nodes[spelling] = dict(proxy=MethodProxy,
@@ -551,7 +554,7 @@ def _libclang_read_tag(self, cursor, scope):
             self._nodes[spelling]['is_complete'] = len(self._base_edges[spelling]) + len(self._syntax_edges[spelling]) > 0
             if self[spelling].is_complete:
                 filename = str(path(str(cursor.location.file)).abspath())
-                self.add_file(filename, language=self._language)
+                self.add_file(filename, _language=self._language)
                 self._nodes[spelling]['_header'] = filename
                 self._nodes[spelling]['cursor'] = cursor
         return [spelling]
