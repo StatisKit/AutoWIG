@@ -52,9 +52,6 @@ class NodeProxy(object):
         except:
             raise #AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
 
-    def _remove(self):
-        self.asg._nodes.pop(self.node)
-
 class EdgeProxy(object):
     """
     """
@@ -101,12 +98,6 @@ class DirectoryProxy(NodeProxy):
             os.rmdir(self.globalname)
             self.asg._nodes[self.node]['on_disk'] = False
 
-    def _remove(self):
-        super(DirectoryProxy, self)._remove()
-        if not self.node == '/':
-            self.asg._syntax_edges[self.parent.node].remove(self.node)
-        self.asg._syntax_edges.pop(self.node)
-
 class FileProxy(NodeProxy):
     """
     """
@@ -122,6 +113,43 @@ class FileProxy(NodeProxy):
     @property
     def suffix(self):
         return self.localname[self.localname.rfind('.'):]
+
+    @property
+    def sloc(self):
+        sloc = 0
+        skip = False
+        if self.language in ['c', 'c++']:
+            for line in self.content.splitlines():
+                line = line.strip()
+                if line:
+                    if line.startswith('//'):
+                        continue
+                    else:
+                        if skip and '*/' in line:
+                            line = line[line.index('*/')+2:]
+                            skip = False
+                        while '/*' in line and '*/' in line:
+                            line = line[:line.index('/*')] + line[line.index('*/')+2:]
+                        if '/*' in line:
+                            skip = True
+                        elif not skip and line.strip():
+                            sloc += 1
+        elif self.language == 'py':
+            for line in self.content.splitlines():
+                line = line.strip()
+                if line:
+                    if line.startswith('#'):
+                        continue
+                    else:
+                        if skip:
+                            if line.startswith('"""'):
+                                skip = False
+                        else:
+                            if line.startswith('"""'):
+                                skip = True
+                            else:
+                                sloc += 1
+        return sloc
 
     def touch(self):
         parent = self.parent
@@ -165,11 +193,6 @@ class FileProxy(NodeProxy):
     @property
     def parent(self):
         return self.asg[os.sep.join(self.globalname.split(os.sep)[:-1]) + os.sep]
-
-
-    def _remove(self):
-        super(FileProxy, self)._remove()
-        self.asg._syntax_edges[self.parent.node].remove(self.node)
 
 def get_language(self):
     if hasattr(self, '_language'):
@@ -245,11 +268,6 @@ class CodeNodeProxy(NodeProxy):
             ancestors.append(ancestors[-1].parent)
         return reversed(ancestors)
 
-    def _remove(self):
-        super(CodeNodeProxy, self)._remove()
-        if not self.node == '::':
-            self.asg._syntax_edges[self.parent.node].remove(self.node)
-
 class FundamentalTypeProxy(CodeNodeProxy):
     """
     http://www.cplusplus.com/doc/tutorial/variables/
@@ -269,9 +287,6 @@ class FundamentalTypeProxy(CodeNodeProxy):
     @property
     def parent(self):
         return self.asg['::']
-
-    def _remove(self):
-        pdb.set_trace()
 
 class UnexposedTypeProxy(FundamentalTypeProxy):
     """
@@ -574,25 +589,6 @@ class EnumProxy(DeclarationProxy):
     def constants(self):
         return [self.asg[node] for node in self.asg._syntax_edges[self.node]]
 
-    def _remove(self):
-        for cst in self.constants:
-            cst._remove()
-        for tdf in self.asg.typedefs():
-            if tdf.node in self.asg:
-                if tdf.type.target == self:
-                    tdf._remove()
-        for fct in self.asg.functions():
-            if fct.result_type.target == self or any(prm.type.target == self for prm in fct.parameters):
-                fct._remove()
-        for var in self.asg.variables():
-            if var.type.target == self:
-                var._remove()
-        for cls in self.asg.classes():
-            for ctr in cls.constructors:
-                if any(prm.type.target == self for prm in ctr.parameters):
-                    ctr._remove()
-        super(DeclarationProxy, self)._remove()
-
 class TypedefProxy(DeclarationProxy):
     """
     """
@@ -601,24 +597,6 @@ class TypedefProxy(DeclarationProxy):
     def type(self):
         return TypeSpecifiersProxy(self.asg, self.node)
 
-    def _remove(self):
-        for tdf in self.asg.typedefs():
-            if tdf.node in self.asg:
-                if tdf.type.target == self:
-                    tdf._remove()
-        for fct in self.asg.functions():
-            if fct.result_type.target == self or any(prm.type.target == self for prm in fct.parameters):
-                fct._remove()
-        for var in self.asg.variables():
-            if var.type.target == self:
-                var._remove()
-        for cls in self.asg.classes():
-            for ctr in cls.constructors:
-                if any(prm.type.target == self for prm in ctr.parameters):
-                    ctr._remove()
-        super(TypedefProxy, self)._remove()
-        self.asg._type_edges.pop(self.node)
-
 class VariableProxy(DeclarationProxy):
     """
     """
@@ -626,10 +604,6 @@ class VariableProxy(DeclarationProxy):
     @property
     def type(self):
         return TypeSpecifiersProxy(self.asg, self.node)
-
-    def _remove(self):
-        super(VariableProxy, self)._remove()
-        self.asg._type_edges.pop(self.node)
 
 class ParameterProxy(VariableProxy):
     """
@@ -698,13 +672,6 @@ class FunctionProxy(DeclarationProxy):
             return self.asg['::']
         else:
             return self.asg[parent]
-
-    def _remove(self):
-        for prm in self.parameters:
-            prm._remove()
-        super(FunctionProxy, self)._remove()
-        self.asg._syntax_edges.pop(self.node)
-        self.asg._type_edges.pop(self.node)
 
 def get_is_overloaded(self):
     if not hasattr(self, '_is_overloaded'):
@@ -783,12 +750,6 @@ class ConstructorProxy(DeclarationProxy):
     @property
     def parameters(self):
         return [self.asg[node] for node in self.asg._syntax_edges[self.node]]
-
-    def _remove(self):
-        for prm in self.parameters:
-            prm._remove()
-        super(ConstructorProxy, self)._remove()
-        self.asg._syntax_edges.pop(self.node)
 
 class DestructorProxy(DeclarationProxy):
     """
@@ -957,30 +918,6 @@ class ClassProxy(DeclarationProxy):
         except:
             return None
 
-    def _remove(self):
-        for dcl in self.declarations():
-            if dcl.node in self.asg:
-                dcl._remove()
-        for inh in self.inheritors():
-            self.asg._base_edges[inh.node] = [base for base in self.asg._base_edges[inh.node] if not base['base'] == self.node]
-        for tdf in self.asg.typedefs():
-            if tdf.node in self.asg:
-                if tdf.type.target == self:
-                    tdf._remove()
-        for fct in self.asg.functions():
-            if fct.result_type.target == self or any(prm.type.target == self for prm in fct.parameters):
-                fct._remove()
-        for var in self.asg.variables():
-            if var.type.target == self:
-                var._remove()
-        for cls in self.asg.classes():
-            for ctr in cls.constructors:
-                if any(prm.type.target == self for prm in ctr.parameters):
-                    ctr._remove()
-        super(ClassProxy, self)._remove()
-        self.asg._base_edges.pop(self.node)
-        self.asg._syntax_edges.pop(self.node)
-
 def get_is_copyable(self):
     return self._is_copyable
 
@@ -1016,27 +953,21 @@ class ClassTemplateSpecializationProxy(ClassProxy):
         return headers
 
     @property
+    def specialize(self):
+        specialize = remove_templates(self.node)
+        if specialize.startswith('class '):
+            pass
+        elif specialize.startswith('struct '):
+            specialize = 'class ' + specialize[7:]
+        elif specialize.startswith('union '):
+            specialize = 'class ' + specialize[6:]
+        else:
+            specialize = 'class ' + specialize
+        return self.asg[specialize]
+
+    @property
     def templates(self):
         return [TemplateTypeSpecifiersProxy(self.asg, self.node, template) for template in self.asg._template_edges[self.node]] #TODO
-
-    def _remove(self):
-        super(ClassTemplateSpecializationProxy, self)._remove()
-        self.asg._template_edges.pop(self.node)
-
-def get_as_held_type(self):
-    if hasattr(self, '_as_held_type'):
-        return self._as_held_type
-    else:
-        return False
-
-def set_as_held_type(self, as_held_type):
-    self.asg._nodes[self.node]['_as_held_type'] = as_held_type
-
-def del_as_held_type(self):
-    self.asg._nodes[self.node].pop('_as_held_type', False)
-
-ClassTemplateSpecializationProxy.as_held_type = property(get_as_held_type, set_as_held_type, del_as_held_type)
-del get_as_held_type, set_as_held_type, del_as_held_type
 
 class ClassTemplatePartialSpecializationProxy(DeclarationProxy):
     """
@@ -1065,6 +996,19 @@ class ClassTemplatePartialSpecializationProxy(DeclarationProxy):
                     raise ValueError('\'' + self.globalname + '\' parent (\'' + parent + '\') was not found')
                 parent = self.asg[parent]
             return parent
+
+    @property
+    def specialize(self):
+        specialize = remove_templates(self.node)
+        if specialize.startswith('class '):
+            pass
+        elif specialize.startswith('struct '):
+            specialize = 'class ' + specialize[7:]
+        elif specialize.startswith('union '):
+            specialize = 'class ' + specialize[6:]
+        else:
+            specialize = 'class ' + specialize
+        return self.asg[specialize]
 
 class ClassTemplateProxy(DeclarationProxy):
     """
@@ -1101,25 +1045,6 @@ class ClassTemplateProxy(DeclarationProxy):
             return [spec for spec in self.specializations(None) if isinstance(spec, ClassTemplatePartialSpecializationProxy)]
         else:
             return [spec for spec in self.specializations(None) if isinstance(spec, ClassTemplateSpecializationProxy)]
-
-def get_as_smart_pointer(self):
-    if hasattr(self, '_as_smart_pointer'):
-        return self._as_smart_pointer
-    else:
-        return False
-
-def set_as_smart_pointer(self, as_smart_pointer):
-    self.asg._nodes[self.node]['_as_smart_pointer'] = as_smart_pointer
-    for spc in self.specializations(False):
-        spc.is_smart_pointer = as_smart_pointer
-
-def del_as_smart_pointer(self):
-    self.asg._nodes[self.node].pop('_as_smart_pointer', False)
-    for spc in self.specializations(False):
-        del spc.is_smart_pointer
-
-ClassTemplateProxy.as_smart_pointer = property(get_as_smart_pointer, set_as_smart_pointer, del_as_smart_pointer)
-del get_as_smart_pointer, set_as_smart_pointer, del_as_smart_pointer
 
 class NamespaceProxy(DeclarationProxy):
     """
@@ -1176,13 +1101,6 @@ class NamespaceProxy(DeclarationProxy):
                 nestednamespaces.append(namespace)
                 namespaces.extend(namespace.namespaces(False))
             return nestednamespaces
-
-    def _remove(self):
-        for dcl in self.declarations():
-            if dcl.node in self.asg:
-                dcl._remove()
-        super(NamespaceProxy, self)._remove()
-        self.asg._syntax_edges.pop(self.node)
 
 #import pdb
 #from functools import wraps
@@ -1512,13 +1430,19 @@ class AbstractSemanticGraph(object):
     def __getitem__(self, node):
         if not isinstance(node, basestring):
             raise TypeError('`node` parameter')
-        if not node in self._nodes:
-            raise KeyError('\'' + node + '\' parameter')
-        else:
+        if node in self._nodes:
             return self._nodes[node]["proxy"](self, node)
-
-    def __delitem__(self, node):
-        self[node]._remove()
+        else:
+            if node == '.':
+                return self.add_directory('.')
+            elif node.startswith('.'):
+                parent = self.add_directory('.')
+                for node in node.split('../'):
+                    directory = self[parent.globalname + node.replace('./', '')]
+                    parent = directory.parent
+                return directory
+            else:
+                raise KeyError('\'' + node + '\' parameter')
 
 __all__ += [subclass.__name__.rsplit('.', 1).pop() for subclass in subclasses(NodeProxy)]
 __all__ += [subclass.__name__.rsplit('.', 1).pop() for subclass in subclasses(EdgeProxy)]

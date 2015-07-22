@@ -3,7 +3,6 @@ import warnings
 import uuid
 from pyclanglite import pyclanglite
 from path import path
-import pdb
 
 from .ast import *
 from .asg import *
@@ -17,11 +16,11 @@ class PyClangDiagnostic(object):
     def __init__(self):
         self.parsing = 0.0
         self.translating = 0.0
-        self.completing = 0.0
+        self.bootstrapping = 0.0
 
     @property
     def total(self):
-        return self.parsing + self.translating + self.completing
+        return self.parsing + self.translating + self.bootstrapping
 
     def __str__(self):
         string = "Processing: " + str(self.total)
@@ -49,7 +48,7 @@ def _pyclang_front_end(self, content, flags, silent=False):
 AbstractSyntaxTree._pyclang_front_end = _pyclang_front_end
 del _pyclang_front_end
 
-def _pyclang_front_end(self, content, flags, complete=False, silent=False):
+def _pyclang_front_end(self, content, flags, bootstrap=False, silent=False):
     diagnostic = PyClangDiagnostic()
     prev = time.time()
     tu = pyclanglite.clang.tooling.build_ast_from_code_with_args(content, flags)
@@ -64,7 +63,7 @@ def _pyclang_front_end(self, content, flags, complete=False, silent=False):
         self._pyclang_read_translation_unit(tu)
     curr = time.time()
     diagnostic.translating = curr - prev
-    if complete:
+    if bootstrap:
         prev = time.time()
         nodes = 0
         while not nodes == len(self):
@@ -91,7 +90,7 @@ def _pyclang_front_end(self, content, flags, complete=False, silent=False):
                     warnings.simplefilter('always')
                 self._pyclang_read_translation_unit(tu)
         curr = time.time()
-        diagnostic.completing = curr - prev
+        diagnostic.bootstrapping = curr - prev
     return diagnostic
 
 AbstractSemanticGraph._pyclang_front_end = _pyclang_front_end
@@ -123,7 +122,7 @@ def _pyclang_read_qualified_type(self, qtype):
                 with warnings.catch_warnings():
                     warnings.simplefilter('error')
                     tag = ttype.get_as_tag_decl()
-                    tag = self._pyclang_read_tag(tag)
+                    tag = self._pyclang_read_tag(tag, False)
                     return tag[0], specifiers
             except Warning as warning:
                 warnings.warn(str(warning), warning.__class__)
@@ -200,7 +199,7 @@ def _pyclang_read_builtin_type(self, btype):
 AbstractSemanticGraph._pyclang_read_builtin_type = _pyclang_read_builtin_type
 del _pyclang_read_builtin_type
 
-def _pyclang_read_enum(self, decl):
+def _pyclang_read_enum(self, decl, out=True):
     filename = str(path(str(decl.get_filename())).abspath())
     self.add_file(filename, _language=self._language)
     if decl.get_name() == '':
@@ -226,7 +225,7 @@ def _pyclang_read_enum(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_name()
             else:
-                scope = self._pyclang_read_decl(parent)
+                scope = self._pyclang_read_decl(parent, out=False)
                 if len(scope) == 0:
                     warnings.warn(spelling, UndeclaredParentWarning)
                     return []
@@ -248,7 +247,7 @@ def _pyclang_read_enum(self, decl):
                 self._nodes[spelling] = dict(proxy=EnumProxy)
                 self._syntax_edges[spelling] = []
                 self._syntax_edges[scope].append(spelling)
-            if not spelling in self._read and not self[spelling].is_complete:
+            if out and not spelling in self._read and not self[spelling].is_complete:
                 self._read.add(spelling)
                 self._syntax_edges[scope].remove(spelling)
                 self._syntax_edges[scope].append(spelling)
@@ -276,7 +275,7 @@ def _pyclang_read_enum_constant(self, decl):
             scope = '::'
             spelling = scope + decl.get_name()
         else:
-            scope = self._pyclang_read_decl(parent)
+            scope = self._pyclang_read_decl(parent, out=False)
             if len(scope) == 0:
                 warnings.warn(spelling, UndeclaredParentWarning)
                 return []
@@ -310,6 +309,8 @@ def _pyclang_read_variable(self, decl):
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
                 parent = self._pyclang_read_context_parent(decl)
+                if isinstance(parent, (pyclanglite.clang.TagDecl, pyclanglite.clang.ClassTemplateDecl)):
+                    warnings.warn('' + decl.get_name() + '\'', UserWarning)
         except Warning as warning:
             warnings.warn(str(warning) + ' for variable \'' + decl.get_name() + '\'', warning.__class__)
             return []
@@ -318,7 +319,7 @@ def _pyclang_read_variable(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_name()
             else:
-                scope = self._pyclang_read_decl(parent)
+                scope = self._pyclang_read_decl(parent, out=False)
                 if len(scope) == 0:
                     warnings.warn(decl.get_name(), UndeclaredParentWarning)
                     return []
@@ -371,7 +372,7 @@ def _pyclang_read_function(self, decl):
             scope = '::'
             spelling = scope + decl.get_name()
         else:
-            scope = self._pyclang_read_decl(parent)
+            scope = self._pyclang_read_decl(parent, out=False)
             if len(scope) == 0:
                 warnings.warn(spelling, UndeclaredParentWarning)
                 return []
@@ -381,17 +382,16 @@ def _pyclang_read_function(self, decl):
                 warnings.warn(spelling, MultipleDeclaredParentWarning)
                 return []
             spelling =  scope + '::' + decl.get_name()
+        if spelling.startswith('class '):
+            spelling = spelling[6:]
+        elif spelling.startswith('union '):
+            spelling = spelling[6:]
+        elif spelling.startswith('struct '):
+            spelling = spelling[7:]
         if not isinstance(decl, pyclanglite.clang.CXXDestructorDecl):
             spelling += '::' + str(uuid.uuid5(uuid.NAMESPACE_X500, decl.get_mangling()))
-            #spelling =  spelling + '::' + str(uuid.uuid4())
         if not spelling in self._nodes:
             if isinstance(decl, pyclanglite.clang.CXXMethodDecl):
-                if spelling.startswith('class '):
-                    spelling = spelling[6:]
-                elif spelling.startswith('union '):
-                    spelling = spelling[6:]
-                elif spelling.startswith('struct '):
-                    spelling = spelling[7:]
                 if isinstance(decl, pyclanglite.clang.CXXConversionDecl):
                     warnings.warn(pyclanglite.clang.CXXConversionDecl.__class__.__name__.split('.')[-1] + ' for function \'' + spelling + '\'',
                             NotImplementedDeclWarning)
@@ -404,10 +404,15 @@ def _pyclang_read_function(self, decl):
                         try:
                             with warnings.catch_warnings() as warning:
                                 warnings.simplefilter("error")
+                                setted = set()
                                 for index, child in enumerate(decl.get_children()):
                                     childspelling = spelling + child.spelling()
                                     if childspelling.endswith('::'):
                                         childspelling += 'parm_' + str(index)
+                                    if childspelling in setted:
+                                        warnings.warn('')
+                                    else:
+                                        setted.add(childspelling)
                                     target, specifiers = self._pyclang_read_qualified_type(child.get_type())
                                     self._type_edges[childspelling] = dict(target=target,
                                             specifiers=specifiers)
@@ -468,10 +473,15 @@ def _pyclang_read_function(self, decl):
                 try:
                     with warnings.catch_warnings() as warning:
                         warnings.simplefilter("error")
+                        setted = set()
                         for index, child in enumerate(decl.get_children()):
                             childspelling = spelling + child.spelling()
                             if childspelling.endswith('::'):
                                 childspelling += 'parm_' + str(index)
+                            if childspelling in setted:
+                                warnings.warn('')
+                            else:
+                                setted.add(childspelling)
                             target, specifiers = self._pyclang_read_qualified_type(child.get_type())
                             self._type_edges[childspelling] = dict(target=target,
                                     specifiers=specifiers)
@@ -536,7 +546,7 @@ def _pyclang_read_field(self, decl):
             scope = '::'
             spelling = scope + decl.get_name()
         else:
-            scope = self._pyclang_read_decl(parent)
+            scope = self._pyclang_read_decl(parent, out=False)
             if len(scope) == 0:
                 warnings.warn(spelling, UndeclaredParentWarning)
                 return []
@@ -571,7 +581,7 @@ def _pyclang_read_field(self, decl):
 AbstractSemanticGraph._pyclang_read_field = _pyclang_read_field
 del _pyclang_read_field
 
-def _pyclang_read_class_template(self, decl):
+def _pyclang_read_class_template(self, decl, out=True):
     try:
         with warnings.catch_warnings():
             warnings.simplefilter('error')
@@ -587,7 +597,7 @@ def _pyclang_read_class_template(self, decl):
             scope = '::'
             spelling = 'class ' + scope + decl.get_name()
         else:
-            scope = self._pyclang_read_decl(parent)
+            scope = self._pyclang_read_decl(parent, out=False)
             if len(scope) == 0:
                 warnings.warn(spelling, UndeclaredParentWarning)
                 return []
@@ -607,18 +617,19 @@ def _pyclang_read_class_template(self, decl):
             self._nodes[spelling] = dict(proxy=ClassTemplateProxy,
                     decl=decl)
             self._syntax_edges[scope].append(spelling)
-            self._specialization_edges[spelling] = []
-            for child in decl.get_children():
-                self._specialization_edges[spelling].extend(self._pyclang_read_tag(child))
+            self._specialization_edges[spelling] = set()
             filename = str(path(str(decl.get_filename())).abspath())
             self.add_file(filename, _language=self._language)
             self._nodes[spelling]['_header'] = filename
+        if out:
+            for child in decl.get_children():
+                self._specialization_edges[spelling].update(set(self._pyclang_read_tag(child)))
         return [spelling]
 
 AbstractSemanticGraph._pyclang_read_class_template = _pyclang_read_class_template
 del _pyclang_read_class_template
 
-def _pyclang_read_tag(self, decl):
+def _pyclang_read_tag(self, decl, out=True):
     if isinstance(decl, pyclanglite.clang.EnumDecl):
         return self._pyclang_read_enum(decl)
     elif isinstance(decl, pyclanglite.clang.ClassTemplatePartialSpecializationDecl):
@@ -638,7 +649,7 @@ def _pyclang_read_tag(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_name()
             else:
-                scope = self._pyclang_read_decl(parent)
+                scope = self._pyclang_read_decl(parent, out=False)
                 if len(scope) == 0:
                     warnings.warn(spelling, UndeclaredParentWarning)
                     return []
@@ -666,6 +677,8 @@ def _pyclang_read_tag(self, decl):
             if not spelling in self._nodes:
                 self._nodes[spelling] = dict(proxy=ClassTemplatePartialSpecializationProxy,
                         decl=decl)
+                specialize = self._pyclang_read_class_template(decl.get_specialized_template(), out=False)[0]
+                self._specialization_edges[specialize].add(spelling)
                 self._syntax_edges[scope].append(spelling)
                 filename = str(path(str(decl.get_filename())).abspath())
                 self.add_file(filename, _language=self._language)
@@ -691,7 +704,7 @@ def _pyclang_read_tag(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_typedef_name_for_anon_decl().get_name()
             else:
-                scope = self._pyclang_read_decl(parent)
+                scope = self._pyclang_read_decl(parent, out=False)
                 if len(scope) == 0:
                     warnings.warn(spelling, UndeclaredParentWarning)
                     return []
@@ -723,7 +736,7 @@ def _pyclang_read_tag(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_name()
             else:
-                scope = self._pyclang_read_decl(parent)
+                scope = self._pyclang_read_decl(parent, out=False)
                 if len(scope) == 0:
                     warnings.warn(spelling, UndeclaredParentWarning)
                     return []
@@ -761,6 +774,8 @@ def _pyclang_read_tag(self, decl):
                 _is_copyable=True,
                 is_complete=False,
                 decl=decl)
+            specialize = self._pyclang_read_class_template(decl.get_specialized_template(), out=False)[0]
+            self._specialization_edges[specialize].add(spelling)
             self._syntax_edges[spelling] = []
             self._base_edges[spelling] = []
             self._syntax_edges[scope].append(spelling)
@@ -783,6 +798,7 @@ def _pyclang_read_tag(self, decl):
                             warnings.warn(str(template.get_kind()), NotImplementedTemplateWarning)
             except Warning as warning:
                 self._nodes.pop(spelling)
+                self._specialization_edges[specialize].remove(spelling)
                 self._syntax_edges.pop(spelling)
                 self._base_edges.pop(spelling)
                 self._syntax_edges[scope].remove(spelling)
@@ -800,7 +816,7 @@ def _pyclang_read_tag(self, decl):
             self._syntax_edges[spelling] = []
             self._base_edges[spelling] = []
             self._syntax_edges[scope].append(spelling)
-    if not spelling in self._read and not self[spelling].is_complete and decl.is_complete_definition():
+    if out and not spelling in self._read and not self[spelling].is_complete and decl.is_complete_definition():
         self._read.add(spelling)
         self._syntax_edges[scope].remove(spelling)
         self._syntax_edges[scope].append(spelling)
@@ -852,19 +868,65 @@ def _pyclang_read_tag(self, decl):
             self._nodes[spelling]['_header'] = filename
             self._nodes[spelling]['decl'] = decl
         self._read.remove(spelling)
-    if isinstance(decl, pyclanglite.clang.ClassTemplateSpecializationDecl) and not decl.is_explicit_specialization():
-        tpl = decl.get_specialized_template()
-        if not tpl is None:
-            filename = str(path(str(tpl.get_filename())).abspath())
-            self.add_file(filename, _language=self._language)
-            self._nodes[spelling]['_header'] = filename
-            self._nodes[spelling]['decl'] = decl
+    #if isinstance(decl, pyclanglite.clang.ClassTemplateSpecializationDecl) and not decl.is_explicit_specialization():
+    #    tpl = decl.get_specialized_template()
+    #    if not tpl is None:
+    #        filename = str(path(str(tpl.get_filename())).abspath())
+    #        self.add_file(filename, _language=self._language)
+    #        self._nodes[spelling]['_header'] = filename
+    #        self._nodes[spelling]['decl'] = decl
     return [spelling]
 
 AbstractSemanticGraph._pyclang_read_tag = _pyclang_read_tag
 del _pyclang_read_tag
 
-def _pyclang_read_namespace(self, decl):
+def _pyclang_read_typedef(self, decl):
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            parent = self._pyclang_read_context_parent(decl)
+            if isinstance(parent, (pyclanglite.clang.TagDecl, pyclanglite.clang.ClassTemplateDecl)):
+                warnings.warn('' + decl.get_name() + '\'', UserWarning)
+    except Warning as warning:
+        warnings.warn(str(warning) + ' for variable \'' + decl.get_name() + '\'', warning.__class__)
+        return []
+    else:
+        if isinstance(parent, pyclanglite.clang.TranslationUnitDecl):
+            scope = '::'
+            spelling = scope + decl.get_name()
+        else:
+            scope = self._pyclang_read_decl(parent, out=False)
+            if len(scope) == 0:
+                warnings.warn(decl.get_name(), UndeclaredParentWarning)
+                return []
+            elif len(scope) == 1:
+                scope = scope[0]
+            else:
+                warnings.warn(spelling, MultipleDeclaredParentWarning)
+                return []
+            spelling = scope + '::' + decl.get_name()
+        try:
+            with warnings.catch_warnings() as warning:
+                warnings.simplefilter("error")
+                target, specifiers = self._pyclang_read_qualified_type(decl.get_underlying_type())
+                self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+        except Warning as warning:
+            warnings.warn(str(warning) + ' for variable \'' + spelling + '\'', warning.__class__)
+            return []
+        else:
+            if not spelling in self._nodes:
+                self._nodes[spelling] = dict(proxy=TypedefProxy)
+                self._syntax_edges[scope].append(spelling)
+            filename = str(path(str(decl.get_filename())).abspath())
+            self.add_file(filename, _language=self._language)
+            self._nodes[spelling]['_header'] = filename
+            self._nodes[spelling]['decl'] = decl
+            return [spelling]
+
+AbstractSemanticGraph._pyclang_read_typedef = _pyclang_read_typedef
+del _pyclang_read_typedef
+
+def _pyclang_read_namespace(self, decl, out=True):
     if decl.get_name() == '':
         children = []
         for child in decl.get_children():
@@ -888,7 +950,7 @@ def _pyclang_read_namespace(self, decl):
                 scope = '::'
                 spelling = scope + decl.get_name()
             else:
-                scope = self._pyclang_read_decl(parent)
+                scope = self._pyclang_read_decl(parent, out=False)
                 if len(scope) == 0:
                     warnings.warn(spelling, UndeclaredParentWarning)
                     return []
@@ -903,7 +965,7 @@ def _pyclang_read_namespace(self, decl):
                 self._syntax_edges[spelling] = []
             if not spelling in self._syntax_edges[scope]:
                 self._syntax_edges[scope].append(spelling)
-            if not spelling in self._read:
+            if out and not spelling in self._read:
                 self._read.add(spelling)
                 for child in decl.get_children():
                     try:
@@ -918,7 +980,7 @@ def _pyclang_read_namespace(self, decl):
 AbstractSemanticGraph._pyclang_read_namespace = _pyclang_read_namespace
 del _pyclang_read_namespace
 
-def _pyclang_read_decl(self, decl):
+def _pyclang_read_decl(self, decl, **kwargs):
     """
     """
     if isinstance(decl, pyclanglite.clang.LinkageSpecDecl):
@@ -929,21 +991,23 @@ def _pyclang_read_decl(self, decl):
             self._language = 'c++'
         children = []
         for child in decl.get_children():
-            children = self._pyclang_read_decl(child)
+            children = self._pyclang_read_decl(child, **kwargs)
         self._language = language
         return children
     elif isinstance(decl, pyclanglite.clang.VarDecl):
-        return self._pyclang_read_variable(decl)
+        return self._pyclang_read_variable(decl, **kwargs)
     elif isinstance(decl, pyclanglite.clang.FunctionDecl):
-        return self._pyclang_read_function(decl)
+        return self._pyclang_read_function(decl, **kwargs)
     elif isinstance(decl, pyclanglite.clang.FieldDecl):
-        return self._pyclang_read_field(decl)
+        return self._pyclang_read_field(decl, **kwargs)
     elif isinstance(decl, pyclanglite.clang.TagDecl):
-        return self._pyclang_read_tag(decl)
+        return self._pyclang_read_tag(decl, **kwargs)
     elif isinstance(decl, pyclanglite.clang.ClassTemplateDecl):
-        return self._pyclang_read_class_template(decl)
+        return self._pyclang_read_class_template(decl, **kwargs)
     elif isinstance(decl, pyclanglite.clang.NamespaceDecl):
-        return self._pyclang_read_namespace(decl)
+        return self._pyclang_read_namespace(decl, **kwargs)
+    elif isinstance(decl, pyclanglite.clang.TypedefDecl):
+        return self._pyclang_read_typedef(decl, **kwargs)
     elif isinstance(decl, (pyclanglite.clang.AccessSpecDecl,
         pyclanglite.clang.BlockDecl, pyclanglite.clang.CapturedDecl,
         pyclanglite.clang.ClassScopeFunctionSpecializationDecl,

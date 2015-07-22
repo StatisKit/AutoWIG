@@ -155,6 +155,8 @@ def _bootstrap_middle_end(self, include=None):
     self.functions('^::clang::TemplateArgument::getAsDecl', free=False).pop().clean = False
     self.functions('^::clang::TemplateArgument::getIntegralType', free=False).pop().clean = False
 
+    self.functions('^::clang::TypedefNameDecl::getUnderlyingType', free=False).pop().clean = False
+
     for enum in self.enums():
         if not enum.clean:
             for constant in enum.constants:

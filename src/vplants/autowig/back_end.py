@@ -3,26 +3,11 @@ from .tools import FactoryDocstring
 
 class BackEndDiagnostic(object):
 
-    def __init__(self, asg):
-        self._asg = asg
-        self._files = []
+    def __init__(self):
+        self.files = 0
+        self.sloc = 0
         self.elapsed = 0.0
         self.project = "semi-detached"
-        self.salary = 56286
-        self.overhead = 2.4
-
-    def __len__(self):
-        return len(self._files)
-
-    def __getitem__(self, item):
-        return self._asg[self._files[item]]
-
-    @property
-    def sloc(self):
-        sloc = 0
-        for f in self:
-            sloc += f.content.count('\n')+1
-        return sloc
 
     @property
     def effort(self):

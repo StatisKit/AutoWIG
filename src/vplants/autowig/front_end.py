@@ -13,6 +13,19 @@ class FrontEndDiagnostic(object):
     def __init__(self):
         self.preprocessing = 0.
         self.processing = None
+        self.current = 0
+        self.constant = 0
+        self.enum = 0
+        self.typedef = 0
+        self.variable = 0
+        self.field = 0
+        self.function = 0
+        self.method = 0
+        self.constructor = 0
+        self.destructor = 0
+        self.class_non_template = 0
+        self.class_template = 0
+        self.namespace = 0
         self.postprocessing = PostProcessingDiagnostic()
 
     @property
@@ -31,10 +44,11 @@ class PostProcessingDiagnostic(object):
     def __init__(self):
         self.overloading = 0.
         self.discarding = 0.
+        self.accessing = 0.
 
     @property
     def total(self):
-        return self.overloading + self.discarding
+        return self.overloading + self.discarding + self.accessing
 
     def __str__(self):
         string = "Front-end post-processing: " + str(self.total)
@@ -43,6 +57,7 @@ class PostProcessingDiagnostic(object):
         return string
 
 def front_end(self, identifier, *args, **kwargs):
+    force_overload = kwargs.pop('force_overload', False)
     diagnostic = FrontEndDiagnostic()
     prev = time.time()
     args = [self.add_file(arg) if isinstance(arg, basestring) else arg for arg in args]
@@ -97,13 +112,47 @@ def front_end(self, identifier, *args, **kwargs):
     front_end = getattr(self, '_' + identifier + '_front_end')
     diagnostic.processing = front_end(content, flags=flags, **kwargs)
     prev = time.time()
-    self._compute_overloads()
+    self._compute_overloads(force_overload=force_overload)
     curr = time.time()
     diagnostic.postprocessing.overloading = curr - prev
     prev = time.time()
     self._discard_forward_declarations()
     curr = time.time()
     diagnostic.postprocessing.discarding = curr - prev
+    prev = time.time()
+    self._resolve_template_access()
+    curr = time.time()
+    diagnostic.postprocessing.accessing = curr - prev
+    diagnostic.current = len(self)
+    for node in self.nodes():
+        if isinstance(node, EnumConstantProxy):
+            diagnostic.constant += 1
+        elif isinstance(node, EnumProxy):
+            diagnostic.enum += 1
+        #elif isinstance(node, TypedefProxy):
+        #    diagnostic.typedef += 1
+        elif isinstance(node, VariableProxy):
+            parent = node.parent
+            if isinstance(parent, (NamespaceProxy, ClassProxy)):
+                diagnostic.variable += 1
+            #elif isinstance(parent, NamespaceProxy):
+            #diagnostic.variable += 1
+        elif isinstance(node, FunctionProxy):
+            #parent = node.parent
+            #if isinstance(parent, ClassProxy):
+            #    diagnostic.method += 1
+            #else:
+            diagnostic.function += 1
+        #elif isinstance(node, ConstructorProxy):
+        #    diagnostic.constructor += 1
+        #elif isinstance(node, DestructorProxy):
+        #    diagnostic.destructor += 1
+        elif isinstance(node, ClassProxy):
+            diagnostic.class_non_template += 1
+        elif isinstance(node, (ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
+            diagnostic.class_template += 1
+        elif isinstance(node, NamespaceProxy):
+            diagnostic.namespace += 1
     return diagnostic
 
 AbstractSemanticGraph.front_end = front_end
@@ -151,13 +200,17 @@ def _read_fundamentals(self):
 AbstractSemanticGraph._read_fundamentals = _read_fundamentals
 del _read_fundamentals
 
-def _compute_overloads(self):
-    for fct in self.functions(free=None):
-        if not fct.is_overloaded:
-            overloads = fct.overloads
-            if len(overloads) > 1:
-                for overload in overloads:
-                    overload.is_overloaded = True
+def _compute_overloads(self, force_overload):
+    if force_overload:
+        for fct in self.functions(free=None):
+            fct.overloaded = True
+    else:
+        for fct in self.functions(free=None):
+            if not fct.is_overloaded:
+                overloads = fct.overloads
+                if len(overloads) > 1:
+                    for old in overloads:
+                        old.is_overloaded = True
 
 AbstractSemanticGraph._compute_overloads = _compute_overloads
 del _compute_overloads
@@ -197,37 +250,48 @@ def _discard_forward_declarations(self):
             if not duplicate is None:
                 if isinstance(duplicate, ClassTemplateProxy) and not complete is None:
                     black.add(complete.node)
-                    if complete.is_complete:
+                    #if complete.is_complete: TODO
+                    if isinstance(complete, ClassProxy):
+                        for enm in complete.enums():
+                            black.add(enm.node)
+                        for ncls in complete.classes(recursive=True):
+                            black.add(ncls.node)
+                            if isinstance(ncls, ClassProxy):
+                                for enm in ncls.enums():
+                                    black.add(enm.node)
+                elif isinstance(complete, ClassTemplateProxy):
+                    black.add(duplicate.node)
+                    #if duplicate.is_complete:
+                    if isinstance(duplicate, ClassProxy):
+                        for enm in duplicate.enums():
+                            black.add(enm.node)
+                        for ncls in duplicate.classes(recursive=True):
+                            black.add(ncls.node)
+                            if isinstance(ncls, ClassProxy):
+                                for enm in ncls.enums():
+                                    black.add(enm.node)
+                elif complete is None or not complete.is_complete or duplicate.is_complete:
+                    black.add(duplicate.node)
+                    #if duplicate.is_complete:
+                    if isinstance(duplicate, ClassProxy):
+                        for enm in duplicate.enums():
+                            black.add(enm.node)
+                        for ncls in duplicate.classes(recursive=True):
+                            black.add(ncls.node)
+                            if isinstance(ncls, ClassProxy):
+                                for enm in ncls.enums():
+                                    black.add(enm.node)
+                    if not complete is None:
+                        black.add(complete.node)
+                        #if complete.is_complete:
                         if isinstance(complete, ClassProxy):
                             for enm in complete.enums():
                                 black.add(enm.node)
-                            for nlcs in complete.classes(recursive=True):
+                            for ncls in complete.classes(recursive=True):
                                 black.add(ncls.node)
                                 if isinstance(ncls, ClassProxy):
-                                    for enm in nlcs.enums():
+                                    for enm in ncls.enums():
                                         black.add(enm.node)
-                elif complete is None or not complete.is_complete or duplicate.is_complete:
-                    black.add(duplicate.node)
-                    if duplicate.is_complete:
-                        if isinstance(duplicate, ClassProxy):
-                            for enm in duplicate.enums():
-                                black.add(enm.node)
-                            for nlcs in duplicate.classes(recursive=True):
-                                black.add(ncls.node)
-                                if isinstance(ncls, ClassProxy):
-                                    for enm in nlcs.enums():
-                                        black.add(enm.node)
-                    if not complete is None:
-                        black.add(complete.node)
-                        if complete.is_complete:
-                            if isinstance(complete, ClassProxy):
-                                for enm in complete.enums():
-                                    black.add(enm.node)
-                                for nlcs in complete.classes(recursive=True):
-                                    black.add(ncls.node)
-                                    if isinstance(ncls, ClassProxy):
-                                        for enm in nlcs.enums():
-                                            black.add(enm.node)
                 else:
                     complete = complete.node
                     duplicate = duplicate.node
@@ -245,48 +309,9 @@ def _discard_forward_declarations(self):
                     if 'access' in self._nodes[duplicate]:
                         self._nodes[complete]['access'] = self._nodes[duplicate]['access']
                     black.add(duplicate)
-        #if not cls.node in black:
-        #    parent = cls.parent
-        #    duplicates = [pcl for pcl in parent.classes() if pcl.localname == cls.localname]
-        #    completes, duplicates = [dcl for dcl in duplicates if dcl.is_complete], [dcl for dcl in duplicates if not dcl.is_complete]
-        #    if len(completes) == 0:
-        #        for duplicate in duplicates:
-        #            black.add(duplicate.node)
-        #    elif len(completes) == 1 and len(duplicates) == 0:
-        #        continue
-        #    elif len(completes) == 1 and len(duplicates) > 0:
-        #        complete = completes.pop().node
-        #        duplicates = [dcls.node for dcls in duplicates]
-        #        for node, edge in self._type_edges.iteritems():
-        #            if edge['target'] in duplicates:
-        #                edge['target'] = complete
-        #        for node, edges in self._base_edges.iteritems():
-        #            for index, edge in enumerate(edges):
-        #                if edge['base'] in duplicates:
-        #                    edges[index]['base'] = complete
-        #        for node, edges in self._template_edges.iteritems():
-        #            for index, edge in enumerate(edges):
-        #                if edge['target'] in duplicates:
-        #                    edges[index]['target'] = complete
-        #        for duplicate in duplicates:
-        #            black.add(duplicate)
-        #    else:
-        #        for complete in completes:
-        #            black.add(complete.node)
-        #            for enm in complete.enums():
-        #                black.add(enm.node)
-        #            for cls in complete.classes(recursive=True):
-        #                black.add(cls.node)
-        #                if isinstance(cls, ClassProxy):
-        #                    for enm in cls.enums():
-        #                        black.add(enm.node)
-        #        for duplicate in duplicates:
-        #            black.add(duplicate.node)
-    print 'done!'
     change = True
     nb = 0
     while change:
-        print nb,
         change = False
         for cls in self.classes(specialized=True, templated=False):
             # TODO templated=None
@@ -309,7 +334,6 @@ def _discard_forward_declarations(self):
                             for enm in ncls.enums():
                                 black.add(enm.node)
         nb += 1
-    print 'done!'
     gray = set(black)
     for tdf in self.typedefs():
         if tdf.type.target.node in black or tdf.parent.node in black:
@@ -373,3 +397,12 @@ def _discard_forward_declarations(self):
 
 AbstractSemanticGraph._discard_forward_declarations = _discard_forward_declarations
 del _discard_forward_declarations
+
+def _resolve_template_access(self):
+    for cls in self.classes(templated=True, specialized=False):
+        if hasattr(cls, 'access'):
+            for spc in cls.specializations(partial=False):
+                self._nodes[spc.node]['access'] = cls.access
+
+AbstractSemanticGraph._resolve_template_access = _resolve_template_access
+del _resolve_template_access

@@ -11,6 +11,20 @@ from .asg import *
 from .tools import subclasses, to_path, lower, remove_templates
 from .custom_warnings import NotImplementedOperatorWarning, InheritanceWarning, BackEndWarning
 
+def get_boost_python_export(self):
+    if hasattr(self, '_boost_python_export'):
+        return self._boost_python_export
+    else:
+        return True
+
+def set_boost_python_export(self, boost_python_export):
+    self.asg._nodes[self.node]['_boost_python_export'] = boost_python_export
+
+def del_boost_python_export(self):
+    self.asg._nodes[self.node].pop('_boost_python_export', True)
+
+CodeNodeProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
+del get_boost_python_export, set_boost_python_export, del_boost_python_export
 
 def get_to_python(self):
     if not hasattr(self, '_to_python'):
@@ -29,7 +43,6 @@ def del_to_python(self):
 
 CodeNodeProxy.to_python = property(get_to_python, set_to_python, del_to_python)
 del get_to_python, set_to_python, del_to_python
-
 
 class BoostPythonExportFileProxy(FileProxy):
 
@@ -53,18 +66,22 @@ ${obj.include(header)}\
     % endif
 % endfor""")
 
-    cst = Template(text='boost::python::scope().attr("${constant.localname}") = (int)(${constant.globalname});\\')
+    cst = Template(text="""\
+            boost::python::scope().attr("${constant.localname}") = (int)(${constant.globalname});\
+""")
 
     enm = Template(text=r"""\
         boost::python::enum_< ${enum.globalname} >("${enum.localname}")\
     % for constant in enum.constants:
-        % if constant.traverse:
+        % if constant.boost_python_export:
             .value("${constant.localname}", ${constant.globalname})\
         % endif
     % endfor
 ;""")
 
-    var = Template(text='boost::python::scope().attr("${variable.localname}") = ${variable.globalname};\\')
+    var = Template(text="""\
+            boost::python::scope().attr("${variable.localname}") = ${variable.globalname};\
+""")
 
     fct = Template(text=r"""\
     % if function.is_overloaded:
@@ -111,14 +128,14 @@ ${cls.globalname} *\
  >("${obj.class_name(cls)}", boost::python::no_init)\
     % if not cls.is_abstract:
         % for constructor in cls.constructors:
-            % if constructor.access == 'public' and constructor.traverse:
+            % if constructor.access == 'public' and not constructor.is_invalid and constructor.boost_python_export:
 
             .def(boost::python::init< ${", ".join(parameter.type.globalname for parameter in constructor.parameters)} >())\
             % endif
         % endfor
     % endif
     % for method in cls.methods():
-        % if method.access == 'public' and method.traverse:
+        % if method.access == 'public' and not method.is_invalid and method.boost_python_export:
             % if not hasattr(method, 'as_constructor') or not method.as_constructor:
 
             .def("${obj.method_name(method)}", \
@@ -147,7 +164,7 @@ ${method.globalname}\
         % endif
     % endfor
     % for field in cls.fields():
-        % if field.access == 'public' and field.traverse:
+        % if field.access == 'public' and not field.is_invalid and field.boost_python_export:
             % if field.type.is_const:
 
             .def_readonly\
@@ -457,6 +474,13 @@ BOOST_PYTHON_MODULE(_${obj.localname.replace(obj.suffix, '')})
         self._asg._boost_python_module_edges[self.node].add(filenode.node)
         return filenode
 
+    def add_python_file(self, pydir):
+        pydir = self.asg.add_directory(pydir)
+        python_file = self.asg.add_file(pydir.globalname + self.localname.replace(self.suffix, '.py'))
+        python_file.language = 'py'
+        python_file.content = 'from _' + self.localname.replace(self.suffix, '') + ' import *'
+        return python_file
+
     @property
     def exports(self):
         return [export for export in sorted([self._asg[export] for export in self._asg._boost_python_module_edges[self.node]], key = attrgetter('depth')) if not export.is_empty]
@@ -481,9 +505,21 @@ def boost_python_modules(self, pattern=None):
 AbstractSemanticGraph.boost_python_modules = boost_python_modules
 del boost_python_modules
 
-def _boost_python_back_end(self, filename=None, *args, **kwargs):
+def _boost_python_back_end(self, filename, *args, **kwargs):
     prev = time.time()
-    modulenode = self.add_file(filename, proxy=kwargs.pop('module', BoostPythonModuleFileProxy))
+    for fdt in subclasses(FundamentalTypeProxy):
+        if isinstance(fdt.node, basestring) and fdt.node in self:
+            self[fdt.node].to_python = True
+    if 'class ::boost::shared_ptr' in self:
+        for spc in self['class ::boost::shared_ptr'].specializations(partial=False):
+            spc.to_python = True
+    if 'class ::std::smart_ptr' in self:
+        for spc in self['class ::std::smart_ptr'].specializations(partial=False):
+            spc.to_python = True
+    if filename in self:
+        modulenode = self[filename]
+    else:
+        modulenode = self.add_file(filename, proxy=kwargs.pop('module', BoostPythonModuleFileProxy))
     export = kwargs.pop('export', BoostPythonExportFileProxy)
     include = kwargs.pop('include', None)
     held_type = kwargs.pop('held_type', None)
@@ -501,40 +537,44 @@ def _boost_python_back_end(self, filename=None, *args, **kwargs):
     suffix = modulenode.suffix
     directory = modulenode.parent.globalname
     for node in self.nodes(pattern=kwargs.pop('pattern', None), metaclass=kwargs.pop('metaclass', None)):
-        if node.traverse and isinstance(node, CodeNodeProxy) and not node.to_python:
+        if isinstance(node, CodeNodeProxy) and node.boost_python_export and not node.to_python:
             if isinstance(node, EnumConstantProxy):
                 parent = node.parent
                 if not isinstance(parent, (EnumProxy, ClassProxy)) or isinstance(parent, ClassProxy) and node.access == 'public':
                     node.to_python = True
-                    exportnode = modulenode.add_export(directory + 'export_enum_constants_' + to_path(node.parent) + suffix, proxy = export)
+                    exportnode = modulenode.add_export(directory + 'export_enum_constants_' + to_path(node.parent, dirpath=directory, offset=len(suffix)+22) + suffix, proxy = export)
                     exportnode.add_wrap(node)
             elif isinstance(node, EnumProxy):
                 parent = node.parent
                 if not isinstance(parent, ClassProxy) or node.access == 'public':
                     node.to_python = True
-                    exportnode = modulenode.add_export(directory + 'export_enum_' + to_path(node) + suffix, proxy = export)
+                    exportnode = modulenode.add_export(directory + 'export_enum_' + to_path(node, dirpath=directory, offset=len(suffix)+12) + suffix, proxy = export)
                     exportnode.add_wrap(node)
-            elif isinstance(node, VariableProxy):
+            elif isinstance(node, VariableProxy) and not node.is_invalid:
                 parent = node.parent
-                if not isinstance(parent, (ClassProxy, FunctionProxy)):
+                if not isinstance(parent, (ClassProxy, FunctionProxy, ConstructorProxy)):
                     node.to_python = True
-                    exportnode = modulenode.add_export(directory + 'export_variable_' + to_path(node) + suffix, proxy = export)
+                    exportnode = modulenode.add_export(directory + 'export_variable_' + to_path(node, dirpath=directory, offset=len(suffix)+16) + suffix, proxy = export)
                     exportnode.add_wrap(node)
-            elif isinstance(node, FunctionProxy) and not isinstance(node, MethodProxy):
+            elif isinstance(node, FunctionProxy) and not node.is_invalid and not isinstance(node, MethodProxy):
                 node.to_python = True
-                exportnode = modulenode.add_export(directory + 'export_function_' + to_path(node) + suffix, proxy = export)
+                exportnode = modulenode.add_export(directory + 'export_function_' + to_path(node, dirpath=directory, offset=len(suffix)+16) + suffix, proxy = export)
                 exportnode.add_wrap(node)
             elif isinstance(node, ClassProxy):
-                if not isinstance(node, ClassTemplateSpecializationProxy) or not node.as_held_type:
+                if not isinstance(node, ClassTemplateSpecializationProxy) or not node.is_smart_pointer:
                     parent = node.parent
                     if not isinstance(parent, ClassProxy) or node.access == 'public':
                         node.to_python = True
-                        exportnode = modulenode.add_export(directory + 'export_class_' + to_path(node) + suffix, proxy = export)
+                        exportnode = modulenode.add_export(directory + 'export_class_' + to_path(node, dirpath=directory, offset=len(suffix)+23) + suffix, proxy = export)
                         exportnode.add_wrap(node)
     curr = time.time()
-    diagnostic = BackEndDiagnostic(self)
+    diagnostic = BackEndDiagnostic()
     diagnostic.elapsed = curr - prev
-    diagnostic._files = [modulenode.node] + [exportnode.node for exportnode in modulenode.exports]
+    diagnostic.files += 1
+    diagnostic.sloc += modulenode.sloc
+    for export in modulenode.exports:
+        diagnostic.files += 1
+        diagnostic.sloc += export.sloc
     if kwargs.pop('on_disk', True):
         database = kwargs.pop('database', None)#'.autowig.db')
         if database is None:
@@ -543,41 +583,46 @@ def _boost_python_back_end(self, filename=None, *args, **kwargs):
                 exportnode.write()
         else:
             raise NotImplementedError()
-    if kwargs.pop('check', True):
-        for fdt in subclasses(FundamentalTypeProxy):
-            if isinstance(fdt.node, basestring) and fdt.node in self:
-                self[fdt.node].to_python = True
-        for nsp in self.namespaces():
-            for var in nsp.variables():
-                if var.to_python:
-                    if not var.type.target.to_python:
-                        warnings.warn(str(var.type.target.node), BackEndWarning)
-            for fct in nsp.functions():
-                if fct.to_python:
-                    if not fct.result_type.target.to_python:
-                        warnings.warn(str(fct.result_type.target.node), BackEndWarning)
-                    for prm in fct.parameters:
-                        if not prm.type.target.to_python:
-                            warnings.warn(str(prm.type.target.node), BackEndWarning)
-        for cls in self.classes(templated=False):
-            for bse in cls.bases():
-                if bse.access == 'public' and bse.traverse and not bse.to_python:
-                    warnings.warn(bse.node, BackEndWarning)
-            for ctr in cls.constructors:
-                if ctr.access == 'public' and ctr.traverse:
-                    for prm in ctr.parameters:
-                        if not prm.type.target.to_python:
-                            warnings.warn(str(prm.type.target.node), BackEndWarning)
-            for fld in cls.fields():
-                if fld.access == 'public' and fld.traverse and not flt.type.target.to_python:
-                    warnings.warn(str(fld.type.target.node), BackEndWarning)
-            for mtd in cls.methods():
-                if mtd.access == 'public' and mtd.traverse:
-                    if not mtd.result_type.target.to_python:
-                        warnings.warn(str(mtd.result_type.target.node), BackEndWarning)
-                    for prm in mtd.parameters:
-                        if not prm.type.target.to_python:
-                            warnings.warn(str(prm.type.target.node), BackEndWarning)
+    pydir = kwargs.pop('pydir', None)
+    if kwargs.pop('python', True) and not pydir is None:
+        self.add_python_file(pydir=pydir, **kwargs)
+    if kwargs.pop('sconscript', True) and not pydir is None:
+        self.add_sconsript(pydir=pydir, **kwargs)
+    #if kwargs.pop('check', True):
+    #    for fdt in subclasses(FundamentalTypeProxy):
+    #        if isinstance(fdt.node, basestring) and fdt.node in self:
+    #            self[fdt.node].to_python = True
+    #    for nsp in self.namespaces():
+    #        for var in nsp.variables():
+    #            if var.to_python:
+    #                if not var.type.target.to_python:
+    #                    warnings.warn(str(var.type.target.node), BackEndWarning)
+    #        for fct in nsp.functions():
+    #            if fct.to_python:
+    #                if not fct.result_type.target.to_python:
+    #                    warnings.warn(str(fct.result_type.target.node), BackEndWarning)
+    #                for prm in fct.parameters:
+    #                    if not prm.type.target.to_python:
+    #                        warnings.warn(str(prm.type.target.node), BackEndWarning)
+    #    for cls in self.classes(templated=False):
+    #        for bse in cls.bases():
+    #            if bse.access == 'public' and bse.traverse and not bse.to_python:
+    #                warnings.warn(bse.node, BackEndWarning)
+    #        for ctr in cls.constructors:
+    #            if ctr.access == 'public' and ctr.traverse:
+    #                for prm in ctr.parameters:
+    #                    if not prm.type.target.to_python:
+    #                        warnings.warn(str(prm.type.target.node), BackEndWarning)
+    #        for fld in cls.fields():
+    #            if fld.access == 'public' and fld.traverse and not fld.type.target.to_python:
+    #                warnings.warn(str(fld.type.target.node), BackEndWarning)
+    #        for mtd in cls.methods():
+    #            if mtd.access == 'public' and mtd.traverse:
+    #                if not mtd.result_type.target.to_python:
+    #                    warnings.warn(str(mtd.result_type.target.node), BackEndWarning)
+    #                for prm in mtd.parameters:
+    #                    if not prm.type.target.to_python:
+    #                        warnings.warn(str(prm.type.target.node), BackEndWarning)
     return diagnostic
 
 AbstractSemanticGraph._boost_python_back_end = _boost_python_back_end

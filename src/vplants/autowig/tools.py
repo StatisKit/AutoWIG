@@ -1,6 +1,7 @@
 import os
 import re
 import inspect
+import uuid
 
 class FactoryDocstring(object):
 
@@ -101,10 +102,18 @@ def lower(name):
     return lowername
 
 
-def to_path(node, upper=False):
+def to_path(node, upper=False, offset=0, dirpath='.'):
     path = compute_path(node).lstrip('_')
     if not upper:
-        return lower(path)
+        path = lower(path)
+    maxlength = 100#os.pathconf(dirpath, 'PC_NAME_MAX')
+    if len(path) > maxlength-offset:
+        offset += 36
+        alt_path = path[:maxlength-offset]
+        if not alt_path.endswith('_'):
+            alt_path += '_'
+            offset += 1
+        return alt_path + str(uuid.uuid5(uuid.NAMESPACE_X500, path[maxlength-offset:])).replace('-', '_')
     else:
         return path
 
