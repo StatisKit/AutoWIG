@@ -101,7 +101,6 @@ def lower(name):
     lowername = lowername.lstrip('_')
     return lowername
 
-
 def to_path(node, upper=False, offset=0, dirpath='.'):
     path = compute_path(node).lstrip('_')
     if not upper:

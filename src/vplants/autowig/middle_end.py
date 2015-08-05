@@ -1,53 +1,74 @@
 import time
+import uuid
+from openalea.core.plugin.functor import PluginFunctor
 
 from .asg import *
-from .bootstrap_middle_end import *
-from .tools import FactoryDocstring
 
-__all__ = [ 'AbstractSemanticGraph']
+__all__ = [ 'middle_end']
+
+middle_end = PluginFunctor.factory('autowig', implements='middle-end')
+#middle_end.__class__.__doc__ = """AutoWIG middle-ends functor
+#
+#.. seealso::
+#    :attr:`plugin` for run-time available plugins.
+#"""
+
+class DefaultMiddleEndPlugin(object):
+    """Basic plugin for source line of codes count"""
+
+    implements = 'middle-end'
+
+    def implementation(self, asg, *args, **kwargs):
+        """
+        """
+        from vplants.autowig.middle_end import MiddleEndDiagnostic
+        diagnostic = MiddleEndDiagnostic()
+        diagnostic.previous = len(asg)
+        prev = time.time()
+        asg.clean()
+        curr = time.time()
+        diagnostic.cleaning = curr - prev
+        diagnostic.current = len(asg)
+        #prev = time.time()
+        #diagnostic.invalidated = mark_invalid_pointers(asg)
+        #curr = time.time()
+        #diagnostic.invalidating = curr - prev
+        return diagnostic
+
+middle_end['default'] = DefaultMiddleEndPlugin
+middle_end.plugin = 'default'
 
 class MiddleEndDiagnostic(object):
+    """Diagnostic class for AutoWIG middle-ends.
+
+    This class enable to perform a basic analysis of called middle-ends.
+    In particular, a diagnostic for the pre-processing step (:attr:`preprocessing`) if any performed and time elapsed during the cleaning and invalidating processes (reps. :attr:`cleaning` and :attr:`invalidating`) are stored.
+    A brief summary of the Abstract Semantic Graph (ASG, see :class:`vplants.autowig.asg.AbstractSemanticGraph`) state alteration by the middle-end step is performed:
+
+    * :attr:`previous` denotes the total number of nodes (:class:`vplants.autowig.asg.NodeProxy`) of the ASG before the middle-end step is performed.
+    * :attr:`current` denotes the total number of nodes (:class:`vplants.autowig.asg.NodeProxy`) of the ASG after the middle-end step is performed.
+    * :attr:`invalidated` denotes the number of nodes invalidated during the middle-end step.
+
+    .. seealso::
+        :var:`middle_end` for a detailed documentation about AutoWIG middle-end step.
+        :func:`vplants.autowig_plugin.middle_end.DefaultMiddleEndPlugin.implementation` for an example.
+    """
 
     def __init__(self):
-        self.preprocessing = None
+        self.preprocessing = 0.0
         self.previous = 0
         self.current = 0
-        self.invalidated = 0
+        #self.invalidated = 0
         self.cleaning = 0.
-        self.invalidating = 0.
+        #self.invalidating = 0.
 
     @property
     def total(self):
-        total = self.cleaning + self.invalidating + self.handling + self.traversing
+        """Total time elapsed in the AutoWIG middle-end step"""
+        total = self.cleaning
         if not self.processing is None:
             total += self.preprocessing
         return total
-
-def middle_end(self, identifier=None, cleaning=True, invalidating=True, *args, **kwargs):
-    diagnostic = MiddleEndDiagnostic()
-    if not identifier is None:
-        middle_end = getattr(self, '_' + identifier + '_middle_end')
-        prev = time.time()
-        middle_end(*args, **kwargs)
-        curr = time.time()
-        diagnostic.preprocessing = curr - prev
-    diagnostic.previous = len(self)
-    if cleaning:
-        prev = time.time()
-        self.clean()
-        curr = time.time()
-        diagnostic.cleaning = curr - prev
-    diagnostic.current = len(self)
-    if invalidating:
-        prev = time.time()
-        diagnostic.invalidated = self.mark_invalid_pointers()
-        curr = time.time()
-        diagnostic.invalidating = curr - prev
-    return diagnostic
-
-AbstractSemanticGraph.middle_end = middle_end
-del middle_end
-FactoryDocstring.as_factory(AbstractSemanticGraph.middle_end)
 
 def get_clean(self):
     if not hasattr(self, '_clean'):
@@ -62,56 +83,28 @@ def del_clean(self):
     self.asg._nodes[self.node].pop('_clean', False)
 
 NodeProxy._clean_default = True
-NodeProxy.clean = property(get_clean, set_clean, del_clean)
+NodeProxy.clean = property(get_clean, set_clean, del_clean, doc = """
+""")
 del get_clean, set_clean, del_clean
 
-def _clean_default(self):
-    return not self.parsed
+FileProxy._clean_default = False
 
-FileProxy._clean_default = property(_clean_default)
+def _clean_default(self):
+    return not self.is_primary
+
+HeaderProxy._clean_default = property(_clean_default, doc = """
+""")
 del _clean_default
 
 def _clean_default(self):
     header = self.header
     return header is None or header.clean
 
-CodeNodeProxy._clean_default = property(_clean_default)
+CodeNodeProxy._clean_default = property(_clean_default, doc="""
+""")
 del _clean_default
 
 FundamentalTypeProxy._clean_default = False
-
-def _clean_default(self):
-    header = self.header
-    if header is None or header.clean:
-        return True
-    elif not self.is_complete:
-        return True
-    else:
-        return False
-
-EnumProxy._clean_default = property(_clean_default)
-ClassProxy._clean_default = property(_clean_default)
-del _clean_default
-
-def get_clean(self):
-    if not hasattr(self, '_clean'):
-        return self._clean_default
-    else:
-        return self._clean
-
-def set_clean(self, clean):
-    self.asg._nodes[self.node]['_clean'] = clean
-    for parameter in self.parameters:
-        parameter.clean = clean
-
-def del_clean(self):
-    self.asg._nodes[self.node].pop('_clean', False)
-    for parameter in self.parameters:
-        del parameter.clean
-
-FunctionProxy.clean = property(get_clean, set_clean, del_clean)
-ConstructorProxy.clean = property(get_clean, set_clean, del_clean)
-del get_clean, set_clean, del_clean
 
 def clean(self):
     """
@@ -138,12 +131,19 @@ def clean(self):
                     temp.append(header)
                 else:
                     header.clean = False
-        if isinstance(node, (TypedefProxy, VariableProxy)):
-            underlying_type = node.type.target
-            if underlying_type.clean:
-                temp.append(underlying_type)
+        if isinstance(node, HeaderProxy):
+            include = node.include
+            if not include is None:
+                if include.clean:
+                    temp.append(include)
+                else:
+                    include.clean = False
+        elif isinstance(node, (TypedefProxy, VariableProxy)):
+            target = node.type.target
+            if target.clean:
+                temp.append(target)
             else:
-                underlying_type.clean = False
+                target.clean = False
         elif isinstance(node, FunctionProxy):
             result_type = node.result_type.target
             if result_type.clean:
@@ -151,16 +151,18 @@ def clean(self):
             else:
                 result_type.clean = False
             for parameter in node.parameters:
-                if parameter.clean:
-                    temp.append(parameter)
+                target = parameter.type.target
+                if target.clean:
+                    temp.append(target)
                 else:
-                    parameter.clean = False
+                    target.clean = False
         elif isinstance(node, ConstructorProxy):
             for parameter in node.parameters:
-                if parameter.clean:
-                    temp.append(parameter)
+                target = parameter.type.target
+                if target.clean:
+                    temp.append(target)
                 else:
-                    parameter.clean = False
+                    target.clean = False
         elif isinstance(node, ClassProxy):
             for base in node.bases():
                 if base.clean:
@@ -192,6 +194,7 @@ def clean(self):
                 self._specialization_edges[node.specialize.node].remove(node.node)
     for node in nodes:
         self._nodes.pop(node.node)
+        self._include_edges.pop(node.node, None)
         self._syntax_edges.pop(node.node, None)
         self._base_edges.pop(node.node, None)
         self._type_edges.pop(node.node, None)
@@ -237,7 +240,7 @@ del clean
 #            if header is None:
 #                node.traverse = False
 #            else:
-#                node.traverse = header.parsed
+#                node.traverse = header.is_primary
 #            if node.traverse:
 #                temp.append(node)
 #    traversed = 0
@@ -281,61 +284,48 @@ del clean
 #AbstractSemanticGraph.default_traversal = default_traversal
 #del default_traversal
 
-def get_is_invalid(self):
-    if hasattr(self, '_is_invalid'):
-        return self._is_invalid
-    else:
-        return False
-
-def set_is_invalid(self, is_invalid):
-    self.asg._nodes[self.node]['_is_invalid'] = is_invalid
-
-def del_is_invalid(self):
-    self.asg._nodes[self.node].pop('_is_invalid', False)
-
-VariableProxy.is_invalid = property(get_is_invalid, set_is_invalid, del_is_invalid)
-FunctionProxy.is_invalid = property(get_is_invalid, set_is_invalid, del_is_invalid)
-ConstructorProxy.is_invalid = property(get_is_invalid, set_is_invalid, del_is_invalid)
-del get_is_invalid, set_is_invalid, del_is_invalid
-
-def mark_invalid_pointers(self):
-    invalidated = 0
-    for fct in self.functions(free=None):
-        if fct.result_type.nested.is_pointer:
-            fct.is_invalid = True
-            invalidated += 1
-        elif fct.result_type.is_pointer and isinstance(fct.result_type.target, FundamentalTypeProxy):
-            fct.is_invalid = True
-            invalidated += 1
-        elif any(parameter.type.nested.is_pointer or parameter.type.is_pointer and isinstance(parameter.type.target, FundamentalTypeProxy) for parameter in fct.parameters):
-            fct.is_invalid = True
-            invalidated += 1
-    for var in self.variables(free=None):
-        if not isinstance(var.parent, (FunctionProxy, ConstructorProxy)):
-            if var.type.nested.is_pointer or var.type.is_pointer and isinstance(var.type.target, FundamentalTypeProxy):
-                var.is_invalid = True
-    for cls in self.classes():
-        for ctr in cls.constructors:
-            if any(parameter.type.nested.is_pointer or parameter.type.is_pointer and isinstance(parameter.type.target, FundamentalTypeProxy) for parameter in ctr.parameters):
-                ctr.is_invalid = True
-                invalidated += 1
-    return invalidated
-
-AbstractSemanticGraph.mark_invalid_pointers = mark_invalid_pointers
-del mark_invalid_pointers
-
-def get_is_smart_pointer(self):
-    return self.specialize.is_smart_pointer
-
-def set_is_smart_pointer(self, is_smart_pointer):
-    self.specialize.is_smart_pointer = is_smart_pointer
-
-def del_is_smart_pointer(self):
-    del self.specialize.is_smart_pointer
-
-ClassTemplateSpecializationProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer)
-ClassTemplatePartialSpecializationProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer)
-del get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer
+#def get_is_invalid(self):
+#    if hasattr(self, '_is_invalid'):
+#        return self._is_invalid
+#    else:
+#        return False
+#
+#def set_is_invalid(self, is_invalid):
+#    self.asg._nodes[self.node]['_is_invalid'] = is_invalid
+#
+#def del_is_invalid(self):
+#    self.asg._nodes[self.node].pop('_is_invalid', False)
+#
+#doc_is_invalid = """
+#"""
+#
+#VariableProxy.is_invalid = property(get_is_invalid, set_is_invalid, del_is_invalid, doc = doc_is_invalid)
+#FunctionProxy.is_invalid = property(get_is_invalid, set_is_invalid, del_is_invalid, doc = doc_is_invalid)
+#ConstructorProxy.is_invalid = property(get_is_invalid, set_is_invalid, del_is_invalid, doc = doc_is_invalid)
+#del get_is_invalid, set_is_invalid, del_is_invalid, doc_is_invalid
+#
+#def mark_invalid_pointers(asg):
+#    invalidated = 0
+#    for fct in asg.functions(free=None):
+#        if fct.result_type.nested.is_pointer:
+#            fct.is_invalid = True
+#            invalidated += 1
+#        elif fct.result_type.is_pointer and isinstance(fct.result_type.target, FundamentalTypeProxy):
+#            fct.is_invalid = True
+#            invalidated += 1
+#        elif any(parameter.type.nested.is_pointer or parameter.type.is_pointer and isinstance(parameter.type.target, FundamentalTypeProxy) for parameter in fct.parameters):
+#            fct.is_invalid = True
+#            invalidated += 1
+#    for var in asg.variables(free=None):
+#        if not isinstance(var.parent, (FunctionProxy, ConstructorProxy)):
+#            if var.type.nested.is_pointer or var.type.is_pointer and isinstance(var.type.target, FundamentalTypeProxy):
+#                var.is_invalid = True
+#    for cls in asg.classes():
+#        for ctr in cls.constructors:
+#            if any(parameter.type.nested.is_pointer or parameter.type.is_pointer and isinstance(parameter.type.target, FundamentalTypeProxy) for parameter in ctr.parameters):
+#                ctr.is_invalid = True
+#                invalidated += 1
+#    return invalidated
 
 def get_is_smart_pointer(self):
     if not hasattr(self, '_is_smart_pointer'):
@@ -348,76 +338,51 @@ def set_is_smart_pointer(self, is_smart_pointer):
 def del_is_smart_pointer(self):
     self.asg._nodes[self.node].pop('_is_smart_pointer', None)
 
-ClassTemplateProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer)
+ClassTemplateProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc = """
+""")
 del get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer
 
-def char_pointer_to_std_string(self):
-    def is_char_pointer(proxy):
-        return proxy.is_pointer and isinstance(proxy.target, CharTypeProxy)
-    functions = [fct for fct in self.functions(free=True) if is_char_pointer(fct.result_type) or any(is_char_pointer(parameter.type) for parameter in fct.parameters)]
-    content = ''
-    for fct in functions:
-        if is_char_pointer(fct.result_type):
-            content += '::std::string'
-        else:
-            content += fct.result_type.globalname
-        content += ' ' + fct.hash + '(' + ', '.join(['::std::string ' + prm.localname if is_char_pointer(prm.type) else prm.type.globalname + ' ' + prm.localname for prm in fct.parameters]) + ')\n'
-        content += '{\n'
-        for prm in fct.parameters:
-            if is_char_pointer(prm):
-                if prm.nested.is_const:
-                    content += '\tchar const * _' + prm.localname + ' = ' + prm.localname + '.c_str();\n'
-                else:
-                    content += '\tchar * _' + prm.localname + ' = new char[' + prm.localname + '.length() + 1];\n'
-                    content += '\t::std::strcpy(_' + prm.localname + ', ' + prm.localname + '.c_str());\n'
-        content += fct.result_type.globalname + ' '
-        if is_char_pointer(fct.result_type):
-            content += '_'
-        content += 'res = '
-        content += fct.globalname + '(' + ', '.join('_' + prm.localname if is_char_pointer(prm) else prm.localname  for prm in fct.parameters) + ');\n'
-        if is_char_pointer(fct.result_type):
-            content += '::std::string res = ::std::string(_res);\n'
-        for prm in fct.parameters:
-            if is_char_pointer(prm):
-                content += '\tdelete [] _' + prm.localname +';\n'
-        if is_char_pointer(fct.result_type):
-            content += '\tdelete [] _res;\n'
-        content += '\treturn res;\n'
-        content += '}\n'
-    return content
+def get_is_smart_pointer(self):
+    return self.specialize.is_smart_pointer
 
-AbstractSemanticGraph.char_pointer_to_std_string = char_pointer_to_std_string
-del char_pointer_to_std_string
+def set_is_smart_pointer(self, is_smart_pointer):
+    self.specialize.is_smart_pointer = is_smart_pointer
 
-def c_struct_to_class(self):
-    """
-    """
-    for cls in [cls for cls in self['::'].classes() if hasattr(cls, '_header') and cls.header.language == 'c' and cls.traverse]:
-        for fct in [fct for fct in self['::'].functions() if fct.traverse]:
-            mv = False
-            rtype = fct.result_type
-            if rtype.target.node == cls.node:
-                self._nodes[fct.node].update(proxy=MethodProxy,
-                        is_static=True,
-                        is_virtual=False,
-                        is_pure_virtual=False,
-                        is_const=ptype.is_const,
-                        as_constructor=True,
-                        access='public')
-                mv = True
-            elif fct.nb_parameters > 0:
-                ptype = fct.parameters[0].type
-                if ptype.target.node == cls.node and (ptype.is_reference or ptype.is_pointer):
-                    self._nodes[fct.node].update(proxy=MethodProxy,
-                            is_static=False,
-                            is_virtual=False,
-                            is_pure_virtual=False,
-                            is_const=ptype.is_const,
-                            access='public')
-                    mv = True
-            if mv:
-                self._syntax_edges[fct.parent.node].remove(fct.node)
-                self._syntax_edges[cls.node].append(fct.node)
+def del_is_smart_pointer(self):
+    del self.specialize.is_smart_pointer
 
-AbstractSemanticGraph.c_struct_to_class = c_struct_to_class
-del c_struct_to_class
+doc_is_smart_pointer = """
+"""
+ClassTemplateSpecializationProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc = doc_is_smart_pointer)
+ClassTemplatePartialSpecializationProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc = doc_is_smart_pointer)
+del get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc_is_smart_pointer
+
+#def c_struct_to_class(self):
+#    """
+#    """
+#    for cls in [cls for cls in self['::'].classes() if hasattr(cls, '_header') and cls.header.language == 'c' and cls.traverse]:
+#        for fct in [fct for fct in self['::'].functions() if fct.traverse]:
+#            mv = False
+#            rtype = fct.result_type
+#            if rtype.target.node == cls.node:
+#                self._nodes[fct.node].update(proxy=MethodProxy,
+#                        is_static=True,
+#                        is_virtual=False,
+#                        is_pure_virtual=False,
+#                        is_const=ptype.is_const,
+#                        as_constructor=True,
+#                        access='public')
+#                mv = True
+#            elif fct.nb_parameters > 0:
+#                ptype = fct.parameters[0].type
+#                if ptype.target.node == cls.node and (ptype.is_reference or ptype.is_pointer):
+#                    self._nodes[fct.node].update(proxy=MethodProxy,
+#                            is_static=False,
+#                            is_virtual=False,
+#                            is_pure_virtual=False,
+#                            is_const=ptype.is_const,
+#                            access='public')
+#                    mv = True
+#            if mv:
+#                self._syntax_edges[fct.parent.node].remove(fct.node)
+#                self._syntax_edges[cls.node].append(fct.node)

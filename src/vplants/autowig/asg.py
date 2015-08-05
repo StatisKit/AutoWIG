@@ -10,8 +10,8 @@ from fnmatch import fnmatch
 import re
 import warnings
 import hashlib
-import pdb
 
+from .sloc_count import sloc_count
 from .tools import subclasses, split_scopes, remove_templates
 from .custom_warnings import NotWrittenFileWarning, ErrorWarning, NoneTypeWarning,  UndeclaredParentWarning, MultipleDeclaredParentWarning, MultipleDefinitionWarning, NoDefinitionWarning, SideEffectWarning, ProtectedFileWarning, InfoWarning, TemplateParentWarning, TemplateParentWarning, AnonymousWarning, AnonymousFunctionWarning, AnonymousFieldWarning, AnonymousClassWarning, NotImplementedWarning, NotImplementedTypeWarning, NotImplementedDeclWarning, NotImplementedParentWarning, NotImplementedOperatorWarning, NotImplementedTemplateWarning
 
@@ -38,7 +38,7 @@ class NodeProxy(object):
 
     @property
     def hash(self):
-        return str(uuid.uuid5(uuid.NAMESPACE_X500, self.node)).replace('-', '_')
+        return str(uuid.uuid5(uuid.NAMESPACE_X500, self.node)).replace('-', '')
 
     def __repr__(self):
         return self.node
@@ -49,8 +49,10 @@ class NodeProxy(object):
     def __getattr__(self, attr):
         try:
             return self.asg._nodes[self.node][attr]
+        except KeyError:
+            raise AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
         except:
-            raise #AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
+            raise
 
 class EdgeProxy(object):
     """
@@ -69,6 +71,29 @@ class DirectoryProxy(NodeProxy):
     def localname(self):
         return self.globalname[self.globalname.rfind(os.sep, 0, -1)+1:]
 
+    def relativename(self, directory):
+        relativename = './'
+        dirancestors = [ancestor.globalname for ancestor in self.asg[directory].ancestors] + [self.asg[directory].globalname]
+        selfancestors = [ancestor.globalname for ancestor in self.ancestors] + [self.globalname]
+        if len(dirancestors) > len(selfancestors):
+            relativename = '../'*(len(dirancestors)-len(selfancestors))
+            dirancestors = dirancestors[:-(len(dirancestors)-len(selfancestors))]
+        index = -1
+        while len(dirancestors)+index > 0:
+            if dirancestors[index] == selfancestors[index]:
+                break
+            else:
+                relativename += '../'
+                index -= 1
+        return relativename + selfancestors[-1][len(selfancestors[index]):]
+
+    @property
+    def ancestors(self):
+        ancestors = [self.parent]
+        while not ancestors[-1].globalname == '/':
+            ancestors.append(ancestors[-1].parent)
+        return list(reversed(ancestors))
+
     @property
     def parent(self):
         parent = os.sep.join(self.globalname.split(os.sep)[:-2]) + os.sep
@@ -76,12 +101,12 @@ class DirectoryProxy(NodeProxy):
             parent = os.sep
         return self.asg[parent]
 
-    @property
-    def depth(self):
-        if self.globalname == os.sep:
-            return 0
-        else:
-            return self.parent.depth+1
+    #@property
+    #def depth(self):
+    #    if self.globalname == os.sep:
+    #        return 0
+    #    else:
+    #        return self.parent.depth+1
 
     def makedirs(self):
         if not self.on_disk:
@@ -98,6 +123,44 @@ class DirectoryProxy(NodeProxy):
             os.rmdir(self.globalname)
             self.asg._nodes[self.node]['on_disk'] = False
 
+    @property
+    def directories(self):
+        return [d for d in [self.asg[d] for d in self.asg._syntax_edges[self.node]] if isinstance(d, DirectoryProxy)]
+
+    @property
+    def files(self):
+        return [f for f in [self.asg[f] for f in self.asg._syntax_edges[self.node]] if isinstance(f, FileProxy)]
+
+    def walkdirs(self, pattern=None):
+        if pattern is None:
+            directories = self.directories
+        else:
+            directories = [d for d in self.directories if fnmatch(d.globalname, pattern)]
+        return directories + list(itertools.chain(*[d.walkdirs(pattern=pattern) for d in self.directories]))
+
+    def walkfiles(self, pattern=None):
+        if pattern is None:
+            files = self.files
+        else:
+            files =  [f for f in self.files if fnmatch(f.globalname, pattern)]
+        return files + list(itertools.chain(*[d.walkfiles(pattern=pattern) for d in self.directories]))
+
+def get_as_include(self):
+    if hasattr(self, '_as_include'):
+        return self._as_include
+    else:
+        return False
+
+def set_as_include(self, as_include):
+    self.asg._nodes[self.node]['_as_include'] = as_include
+
+def del_as_include(self):
+    self.asg._nodes[self.node].pop('_as_include', False)
+
+DirectoryProxy.as_include = property(get_as_include, set_as_include, del_as_include, doc = """
+        """)
+del get_as_include, set_as_include, del_as_include
+
 class FileProxy(NodeProxy):
     """
     """
@@ -111,45 +174,16 @@ class FileProxy(NodeProxy):
         return self.globalname[self.globalname.rfind(os.sep)+1:]
 
     @property
+    def prefix(self):
+        return self.localname[:self.localname.rfind('.')]
+
+    @property
     def suffix(self):
         return self.localname[self.localname.rfind('.'):]
 
     @property
     def sloc(self):
-        sloc = 0
-        skip = False
-        if self.language in ['c', 'c++']:
-            for line in self.content.splitlines():
-                line = line.strip()
-                if line:
-                    if line.startswith('//'):
-                        continue
-                    else:
-                        if skip and '*/' in line:
-                            line = line[line.index('*/')+2:]
-                            skip = False
-                        while '/*' in line and '*/' in line:
-                            line = line[:line.index('/*')] + line[line.index('*/')+2:]
-                        if '/*' in line:
-                            skip = True
-                        elif not skip and line.strip():
-                            sloc += 1
-        elif self.language == 'py':
-            for line in self.content.splitlines():
-                line = line.strip()
-                if line:
-                    if line.startswith('#'):
-                        continue
-                    else:
-                        if skip:
-                            if line.startswith('"""'):
-                                skip = False
-                        else:
-                            if line.startswith('"""'):
-                                skip = True
-                            else:
-                                sloc += 1
-        return sloc
+        return sloc_count(self.content, language=self.language)
 
     def touch(self):
         parent = self.parent
@@ -159,7 +193,7 @@ class FileProxy(NodeProxy):
         filehandler.close()
         self.asg._nodes[self.node]['on_disk'] = True
 
-    def write(self, force=False):
+    def write(self, database=None, force=False):
         parent = self.parent
         if not parent.on_disk:
             parent.makedirs()
@@ -191,6 +225,13 @@ class FileProxy(NodeProxy):
         return hashlib.md5(str(self)).hexdigest()
 
     @property
+    def ancestors(self):
+        ancestors = [self.parent]
+        while not ancestors[-1].globalname == '/':
+            ancestors.append(ancestors[-1].parent)
+        return list(reversed(ancestors))
+
+    @property
     def parent(self):
         return self.asg[os.sep.join(self.globalname.split(os.sep)[:-1]) + os.sep]
 
@@ -209,21 +250,6 @@ def del_language(self):
 FileProxy.language = property(get_language, set_language, del_language)
 del get_language, set_language, del_language
 
-def get_parsed(self):
-    if hasattr(self, '_parsed'):
-        return self._parsed
-    else:
-        return False
-
-def set_parsed(self, parsed):
-    self.asg._nodes[self.node]['_parsed'] = parsed
-
-def del_parsed(self):
-    self.asg._nodes[self.node].pop('_parsed', None)
-
-FileProxy.parsed = property(get_parsed, set_parsed, del_parsed)
-del get_parsed, set_parsed, del_parsed
-
 def get_content(self):
     if not hasattr(self, '_content') or self._content == "":
         filepath = path(self.globalname)
@@ -238,35 +264,73 @@ def set_content(self, content):
     self.asg._nodes[self.node]['_content'] = content
 
 def del_content(self):
-    self.asg._nodes[self._id].pop('_content', False)
+    self.asg._nodes[self.node].pop('_content', False)
 
 FileProxy.content = property(get_content, set_content, del_content)
 del get_content, set_content, del_content
+
+class HeaderProxy(FileProxy):
+
+    @property
+    def include(self):
+        if self.node in self.asg._include_edges:
+            return self.asg[self.asg._include_edges[self.node]]
+
+    @property
+    def depth(self):
+        if not hasattr(self, '_depth'):
+            include = self.include
+            if include is None:
+                self.asg._nodes[self.node]['_depth'] = 0
+            else:
+                self.asg._nodes[self.node]['_depth'] = include.depth+1
+        return self._depth
+
+def get_is_primary(self):
+    if hasattr(self, '_is_primary'):
+        return self._is_primary
+    else:
+        return False
+
+def set_is_primary(self, is_primary):
+    self.asg._nodes[self.node]['_is_primary'] = is_primary
+
+def del_is_primary(self):
+    self.asg._nodes[self.node].pop('_is_primary', None)
+
+HeaderProxy.is_primary = property(get_is_primary, set_is_primary, del_is_primary)
+del get_is_primary, set_is_primary, del_is_primary
+
+def get_is_independent(self):
+    if hasattr(self, '_is_independent'):
+        return self._is_independent
+    else:
+        return self.is_primary
+
+def set_is_independent(self, is_independent):
+    self.asg._nodes[self.node]['_is_independent'] = is_independent
+
+def del_is_independent(self):
+    self.asg._nodes[self.node].pop('_is_independent', None)
+
+HeaderProxy.is_independent = property(get_is_independent, set_is_independent, del_is_independent)
+del get_is_independent, set_is_independent, del_is_independent
 
 class CodeNodeProxy(NodeProxy):
 
     @property
     def header(self):
-        try:
-            return self.asg[self._header]
-        except:
-            try:
-                return self.parent.header
-            except:
-                return None
-
-    def _headers(self):
-        if self.header is None:
-            return set()
+        if not hasattr(self, '_header'):
+            return self.parent.header
         else:
-            return set([self.header.globalname])
+            return self.asg[self._header]
 
     @property
     def ancestors(self):
         ancestors = [self.parent]
         while not ancestors[-1].globalname == '::':
             ancestors.append(ancestors[-1].parent)
-        return reversed(ancestors)
+        return list(reversed(ancestors))
 
 class FundamentalTypeProxy(CodeNodeProxy):
     """
@@ -441,21 +505,22 @@ class TypeSpecifiersProxy(EdgeProxy):
     http://en.cppreference.com/w/cpp/language/declarations
     """
 
-    def __init__(self, asg, source):
+    def __init__(self, asg, target, specifiers):
         self._asg = asg
-        self._source = source
+        self._target = target
+        self._specifiers = specifiers
 
     @property
     def asg(self):
         return self._asg
 
     @property
-    def source(self):
-        return self._source
+    def target(self):
+        return self.asg[self._target]
 
     @property
-    def target(self):
-        return self.asg[self.asg._type_edges[self._source]["target"]]
+    def specifiers(self):
+        return self._specifiers
 
     @property
     def globalname(self):
@@ -485,32 +550,15 @@ class TypeSpecifiersProxy(EdgeProxy):
 
     @property
     def nested(self):
-        nested = TypeSpecifiersProxy(self.asg, self._source)
-        nested.specifiers = str(self.specifiers)
+        specifiers = str(self.specifiers)
         if self.is_const:
-            nested.specifiers = nested.specifiers[:-6]
+            specifiers = specifiers[:-6]
         if self.is_pointer or self.is_reference:
-            nested.specifiers = nested.specifiers[:-2]
-        return nested
+            specifiers = specifiers[:-2]
+        return TypeSpecifiersProxy(self.asg, self.target, specifiers)
 
     def __str__(self):
         return self.globalname
-
-
-def get_specifiers(self):
-    if not hasattr(self, '_specifiers'):
-        return self.asg._type_edges[self._source]["specifiers"]
-    else:
-        return self._specifiers
-
-def set_specifiers(self, specifiers):
-    self._specifiers = specifiers
-
-def del_specifiers(self):
-    del self._specifiers
-
-TypeSpecifiersProxy.specifiers = property(get_specifiers, set_specifiers, del_specifiers)
-del get_specifiers, set_specifiers, del_specifiers
 
 class DeclarationProxy(CodeNodeProxy):
     """
@@ -595,7 +643,7 @@ class TypedefProxy(DeclarationProxy):
 
     @property
     def type(self):
-        return TypeSpecifiersProxy(self.asg, self.node)
+        return TypeSpecifiersProxy(self.asg, **self.asg._type_edges[self.node])
 
 class VariableProxy(DeclarationProxy):
     """
@@ -603,18 +651,7 @@ class VariableProxy(DeclarationProxy):
 
     @property
     def type(self):
-        return TypeSpecifiersProxy(self.asg, self.node)
-
-class ParameterProxy(VariableProxy):
-    """
-    """
-
-    @property
-    def is_anonymous(self):
-        return re.match('(.*)parm_[0-9]*$', self.node)
-
-    def rename(self, localname):
-        pass
+        return TypeSpecifiersProxy(self.asg, **self.asg._type_edges[self.node])
 
 class FieldProxy(VariableProxy):
     """
@@ -638,21 +675,65 @@ class FieldProxy(VariableProxy):
                 parent = self.asg[parent]
             return parent
 
+class ParameterProxy(EdgeProxy):
+    """
+    """
+
+    def __init__(self, asg, source, index):
+        self._asg = asg
+        self._source = source
+        self._index = index
+
+    @property
+    def asg(self):
+        return self._asg
+
+    @property
+    def source(self):
+        return self[self._source]
+
+    @property
+    def index(self):
+        return self._index
+
+    @property
+    def localname(self):
+        return self.asg._parameter_edges[self._source][self.index]['name']
+
+    @property
+    def globalname(self):
+        return self.source.globalname + '::' + self.localname
+
+    @property
+    def hash(self):
+        return str(uuid.uuid5(uuid.NAMESPACE_X500, self.globalname + '::' + str(self.index))).replace('-', '')
+
+    @property
+    def type(self):
+        kwargs = self.asg._parameter_edges[self._source][self.index]
+        return TypeSpecifiersProxy(self.asg, kwargs['target'], kwargs['specifiers'])
+
+    def rename(self, name=None):
+        if name is None:
+            self.asg._parameter_edges[self._source][self._index]['name'] = 'parm_' + str(self.index)
+        else:
+            self.asg._parameter_edges[self._source][self._index]['name'] = name
+
 class FunctionProxy(DeclarationProxy):
     """
     """
 
     @property
     def result_type(self):
-        return TypeSpecifiersProxy(self.asg, self.node)
+        return TypeSpecifiersProxy(self.asg, **self.asg._type_edges[self.node])
 
     @property
     def nb_parameters(self):
-        return len(self.asg._syntax_edges[self.node])
+        return len(self.asg._parameter_edges[self.node])
 
     @property
     def parameters(self):
-        return [self.asg[node] for node in self.asg._syntax_edges[self.node]]
+        return [ParameterProxy(self.asg, self.node, index) for index in range(self.nb_parameters)]
 
     @property
     def overloads(self):
@@ -717,14 +798,6 @@ class ConstructorProxy(DeclarationProxy):
     """
     """
 
-    def _headers(self):
-        headers = set()
-        for prm in self.parameters:
-            headers.update(prm._headers())
-        if not self.header is None:
-            headers.add(self.header.globalname)
-        return headers
-
     @property
     def parent(self):
         parent = remove_templates(self.globalname)
@@ -745,11 +818,11 @@ class ConstructorProxy(DeclarationProxy):
 
     @property
     def nb_parameters(self):
-        return len(self.asg._syntax_edges[self.node])
+        return len(self.asg._parameter_edges[self.node])
 
     @property
     def parameters(self):
-        return [self.asg[node] for node in self.asg._syntax_edges[self.node]]
+        return [ParameterProxy(self.asg, self.node, index) for index in range(self.nb_parameters)]
 
 class DestructorProxy(DeclarationProxy):
     """
@@ -927,30 +1000,31 @@ def set_is_copyable(self, copyable):
 ClassProxy.is_copyable = property(get_is_copyable, set_is_copyable)
 del get_is_copyable, set_is_copyable
 
-class TemplateTypeSpecifiersProxy(TypeSpecifiersProxy):
-
-    def __init__(self, asg, source, target):
-        super(TemplateTypeSpecifiersProxy, self).__init__(asg, source)
-        self._target = target
-
-    @property
-    def target(self):
-        return self.asg[self._target['target']]
-
-    @property
-    def specifiers(self):
-        return self._target["specifiers"]
+#class TemplateTypeSpecifiersProxy(TypeSpecifiersProxy):
+#
+#    def __init__(self, asg, source, target):
+#        super(TemplateTypeSpecifiersProxy, self).__init__(asg, source)
+#        self._target = target
+#
+#    @property
+#    def target(self):
+#        return self.asg[self._target['target']]
+#
+#    @property
+#    def specifiers(self):
+#        return self._target["specifiers"]
 
 
 class ClassTemplateSpecializationProxy(ClassProxy):
     """
     """
 
-    def _headers(self):
-        headers = super(ClassTemplateSpecializationProxy, self)._headers()
-        for template in self.templates:
-            headers.update(template.target._headers())
-        return headers
+    @property
+    def header(self):
+        if not hasattr(self, '_header'):
+            return self.specialize.header
+        else:
+            return self.asg[self._header]
 
     @property
     def specialize(self):
@@ -967,11 +1041,19 @@ class ClassTemplateSpecializationProxy(ClassProxy):
 
     @property
     def templates(self):
-        return [TemplateTypeSpecifiersProxy(self.asg, self.node, template) for template in self.asg._template_edges[self.node]] #TODO
+        return [TypeSpecifiersProxy(self.asg, **template) for template in self.asg._template_edges[self.node]] #TODO
 
 class ClassTemplatePartialSpecializationProxy(DeclarationProxy):
     """
     """
+
+
+    @property
+    def header(self):
+        if not hasattr(self, '_header'):
+            return self.specialize.header
+        else:
+            return self.asg[self._header]
 
     @property
     def parent(self):
@@ -1102,24 +1184,6 @@ class NamespaceProxy(DeclarationProxy):
                 namespaces.extend(namespace.namespaces(False))
             return nestednamespaces
 
-#import pdb
-#from functools import wraps
-#
-#class dicttest(dict):
-#
-#    def pop(self, key, *args):
-#        return super(dicttest, self).pop(key, *args)
-#
-#def wrapper(f):
-#    @wraps(f)
-#    def pop(self, key, *args):
-#        if key ==  'class ::std::error_condition':
-#            pdb.set_trace()
-#        return f(self, key, *args)
-#    return pop
-#
-#dicttest.pop = wrapper(dicttest.pop)
-
 class AbstractSemanticGraph(object):
 
     def __init__(self, *args, **kwargs):
@@ -1127,11 +1191,11 @@ class AbstractSemanticGraph(object):
         self._syntax_edges = dict()
         self._base_edges = dict()
         self._type_edges = dict()
+        self._parameter_edges = dict()
         self._template_edges = dict()
         self._held_types = set()
         self._specialization_edges = dict()
-        self._boost_python_export_edges = dict()
-        self._boost_python_module_edges = dict()
+        self._include_edges = dict()
 
     def __len__(self):
         return len(self._nodes)
@@ -1228,12 +1292,21 @@ class AbstractSemanticGraph(object):
         metaclass = _MetaClass
         return self.nodes(pattern, metaclass=metaclass)
 
-    def files(self, pattern=None):
-        class _MetaClass(object):
-            __metaclass__ = ABCMeta
-        _MetaClass.register(FileProxy)
-        metaclass = _MetaClass
-        return self.nodes(pattern, metaclass=metaclass)
+    def files(self, pattern=None, header=None):
+        if header is None:
+            class _MetaClass(object):
+                __metaclass__ = ABCMeta
+            _MetaClass.register(FileProxy)
+            metaclass = _MetaClass
+            return self.nodes(pattern, metaclass=metaclass)
+        elif header:
+            class _MetaClass(object):
+                __metaclass__ = ABCMeta
+            _MetaClass.register(HeaderProxy)
+            metaclass = _MetaClass
+            return self.nodes(pattern, metaclass=metaclass)
+        else:
+            return [f for f in self.files(pattern=pattern, header=None) if not isinstance(f, HeaderProxy)]
 
     def fundamental_types(self, pattern=None):
         class _MetaClass(object):
@@ -1375,6 +1448,27 @@ class AbstractSemanticGraph(object):
         metaclass = _MetaClass
         return self.nodes(pattern, metaclass=metaclass)
 
+    def include_path(self, header, absolute=False):
+        if not header.is_independent:
+            include = header.include
+            while include is not None and not include.is_indepentent:
+                include = include.include
+            if include is None:
+                raise ValueError('\'header\' parameter is not independent and has no include parent file independent')
+            header = include
+        if absolute:
+            return header.globalname
+        else:
+            include = header.localname
+            parent = header.parent
+            while not parent.localname == '/' and not parent.as_include:
+                include = parent.localname + include
+                parent = parent.parent
+            if parent.localname == '/':
+                return '/' + include
+            else:
+                return include
+
     def headers(self, *nodes):
         white = []
         for node in nodes:
@@ -1382,7 +1476,7 @@ class AbstractSemanticGraph(object):
                 white.extend(self.nodes(node))
             else:
                 white.append(node)
-        headers = dict()
+        headers = []
         black = set()
         while len(white) > 0:
             node = white.pop()
@@ -1420,15 +1514,28 @@ class AbstractSemanticGraph(object):
                 else:
                     raise NotImplementedError(node.__class__.__name__)
                 header = node.header
+                while not header is None and not header.is_independent:
+                    header = header.include
                 if not header is None:
-                    headers[header.globalname] = header
-        return headers.values()
+                    headers.append(header)
+        headers = sorted(headers, key = lambda header: header.depth)
+        _headers = set()
+        for header in headers:
+            include = header.include
+            while not include is None and not include.globalname in _headers:
+                include = include.include
+            if include is None:
+                _headers.add(header.globalname)
+        headers = [self[header] for header in _headers]
+        return sorted(headers, key = lambda header: header.depth)
 
     def __contains__(self, node):
         return node in self._nodes
 
     def __getitem__(self, node):
-        if not isinstance(node, basestring):
+        if isinstance(node, NodeProxy):
+            node = node.globalname
+        elif not isinstance(node, basestring):
             raise TypeError('`node` parameter')
         if node in self._nodes:
             return self._nodes[node]["proxy"](self, node)
