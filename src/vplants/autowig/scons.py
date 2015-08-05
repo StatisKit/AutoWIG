@@ -65,29 +65,29 @@ def sconstructs(self, pattern=None):
 AbstractSemanticGraph.sconstructs = sconstructs
 del sconstructs
 
-#class SConscriptProxy(FileProxy):
-#
-#    _language = 'py'
-#
-#def add_sconscript(self, **kwargs):
-#    pydir = kwargs.pop('pydir', '../' + self.localname.replace(self.suffix, ''))
-#    env = kwargs.pop('env', 'env')
-#    sconscript = self.asg.add_file(self.parent + 'SConscript')
-#    content = 'Import("' + env + ')\n' + env + ' = ' + env + '.Clone()\n'
-#    content += 'sources = [' + ',\n           '.join(export.localname for export in self.exports if not export.is_empty) + ']\n'
-#    content += 'target = _' + self.localname.replace(self.suffix, '')
-#    dirnode = self.add_directory(pydir)
-#
-#
-#def sconscripts(self, pattern=None):
-#    class _MetaClass(object):
-#        __metaclass__ = ABCMeta
-#    _MetaClass.register(SConscriptProxy)
-#    metaclass = _MetaClass
-#    return self.nodes(papydirttern, metaclass=metaclass)
-#
-#AbstractSemanticGraph.sconscripts = sconscripts
-#del sconscripts
+class SConscriptProxy(FileProxy):
+
+    _language = 'py'
+
+def add_sconscript(self, **kwargs):
+    pydir = kwargs.pop('pydir', '../' + self.localname.replace(self.suffix, ''))
+    env = kwargs.pop('env', 'env')
+    sconscript = self.asg.add_file(self.parent + 'SConscript')
+    content = 'Import("' + env + ')\n' + env + ' = ' + env + '.Clone()\n'
+    content += 'sources = [' + ',\n           '.join(export.localname for export in self.exports if not export.is_empty) + ']\n'
+    content += 'target = _' + self.localname.replace(self.suffix, '')
+    dirnode = self.add_directory(pydir)
+
+
+def sconscripts(self, pattern=None):
+    class _MetaClass(object):
+        __metaclass__ = ABCMeta
+    _MetaClass.register(SConscriptProxy)
+    metaclass = _MetaClass
+    return self.nodes(papydirttern, metaclass=metaclass)
+
+AbstractSemanticGraph.sconscripts = sconscripts
+del sconscripts
 
 def scons(self, *args, **kwargs):
     session = ShellSession("", "")

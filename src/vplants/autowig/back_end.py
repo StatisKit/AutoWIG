@@ -1,13 +1,56 @@
+from openalea.core.plugin.functor import PluginFunctor
+
 from .asg import AbstractSemanticGraph
-from .tools import FactoryDocstring
+
+__all__ = ['back_end']
+
+back_end = PluginFunctor.factory('autowig', implements='back-end')
+#back_end.__class__.__doc__ = """AutoWIG back-ends functor
+#
+#.. seealso::
+#    :attr:`plugin` for run-time available plugins.
+#"""
+
+from vplants.autowig_plugin.boost_python import BoostPythonBackEndPlugin
+back_end['boost_python'] = BoostPythonBackEndPlugin
+back_end.plugin = 'boost_python'
 
 class BackEndDiagnostic(object):
+    """Diagnostic class for AutoWIG back-ends.
+
+    This class enable to perform a basic analysis of called back-ends.
+    In particular, time elapsed (:attr:`elapsed`) for this step is stored and a brief summary of generated files is performed:
+
+    * :attr:`files` denotes the total number of files generated.
+    * :attr:`sloc` denotes the total number of source line of codes counted (see :var:`vplants.autowig.sloc_count.sloc_count`).
+    * :attr:`project` denotes the type of basic COCOMO model software project ('organic', 'semi-detached' or 'embded').
+    * :attr:`effort` denotes the estimated number of persons by month considering the basic COCOMO model.
+    * :attr:`schedule` denotes the estimated number of months necessary to deliver considering the basic COCOMO model.
+    * :attr:`manpower` denotes the estimated number of persons necessary to deliver considering the basic COCOMO model.
+    .. seealso::
+        :var:`back_end` for a detailed documentation about AutoWIG back-end step.
+        :func:`vplants.autowig.boost_python_back_end.back_end` for an example.
+    """
 
     def __init__(self):
-        self.files = 0
-        self.sloc = 0
+        self._nodes = []
+        self._files = 0
+        self._sloc = 0
         self.elapsed = 0.0
         self.project = "semi-detached"
+
+    @property
+    def files(self):
+        if self._files == 0:
+            self._files = len(self._nodes)
+        return self._files
+
+    @property
+    def sloc(self):
+        if self._sloc == 0:
+            for node in self._nodes:
+                self._sloc += node.sloc
+        return self._sloc
 
     @property
     def effort(self):
@@ -31,10 +74,6 @@ class BackEndDiagnostic(object):
     def manpower(self):
         return self.effort/self.schedule
 
-    @property
-    def cost(self):
-        return self.overhead * self.salary * self.effort/12
-
     def __str__(self):
         string = "Total physical source lines of code: " + str(self.sloc) + " (line)"
         string += "\nDevelopment effort estimate: " + str(round(self.effort, 2)) + " (person/month)"
@@ -54,14 +93,3 @@ def set_project(self, project):
 
 BackEndDiagnostic.project = property(get_project, set_project)
 del get_project, set_project
-
-def back_end(self, identifier=None, *args, **kwargs):
-    back_end = getattr(self, '_' + identifier + '_back_end')
-    return back_end(*args, **kwargs)
-
-AbstractSemanticGraph.back_end = back_end
-del back_end
-FactoryDocstring.as_factory(AbstractSemanticGraph.back_end)
-
-from .boost_python_back_end import *
-from .bootstrap_back_end import *

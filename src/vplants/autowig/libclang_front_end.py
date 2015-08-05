@@ -12,6 +12,7 @@ from .ast import AbstractSyntaxTree
 from .asg import *
 from .tools import remove_regex, split_scopes, remove_templates
 from .custom_warnings import NotWrittenFileWarning, ErrorWarning, NoneTypeWarning,  UndeclaredParentWarning, MultipleDeclaredParentWarning, MultipleDefinitionWarning, NoDefinitionWarning, SideEffectWarning, ProtectedFileWarning, InfoWarning, TemplateParentWarning, TemplateParentWarning, AnonymousWarning, AnonymousFunctionWarning, AnonymousFieldWarning, AnonymousClassWarning, NotImplementedWarning, NotImplementedTypeWarning, NotImplementedDeclWarning, NotImplementedParentWarning, NotImplementedOperatorWarning, NotImplementedTemplateWarning
+from .front_end import FrontEndDiagnostic, preprocessing, postprocessing
 
 def is_virtual_method(self):
     """Returns True if the cursor refers to a C++ member function that
@@ -50,6 +51,8 @@ Cursor.is_copyable_record = is_copyable_record
 del is_copyable_record
 
 class LibclangDiagnostic(object):
+    """
+    """
 
     name = 'libclang'
 
@@ -67,21 +70,29 @@ class LibclangDiagnostic(object):
         string += "\n" + " * Translating: " + str(self.translating)
         return string
 
-def _libclang_front_end(self, content, flags, libpath=None, silent=False):
-    diagnostic = LibclangDiagnostic()
+def front_end(asg, filepaths, flags, libpath=None, silent=False, **kwargs):
+    diagnostic = FrontEndDiagnostic()
+    diagnostic.processing = LibclangDiagnostic()
+    prev = time.time()
+    content = preprocessing(asg, filepaths, flags)
+    curr = time.time()
+    diagnostic.postprocessing = curr - prev
     step = []
     prev = time.time()
     if not libpath is None:
-        libpath = path(libpath)
-        libpath = libpath.abspath()
-        if not libpath.exists():
-            raise ValueError('\'libpath\' parameter: \'' + str(libpath) + '\' doesn\'t exists')
-        if libpath.isdir():
-            Config.set_library_path(str(libpath))
-        elif libpath.isfile():
-            Config.set_library_file(str(libpath))
+        if Config.loaded:
+            warnings.warn('\'libpath\' parameter not used since libclang config is already loaded', SyntaxWarning)
         else:
-            raise ValueError('\'libpath\' parameter: should be a path to a directory or a file')
+            libpath = path(libpath)
+            libpath = libpath.abspath()
+            if not libpath.exists():
+                raise ValueError('\'libpath\' parameter: \'' + str(libpath) + '\' doesn\'t exists')
+            if libpath.isdir():
+                Config.set_library_path(str(libpath))
+            elif libpath.isfile():
+                Config.set_library_file(str(libpath))
+            else:
+                raise ValueError('\'libpath\' parameter: should be a path to a directory or a file')
     else:
         if not Config.loaded:
             raise ValueError('\'libpath\' parameter: should not be set to \'None\'')
@@ -92,43 +103,35 @@ def _libclang_front_end(self, content, flags, libpath=None, silent=False):
     tu = index.parse(tempfilehandler.name, args=flags, unsaved_files=None, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
     os.unlink(tempfilehandler.name)
     curr = time.time()
-    diagnostic.parsing = curr - prev
+    diagnostic.processing.parsing = curr - prev
     prev = time.time()
     with warnings.catch_warnings() as cw:
         if silent:
             warnings.simplefilter('ignore')
         else:
             warnings.simplefilter('always')
-        self._libclang_read_translation_unit(tu)
+        read_translation_unit(asg, tu)
     curr = time.time()
-    diagnostic.translating = curr - prev
+    diagnostic.processing.translating = curr - prev
+    diagnostic.postprocessing = postprocessing(asg, **kwargs)
+    diagnostic(asg)
     return diagnostic
 
-AbstractSemanticGraph._libclang_front_end = _libclang_front_end
-AbstractSyntaxTree._libclang_front_end = _libclang_front_end
-del _libclang_front_end
-
-def _libclang_read_translation_unit(self, tu):
+def read_translation_unit(asg, tu):
     for child in tu.cursor.get_children():
-        self._libclang_read_cursor(child, '::')
+        read_cursor(asg, child, '::')
 
-AbstractSemanticGraph._libclang_read_translation_unit = _libclang_read_translation_unit
-del _libclang_read_translation_unit
+#def read_translation_unit(asg, tu):
+#    _nodes = dict()
+#    _children = dict()
+#    _nodes[0] = tu.cursor
+#    asg._children[0] = []
+#    asg._node = 1
+#    for child in tu.cursor.get_children():
+#        asg._children[0].append(read_cursor(child))
+#    del asg._node
 
-def _libclang_read_translation_unit(self, tu):
-    self._nodes = dict()
-    self._children = dict()
-    self._nodes[0] = tu.cursor
-    self._children[0] = []
-    self._node = 1
-    for child in tu.cursor.get_children():
-        self._children[0].append(self._libclang_read_cursor(child))
-    del self._node
-
-AbstractSyntaxTree._libclang_read_translation_unit = _libclang_read_translation_unit
-del _libclang_read_translation_unit
-
-def _libclang_read_qualified_type(self, qtype):
+def read_qualified_type(asg, qtype):
     specifiers = ''
     while True:
         if qtype.kind is TypeKind.POINTER:
@@ -153,18 +156,15 @@ def _libclang_read_qualified_type(self, qtype):
                 if qtype.is_volatile_qualified():
                     specifiers = ' volatile' + specifiers
                 try:
-                    return self[spelling].node, specifiers
+                    return asg[spelling].node, specifiers
                 except:
                     warnings.warn('record not found')
                     break
         else:
-            target, _specifiers = self._libclang_read_builtin_type(qtype)
+            target, _specifiers = read_builtin_type(asg, qtype)
             return target, _specifiers + specifiers
 
-AbstractSemanticGraph._libclang_read_qualified_type = _libclang_read_qualified_type
-del _libclang_read_qualified_type
-
-def _libclang_read_builtin_type(self, btype):
+def read_builtin_type(asg, btype):
     if btype.kind in [TypeKind.CHAR_U, TypeKind.CHAR_S]:
         if btype.is_const_qualified():
             specifiers = ' const'
@@ -288,10 +288,7 @@ def _libclang_read_builtin_type(self, btype):
     else:
         warnings.warn('\'' + str(btype.kind) + '\'', NotImplementedTypeWarning)
 
-AbstractSemanticGraph._libclang_read_builtin_type = _libclang_read_builtin_type
-del _libclang_read_builtin_type
-
-def _libclang_read_enum(self, cursor, scope):
+def read_enum(asg, cursor, scope):
     if not scope.endswith('::'):
         spelling = scope + "::" + cursor.spelling
     else:
@@ -303,77 +300,68 @@ def _libclang_read_enum(self, cursor, scope):
             spelling = spelling[:-2]
         for child in cursor.get_children():
             if child.kind is CursorKind.ENUM_CONSTANT_DECL:
-                children.extend(self._libclang_read_enum_constant(child, spelling))
+                children.extend(read_enum_constant(asg, child, spelling))
                 decls.append(child)
         filename = str(path(str(cursor.location.file)).abspath())
-        self.add_file(filename, _language=self._language)
+        asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
         for childspelling, child in zip(children, decls):
-            self._nodes[childspelling]['_header'] = filename
-            self._nodes[spelling]['cursor'] = child
+            asg._nodes[childspelling]['_header'] = filename
+            asg._nodes[spelling]['cursor'] = child
         return children
     else:
         spelling = 'enum ' + spelling
-        if not spelling in self :
-            self._syntax_edges[spelling] = []
-            self._nodes[spelling] = dict(proxy=EnumProxy)
-            self._syntax_edges[scope].append(spelling)
-        elif not self[spelling].is_complete:
-            self._syntax_edges[scope].remove(spelling)
-            self._syntax_edges[scope].append(spelling)
-        if not self[spelling].is_complete:
+        if not spelling in asg:
+            asg._syntax_edges[spelling] = []
+            asg._nodes[spelling] = dict(proxy=EnumProxy)
+            asg._syntax_edges[scope].append(spelling)
+        elif not asg[spelling].is_complete:
+            asg._syntax_edges[scope].remove(spelling)
+            asg._syntax_edges[scope].append(spelling)
+        if not asg[spelling].is_complete:
             for child in cursor.get_children():
-                self._libclang_read_enum_constant(child, spelling)
-        if self[spelling].is_complete:
+                read_enum_constant(asg, child, spelling)
+        if asg[spelling].is_complete:
             filename = str(path(str(cursor.location.file)).abspath())
-            self.add_file(filename, _language=self._language)
-            self._nodes[spelling]['_header'] = filename
-            self._nodes[spelling]['cursor'] = cursor
+            asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
+            asg._nodes[spelling]['_header'] = filename
+            asg._nodes[spelling]['cursor'] = cursor
         return [spelling]
 
-AbstractSemanticGraph._libclang_read_enum = _libclang_read_enum
-del _libclang_read_enum
-
-def _libclang_read_enum_constant(self, cursor, scope):
+def read_enum_constant(asg, cursor, scope):
     if not scope.endswith('::'):
         spelling = scope + "::" + cursor.spelling
     else:
         spelling = scope + cursor.spelling
     spelling = spelling.replace('enum ', '')
-    self._nodes[spelling] = dict(proxy=EnumConstantProxy)
-    self._syntax_edges[scope].append(spelling)
+    asg._nodes[spelling] = dict(proxy=EnumConstantProxy)
+    asg._syntax_edges[scope].append(spelling)
     return [spelling]
 
-AbstractSemanticGraph._libclang_read_enum_constant = _libclang_read_enum_constant
-del _libclang_read_enum_constant
-
-def _libclang_read_typedef(self, typedef, scope):
+def read_typedef(asg, typedef, scope):
     if not scope.endswith('::'):
         spelling = scope + "::" + typedef.spelling
     else:
         spelling = scope + typedef.spelling
-    if not spelling in self:
+    if not spelling in asg:
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
-                target, specifiers = self._libclang_read_qualified_type(typedef.underlying_typedef_type)
+                target, specifiers = read_qualified_type(asg, typedef.underlying_typedef_type)
         except Warning as warning:
             warnings.warn(str(warning) + ' for typedef \'' + spelling + '\'', warning.__class__)
             return []
         else:
-            self._nodes[spelling] = dict(proxy=TypedefProxy)
-            self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
-            self._syntax_edges[scope].append(spelling)
+            asg._nodes[spelling] = dict(proxy=TypedefProxy)
+            asg._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+            asg._syntax_edges[scope].append(spelling)
             filename = str(path(str(typedef.location.file)).abspath())
-            self.add_file(filename, _language=self._language)
-            self._nodes[spelling]['_header'] = filename
+            asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
+            asg._nodes[spelling]['_header'] = filename
             return [spelling]
     else:
         return [spelling]
 
-AbstractSemanticGraph._libclang_read_typedef = _libclang_read_typedef
-del _libclang_read_typedef
-
-def _libclang_read_variable(self, cursor, scope):
+def read_variable(asg, cursor, scope):
     if any(child.kind in [CursorKind.TEMPLATE_NON_TYPE_PARAMETER, CursorKind.TEMPLATE_TYPE_PARAMETER, CursorKind.TEMPLATE_TEMPLATE_PARAMETER] for child in cursor.get_children()):
         return []
     else:
@@ -384,24 +372,21 @@ def _libclang_read_variable(self, cursor, scope):
         try:
             with warnings.catch_warnings() as warning:
                 warnings.simplefilter("error")
-                target, specifiers = self._libclang_read_qualified_type(cursor.type)
-                self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+                target, specifiers = read_qualified_type(asg, cursor.type)
+                asg._type_edges[spelling] = dict(target=target, specifiers=specifiers)
         except Warning as warning:
             warnings.warn(str(warning) + ' for variable \'' + spelling + '\'', warning.__class__)
             return []
         else:
-            self._nodes[spelling] = dict(proxy=VariableProxy)
+            asg._nodes[spelling] = dict(proxy=VariableProxy)
             filename = str(path(str(cursor.location.file)).abspath())
-            self.add_file(filename, _language=self._language)
-            self._nodes[spelling]['_header'] = filename
-            self._nodes[spelling]['cursor'] = cursor
-            self._syntax_edges[scope].append(spelling)
+            asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
+            asg._nodes[spelling]['_header'] = filename
+            asg._nodes[spelling]['cursor'] = cursor
+            asg._syntax_edges[scope].append(spelling)
             return [spelling]
 
-AbstractSemanticGraph._libclang_read_variable = _libclang_read_variable
-del _libclang_read_variable
-
-def _libclang_read_function(self, cursor, scope):
+def read_function(asg, cursor, scope):
     if not scope.endswith('::'):
         spelling = scope + "::" + cursor.spelling
     else:
@@ -412,61 +397,60 @@ def _libclang_read_function(self, cursor, scope):
         if not cursor.kind is CursorKind.DESTRUCTOR:
             spelling = spelling + '::' + str(uuid.uuid4())
         if cursor.kind is CursorKind.FUNCTION_DECL:
-            self._nodes[spelling] = dict(proxy=FunctionProxy, cursor=cursor)
+            asg._nodes[spelling] = dict(proxy=FunctionProxy, cursor=cursor)
             if not cursor.location is None:
                 filename = str(path(str(cursor.location.file)).abspath())
-                self.add_file(filename, _language=self._language)
-                self._nodes[spelling]['_header'] = filename
+                asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
+                asg._nodes[spelling]['_header'] = filename
         elif cursor.kind is CursorKind.CXX_METHOD:
-            self._nodes[spelling] = dict(proxy=MethodProxy,
+            asg._nodes[spelling] = dict(proxy=MethodProxy,
                     is_static=cursor.is_static_method(),
                     is_virtual=True,
                     is_const=False,
                     is_pure_virtual=True,
                     cursor=cursor)
         elif cursor.kind is CursorKind.CONSTRUCTOR:
-            self._nodes[spelling] = dict(proxy=ConstructorProxy,
+            asg._nodes[spelling] = dict(proxy=ConstructorProxy,
                     cursor=cursor)
         else:
-            self._nodes[spelling] = dict(proxy=DestructorProxy,
+            asg._nodes[spelling] = dict(proxy=DestructorProxy,
                     is_virtual=True,
                     cursor=cursor)
-        self._syntax_edges[spelling] = []
-        self._syntax_edges[scope].append(spelling)
+        asg._parameter_edges[spelling] = []
+        asg._syntax_edges[scope].append(spelling)
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
                 if cursor.kind in [CursorKind.FUNCTION_DECL, CursorKind.CXX_METHOD]:
-                    target, specifiers = self._libclang_read_qualified_type(cursor.result_type)
-                    self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+                    target, specifiers = read_qualified_type(asg, cursor.result_type)
+                    asg._type_edges[spelling] = dict(target=target, specifiers=specifiers)
                 for index, child in enumerate([child for child in cursor.get_children() if child.kind is CursorKind.PARM_DECL]):
-                    childspelling = spelling + '::' + child.spelling
-                    if childspelling.endswith('::'):
-                        childspelling += 'parm_' + str(index)
-                    target, specifiers = self._libclang_read_qualified_type(child.type)
-                    self._type_edges[childspelling] = dict(target=target, specifiers=specifiers)
-                    self._nodes[childspelling] = dict(proxy=VariableProxy)
-                    self._syntax_edges[spelling].append(childspelling)
+                    #childspelling = spelling + '::' + child.spelling
+                    #if childspelling.endswith('::'):
+                    #    childspelling += 'parm_' + str(index)
+                    target, specifiers = read_qualified_type(asg, child.type)
+                    asg._parameter_edges[spelling].append(dict(name = child.spelling, target=target, specifiers=specifiers))
+                    #asg._type_edges[childspelling] = dict(target=target, specifiers=specifiers)
+                    #asg._nodes[childspelling] = dict(proxy=VariableProxy)
+                    #asg._syntax_edges[spelling].append(childspelling)
         except Warning as warning:
-            self._syntax_edges[scope].remove(spelling)
-            self._syntax_edges.pop(spelling)
-            self._type_edges.pop(spelling, None)
-            self._nodes.pop(spelling)
-            for index, child in enumerate([child for child in cursor.get_children() if child.kind is CursorKind.PARM_DECL]):
-                childspelling = spelling + '::' + child.spelling
-                if childspelling.endswith('::'):
-                    childspelling += 'parm_' + str(index)
-                self._nodes.pop(childspelling, None)
-                self._type_edges.pop(childspelling, None)
+            asg._syntax_edges[scope].remove(spelling)
+            #asg._syntax_edges.pop(spelling)
+            asg._type_edges.pop(spelling, None)
+            asg._parameter_edges.pop(spelling, None)
+            asg._nodes.pop(spelling)
+            #for index, child in enumerate([child for child in cursor.get_children() if child.kind is CursorKind.PARM_DECL]):
+            #    childspelling = spelling + '::' + child.spelling
+            #    if childspelling.endswith('::'):
+            #        childspelling += 'parm_' + str(index)
+            #    asg._nodes.pop(childspelling, None)
+            #    asg._type_edges.pop(childspelling, None)
             warnings.warn(str(warning), warning.__class__)
             return []
         else:
             return [spelling]
 
-AbstractSemanticGraph._libclang_read_function = _libclang_read_function
-del _libclang_read_function
-
-def _libclang_read_field(self, cursor, scope):
+def read_field(asg, cursor, scope):
     if cursor.spelling == '':
         # TODO warning
         return []
@@ -475,30 +459,27 @@ def _libclang_read_field(self, cursor, scope):
             spelling = scope + "::" + cursor.spelling
         else:
             spelling = scope + cursor.spelling
-        self._nodes[spelling] = dict(proxy=FieldProxy,
+        asg._nodes[spelling] = dict(proxy=FieldProxy,
                 is_mutable=False,
                 is_static=False,
                 cursor=cursor)
-        self._syntax_edges[scope].append(spelling)
+        asg._syntax_edges[scope].append(spelling)
         try:
             with warnings.catch_warnings() as warning:
                 warnings.simplefilter("error")
-                target, specifiers = self._libclang_read_qualified_type(cursor.type)
-                self._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+                target, specifiers = read_qualified_type(asg, cursor.type)
+                asg._type_edges[spelling] = dict(target=target, specifiers=specifiers)
         except Exception as error:
-            self._syntax_edges[scope].remove(spelling)
-            self._nodes.pop(spelling)
+            asg._syntax_edges[scope].remove(spelling)
+            asg._nodes.pop(spelling)
             warnings.warn(str(error))
             return []
         else:
             return [spelling]
 
-AbstractSemanticGraph._libclang_read_field = _libclang_read_field
-del _libclang_read_field
-
-def _libclang_read_tag(self, cursor, scope):
+def read_tag(asg, cursor, scope):
     if cursor.kind is CursorKind.ENUM_DECL:
-        return self._libclang_read_enum(cursor, scope)
+        return read_enum(asg, cursor, scope)
     else:
         if cursor.spelling == '':
             warnings.warn('Anonymous struc/union/class in scope \'' + scope + '\' not read')
@@ -516,53 +497,50 @@ def _libclang_read_tag(self, cursor, scope):
         #    spelling = 'union ' + spelling
         #else:
         #    spelling = 'class ' + spelling
-        if not spelling in self:
+        if not spelling in asg:
             if cursor.kind in [CursorKind.STRUCT_DECL, CursorKind.UNION_DECL]:
-                self._nodes[spelling] = dict(proxy=ClassProxy,
+                asg._nodes[spelling] = dict(proxy=ClassProxy,
                         default_access='public',
                         is_abstract=True,
                         _is_copyable=False,
                         is_complete=False)
             elif cursor.kind is CursorKind.CLASS_DECL:
-                self._nodes[spelling] = dict(proxy=ClassProxy,
+                asg._nodes[spelling] = dict(proxy=ClassProxy,
                             default_access='private',
                             is_abstract=True,
                             _is_copyable=False,
                             is_complete=False)
-            self._syntax_edges[spelling] = []
-            self._base_edges[spelling] = []
-            self._syntax_edges[scope].append(spelling)
-        elif not self[spelling].is_complete:
-            self._syntax_edges[scope].remove(spelling)
-            self._syntax_edges[scope].append(spelling)
-        if not self[spelling].is_complete:
+            asg._syntax_edges[spelling] = []
+            asg._base_edges[spelling] = []
+            asg._syntax_edges[scope].append(spelling)
+        elif not asg[spelling].is_complete:
+            asg._syntax_edges[scope].remove(spelling)
+            asg._syntax_edges[scope].append(spelling)
+        if not asg[spelling].is_complete:
             for child in cursor.get_children():
                 if child.kind is CursorKind.CXX_BASE_SPECIFIER:
                     childspelling = '::' + child.type.spelling
                     # TODO
-                    if childspelling in self:
+                    if childspelling in asg:
                         access = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
-                        self._base_edges[spelling].append(dict(base=self[childspelling].node,
+                        asg._base_edges[spelling].append(dict(base=asg[childspelling].node,
                             access=access,
                             is_virtual=False))
                     else:
                         warnings.warn('Base not found')
                 else:
-                    for childspelling in self._libclang_read_cursor(child, spelling):
-                        self._nodes[childspelling]["access"] = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
-                        dict.pop(self._nodes[childspelling], "_header", None)
-            self._nodes[spelling]['is_complete'] = len(self._base_edges[spelling]) + len(self._syntax_edges[spelling]) > 0
-            if self[spelling].is_complete:
+                    for childspelling in read_cursor(asg, child, spelling):
+                        asg._nodes[childspelling]["access"] = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
+                        dict.pop(asg._nodes[childspelling], "_header", None)
+            asg._nodes[spelling]['is_complete'] = len(asg._base_edges[spelling]) + len(asg._syntax_edges[spelling]) > 0
+            if asg[spelling].is_complete:
                 filename = str(path(str(cursor.location.file)).abspath())
-                self.add_file(filename, _language=self._language)
-                self._nodes[spelling]['_header'] = filename
-                self._nodes[spelling]['cursor'] = cursor
+                asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
+                asg._nodes[spelling]['_header'] = filename
+                asg._nodes[spelling]['cursor'] = cursor
         return [spelling]
 
-AbstractSemanticGraph._libclang_read_tag = _libclang_read_tag
-del _libclang_read_tag
-
-def _libclang_read_namespace(self, cursor, scope):
+def read_namespace(asg, cursor, scope):
         if not scope.endswith('::'):
             spelling = scope + "::" + cursor.spelling
         else:
@@ -572,45 +550,42 @@ def _libclang_read_namespace(self, cursor, scope):
             if not spelling == '::':
                 spelling = spelling[:-2]
             for child in cursor.get_children():
-                children.extend(self._libclang_read_cursor(child, spelling))
+                children.extend(read_cursor(asg, child, spelling))
             return children
         else:
-            if not spelling in self:
-                self._nodes[spelling] = dict(proxy=NamespaceProxy)
-                self._syntax_edges[spelling] = []
-            if not spelling in self._syntax_edges[scope]:
-                self._syntax_edges[scope].append(spelling)
+            if not spelling in asg:
+                asg._nodes[spelling] = dict(proxy=NamespaceProxy)
+                asg._syntax_edges[spelling] = []
+            if not spelling in asg._syntax_edges[scope]:
+                asg._syntax_edges[scope].append(spelling)
             for child in cursor.get_children():
-                self._libclang_read_cursor(child, spelling)
+                read_cursor(asg, child, spelling)
             return [spelling]
 
-AbstractSemanticGraph._libclang_read_namespace = _libclang_read_namespace
-del _libclang_read_namespace
-
-def _libclang_read_cursor(self, cursor, scope):
+def read_cursor(asg, cursor, scope):
     if cursor.kind is CursorKind.UNEXPOSED_DECL:
         if cursor.spelling == '':
             children = []
             for child in cursor.get_children():
-                children.extend(self._libclang_read_cursor(child, scope))
+                children.extend(read_cursor(asg, child, scope))
             return children
         else:
             warnings.warn('Named unexposed cursor not read')
             return []
     elif cursor.kind is CursorKind.TYPEDEF_DECL:
-        return self._libclang_read_typedef(cursor, scope)
+        return read_typedef(asg, cursor, scope)
     elif cursor.kind in [CursorKind.VAR_DECL, CursorKind.PARM_DECL]:
-        return self._libclang_read_variable(cursor, scope)
+        return read_variable(asg, cursor, scope)
     elif cursor.kind in [CursorKind.FUNCTION_DECL, CursorKind.CXX_METHOD,
             CursorKind.DESTRUCTOR, CursorKind.CONSTRUCTOR]:
-        return self._libclang_read_function(cursor, scope)
+        return read_function(asg, cursor, scope)
     elif cursor.kind is CursorKind.FIELD_DECL:
-        return self._libclang_read_field(cursor, scope)
+        return read_field(asg, cursor, scope)
     elif cursor.kind in [CursorKind.ENUM_DECL, CursorKind.STRUCT_DECL,
             CursorKind.UNION_DECL, CursorKind.CLASS_DECL]:
-        return self._libclang_read_tag(cursor, scope)
+        return read_tag(asg, cursor, scope)
     elif cursor.kind is CursorKind.NAMESPACE:
-        return self._libclang_read_namespace(cursor, scope)
+        return read_namespace(asg, cursor, scope)
     elif cursor.kind in [CursorKind.NAMESPACE_ALIAS, CursorKind.FUNCTION_TEMPLATE,
             CursorKind.USING_DECLARATION, CursorKind.USING_DIRECTIVE,
             CursorKind.UNEXPOSED_ATTR, CursorKind.CLASS_TEMPLATE,
@@ -621,44 +596,41 @@ def _libclang_read_cursor(self, cursor, scope):
         warnings.warn('Undefined behaviour for \'' + str(cursor.kind) + '\' cursor')
         return []
 
-AbstractSemanticGraph._libclang_read_cursor = _libclang_read_cursor
-del _libclang_read_cursor
-
-def _libclang_read_cursor(self, cursor):
-    self._node += 1
-    node = self._node
-    self._nodes[node] = cursor
-    self._children[node] = []
-    for child in cursor.get_children():
-        self._children[node].append(self._libclang_read_cursor(child))
-    return node
-
-AbstractSyntaxTree._libclang_read_cursor = _libclang_read_cursor
-del _libclang_read_cursor
-
-def create(cls, tu):
-    self = AbstractSyntaxTree()
-    self.node = 0
-    node = self.node
-    self._nodes[node] = tu.cursor
-    self._children[node] = []
-    self.node += 1
-    for child in tu.cursor.get_children():
-        self._children[node].append(self._libclang_read_cursor(child))
-    del self.node
-    return self
-
-AbstractSyntaxTree.create = classmethod(create)
-del create
-
-def _libclang_read_cursor(self, cursor):
-    node = self._node
-    self._nodes[node] = cursor
-    self._children[node] = []
-    self._node += 1
-    for child in cursor.get_children():
-        self._children[node].append(self._libclang_read_cursor(child))
-    return node
-
-AbstractSyntaxTree._libclang_read_cursor = _libclang_read_cursor
-del _libclang_read_cursor
+#def read_cursor(asg, cursor):
+#    asg._node += 1
+#    node = asg._node
+#    asg._nodes[node] = cursor
+#    asg._children[node] = []
+#    for child in cursor.get_children():
+#        asg._children[node].append(asg._libclang_read_cursor(child))
+#    return node
+#
+#AbstractSyntaxTree._libclang_read_cursor = _libclang_read_cursor
+#del _libclang_read_cursor
+#
+#def create(cls, tu):
+#    asg = AbstractSyntaxTree()
+#    asg.node = 0
+#    node = asg.node
+#    asg._nodes[node] = tu.cursor
+#    asg._children[node] = []
+#    asg.node += 1
+#    for child in tu.cursor.get_children():
+#        asg._children[node].append(asg._libclang_read_cursor(child))
+#    del asg.node
+#    return asg
+#
+#AbstractSyntaxTree.create = classmethod(create)
+#del create
+#
+#def _libclang_read_cursor(asg, cursor):
+#    node = asg._node
+#    asg._nodes[node] = cursor
+#    asg._children[node] = []
+#    asg._node += 1
+#    for child in cursor.get_children():
+#        asg._children[node].append(asg._libclang_read_cursor(child))
+#    return node
+#
+#AbstractSyntaxTree._libclang_read_cursor = _libclang_read_cursor
+#del _libclang_read_cursor
