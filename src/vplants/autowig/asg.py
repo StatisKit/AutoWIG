@@ -26,7 +26,10 @@ class NodeProxy(object):
         self._node = node
 
     def __eq__(self, other):
-        return self.asg == other.asg and self.node == other.node
+        if isinstance(other, NodeProxy):
+            return self.asg == other.asg and self.node == other.node
+        else:
+            return False
 
     @property
     def asg(self):
@@ -50,7 +53,7 @@ class NodeProxy(object):
         try:
             return self.asg._nodes[self.node][attr]
         except KeyError:
-            raise AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
+            raise #AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
         except:
             raise
 
@@ -197,13 +200,10 @@ class FileProxy(NodeProxy):
         parent = self.parent
         if not parent.on_disk:
             parent.makedirs()
-        filehandler = open(self.globalname, 'w')
-        try:
-            filehandler.write(str(self))
-        except:
-            filehandler.close()
-            raise
-        else:
+        content = self.content
+        self.content = content
+        with open(self.globalname, 'w') as filehandler:
+            filehandler.write(content)
             filehandler.close()
             self.asg._nodes[self.node]['on_disk'] = True
 
@@ -213,13 +213,10 @@ class FileProxy(NodeProxy):
 
     @property
     def is_empty(self):
-        return str(self) == ""
+        return self.content == ""
 
     def __repr__(self):
         return self.node
-
-    def __str__(self):
-        return self.content
 
     def md5(self):
         return hashlib.md5(str(self)).hexdigest()
@@ -542,6 +539,17 @@ class TypeSpecifiersProxy(EdgeProxy):
             return self.specifiers.endswith('&')
 
     @property
+    def is_rvalue_reference(self):
+        if self.is_const:
+            return self.specifiers.endswith('&& const')
+        else:
+            return self.specifiers.endswith('&&')
+
+    @property
+    def is_lvalue_reference(self):
+        return self.is_reference() and not self.is_rvalue_reference()
+
+    @property
     def is_pointer(self):
         if self.is_const:
             return self.specifiers.endswith('* const')
@@ -772,6 +780,24 @@ def del_is_overloaded(self):
 FunctionProxy.is_overloaded = property(get_is_overloaded, set_is_overloaded, del_is_overloaded)
 del get_is_overloaded, set_is_overloaded
 
+def get_return_policy(self):
+    if hasattr(self, '_return_policy'):
+        return self._return_policy
+    else:
+        result_type = function.result_type
+        if result_type.is_pointer or result_type.is_pointer:
+            return 'reference'
+
+def set_return_policy(self, policy):
+    #TODO
+    pass
+
+def del_return_policy(self):
+    self.asg._nodes[self.node].pop('_return_policy', None)
+
+FunctionProxy.return_policy = property(get_return_policy, set_return_policy, del_return_policy)
+del get_return_policy, set_return_policy, del_return_policy
+
 class MethodProxy(FunctionProxy):
     """
     """
@@ -942,6 +968,9 @@ class ClassProxy(DeclarationProxy):
 
     def enum_constants(self, inherited=False):
         return [cst for cst in self.declarations(inherited) if isinstance(cst, EnumConstantProxy)]
+
+    def typedefs(self, inherited=False):
+        return [tdf for tdf in self.declarations(inherited) if isinstance(tdf, TypedefProxy)]
 
     def fields(self, inherited=False):
         return [field for field in self.declarations(inherited) if isinstance(field, FieldProxy)]
@@ -1506,7 +1535,7 @@ class AbstractSemanticGraph(object):
                     if isinstance(node, ClassTemplateSpecializationProxy):
                         white.extend([tpl.target for tpl in node.templates])
                 elif isinstance(node, ClassTemplateProxy):
-                    white.extend(node.specializations())
+                    pass
                 elif isinstance(node, NamespaceProxy):
                     white.extend(node.declarations())
                 elif isinstance(node, TypedefProxy):

@@ -29,10 +29,6 @@ class DefaultMiddleEndPlugin(object):
         curr = time.time()
         diagnostic.cleaning = curr - prev
         diagnostic.current = len(asg)
-        #prev = time.time()
-        #diagnostic.invalidated = mark_invalid_pointers(asg)
-        #curr = time.time()
-        #diagnostic.invalidating = curr - prev
         return diagnostic
 
 middle_end['default'] = DefaultMiddleEndPlugin
@@ -51,7 +47,7 @@ class MiddleEndDiagnostic(object):
 
     .. seealso::
         :var:`middle_end` for a detailed documentation about AutoWIG middle-end step.
-        :func:`vplants.autowig_plugin.middle_end.DefaultMiddleEndPlugin.implementation` for an example.
+        :func:`vplants.autowig_plugin.autowig.DefaultMiddleEndPlugin.implementation` for an example.
     """
 
     def __init__(self):
@@ -169,6 +165,26 @@ def clean(self):
                     temp.append(base)
                 else:
                     base.clean = False
+            for ctr in node.constructors:
+                if ctr.clean:
+                    temp.append(ctr)
+                else:
+                    ctr.clean = False
+            for mtd in node.methods():
+                if mtd.clean:
+                    temp.append(mtd)
+                else:
+                    mtd.clean = False
+            for fld in node.fields():
+                if fld.clean:
+                    temp.append(fld)
+                else:
+                    fld.clean = False
+            for tdf in node.typedefs():
+                if tdf.clean:
+                    temp.append(tdf)
+                else:
+                    tdf.clean = False
             if isinstance(node, ClassTemplateSpecializationProxy):
                 specialize = node.specialize
                 if specialize.clean:
@@ -176,16 +192,24 @@ def clean(self):
                 else:
                     specialize.clean = False
                 for template in node.templates:
-                    if template.target.clean:
-                        temp.append(template.target)
+                    target = template.target
+                    if target.clean:
+                        temp.append(target)
                     else:
-                        template.target.clean = False
+                        target.clean = False
         elif isinstance(node, ClassTemplateProxy):
             for specialization in node.specializations():
                 if specialization.clean:
                     temp.append(specialization)
                 else:
                     specialization.clean = False
+    for tdf in self.typedefs():
+        if tdf.clean and not tdf.type.target.clean and not tdf.parent.clean:
+            tdf.clean = False
+            include = tdf.header
+            while not include is None:
+                include.clean = False
+                include = include.include
     nodes = [node for node in self.nodes() if node.clean]
     for node in nodes:
         if not node.node in ['::', '/']:
@@ -199,11 +223,11 @@ def clean(self):
         self._base_edges.pop(node.node, None)
         self._type_edges.pop(node.node, None)
         self._specialization_edges.pop(node.node, None)
-    for node in self.nodes():
-        del node.clean
-    for node, clean in cleanbuffer:
-        if node.node in self:
-            node.clean = clean
+    #for node in self.nodes():
+    #    del node.clean
+    #for node, clean in cleanbuffer:
+    #    if node.node in self:
+    #        node.clean = clean
 
 AbstractSemanticGraph.clean = clean
 del clean

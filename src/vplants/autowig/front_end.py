@@ -17,8 +17,8 @@ front_end = PluginFunctor.factory('autowig', implements='front-end')
 #    :attr:`plugin` for run-time available plugins.
 #"""
 
-from vplants.autowig_plugin.libclang import FrontEndPlugin
-front_end['libclang'] = FrontEndPlugin
+from vplants.autowig_plugin.autowig import LibclangFrontEndPlugin
+front_end['libclang'] = LibclangFrontEndPlugin
 if 'pyclanglite_plugin.autowig:FrontEndPlugin' in front_end:
     front_end.plugin = 'pyclanglite_plugin.autowig:FrontEndPlugin'
     front_end['pyclanglite'] = front_end.plugin
@@ -244,7 +244,7 @@ def compute_overloads(asg, force_overload):
     """
     if force_overload:
         for fct in asg.functions(free=None):
-            fct.overloaded = True
+            fct.is_overloaded = True
     else:
         for fct in asg.functions(free=None):
             if not fct.is_overloaded:

@@ -11,9 +11,10 @@ back_end = PluginFunctor.factory('autowig', implements='back-end')
 #    :attr:`plugin` for run-time available plugins.
 #"""
 
-from vplants.autowig_plugin.boost_python import BoostPythonBackEndPlugin
-back_end['boost_python'] = BoostPythonBackEndPlugin
-back_end.plugin = 'boost_python'
+from vplants.autowig_plugin.autowig import BoostPythonInMemoryBackEndPlugin, BoostPythonOnDiskBackEndPlugin
+back_end['boost_python:in_memory'] = BoostPythonInMemoryBackEndPlugin
+back_end['boost_python:on_disk'] = BoostPythonOnDiskBackEndPlugin
+back_end.plugin = 'boost_python:in_memory'
 
 class BackEndDiagnostic(object):
     """Diagnostic class for AutoWIG back-ends.
@@ -33,24 +34,11 @@ class BackEndDiagnostic(object):
     """
 
     def __init__(self):
-        self._nodes = []
-        self._files = 0
-        self._sloc = 0
+        self.files = 0
+        self.sloc = 0
         self.elapsed = 0.0
         self.project = "semi-detached"
-
-    @property
-    def files(self):
-        if self._files == 0:
-            self._files = len(self._nodes)
-        return self._files
-
-    @property
-    def sloc(self):
-        if self._sloc == 0:
-            for node in self._nodes:
-                self._sloc += node.sloc
-        return self._sloc
+        self.on_disk = False
 
     @property
     def effort(self):

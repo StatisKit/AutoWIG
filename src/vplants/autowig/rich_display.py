@@ -42,24 +42,23 @@ def load_ipython_extension(ipython):
                     <div style="text-align: center">
                         <table style="margin: 0 auto; max-width: 100%;">
                             <tr>
-                                <th>Total files generated</th>
+                                <th>Total files generated""" + " on disk" * self.on_disk + " in memory" * (1-self.on_disk) + """</th>
                                 <td>""" + str(self.files) + """ <i>(f)</i></td>
                             </tr>
                             <tr>
-                                <th>Total physical source lines of code</th>
+                                <th>Total source lines of code</th>
                                 <td>""" + str(self.sloc) + """ <i>(l)</i></td>
                             </tr>
                             <tr>
                                 <th>Elapsed time</th>
                                 <td>""" + str(round(self.elapsed, 2)) + """ <i>(s)</i></td>
                             </tr>
-                            <tr>
-                                <th> Basic COCOMO model software project</th>
-                                <td>""" + self.project + """</td>
-                            </tr>
-                            <tr>
+                            <caption style="display: table-caption; text-align: center; color: black"> Back-end step </caption>
+                        </table>
+                            <table style="margin: 0 auto; max-width: 100%;">
+                                <tr>
                                 <th>Development effort estimate</th>
-                                <td>""" + str(round(self.effort, 2)) + """ <i>(p/m)</i></td>
+                                <td>""" + str(round(self.effort, 2)) + """ <i>(p.m)</i></td>
                             </tr>
                             <tr>
                                 <th>Schedule estimate</th>
@@ -69,7 +68,7 @@ def load_ipython_extension(ipython):
                                 <th>Estimated average number of developers</th>
                                 <td>""" + str(round(self.manpower, 2)) + """ <i>(p)</i></td>
                             </tr>
-                            <caption style="display: table-caption; text-align: center; color: black"> Back-end step </caption>
+                            <caption style="display: table-caption; text-align: center; color: black"> """ + self.project.capitalize() + """ COCOMO model </caption>
                         </table>
                     </div>"""
 
@@ -160,7 +159,7 @@ def load_ipython_extension(ipython):
                         val=int(round(pct*total/100.0, 0))
                         return '{p:.2f}%  ({v:d})'.format(p=pct,v=val)
                     kwargs['autopct'] = autopct
-                labels = ['Others', 'Enum Constants', 'Enums', 'Variables', 'Functions', 'Classes']
+                labels = ['Others', 'Constants', 'Enumerations', 'Variables', 'Functions', 'Classes']
                 values, labels = zip(*[(value, label) for value, label in zip(values, labels) if value > 0])
                 axes.pie(values, *args, labels=labels, **kwargs)
                 axes.axis('equal')

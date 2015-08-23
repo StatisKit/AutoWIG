@@ -14,7 +14,9 @@ node_rename = PluginFunctor.factory('autowig', implements='name')
 
 PYTHON_OPERATOR = dict()
 PYTHON_OPERATOR['+'] = '__add__'
+PYTHON_OPERATOR['++'] = '__next__'
 PYTHON_OPERATOR['-'] = '__sub__'
+PYTHON_OPERATOR['--'] = '__prev__'
 PYTHON_OPERATOR['*'] = '__mul__'
 PYTHON_OPERATOR['/'] = '__div__'
 PYTHON_OPERATOR['%'] = '__mod__'
@@ -57,7 +59,7 @@ class PEP8NodeNamePlugin(object):
 
 
     def implementation(self, node, scope=False):
-        from vplants.autowig.asg import VariableProxy, FunctionProxy, MethodProxy, ClassProxy, ClassTemplateSpecializationProxy, TypedefProxy, EnumProxy, EnumConstantProxy, NamespaceProxy
+        from vplants.autowig.asg import VariableProxy, FunctionProxy, MethodProxy, ClassProxy, ClassTemplateSpecializationProxy, ClassTemplateProxy, TypedefProxy, EnumProxy, EnumConstantProxy, NamespaceProxy
         if isinstance(node, MethodProxy) and node.localname.startswith('operator'):
             operator = node.localname.strip('operator').strip()
             if operator in PYTHON_OPERATOR:
@@ -79,10 +81,13 @@ class PEP8NodeNamePlugin(object):
         elif isinstance(node, EnumConstantProxy):
             return camel_case_to_upper(node.localname)
         elif isinstance(node, ClassTemplateSpecializationProxy):
-            return '_' + to_camel_case(remove_templates(node.localname)).strip('_') + '_' + node.hash
+            if not scope:
+                return '_' + to_camel_case(remove_templates(node.localname)).strip('_') + '_' + node.hash
+            else:
+                return '__' + camel_case_to_lower(remove_templates(node.localname)).strip('_') + '_' + node.hash
         elif isinstance(node, TypedefProxy):
             return to_camel_case(node.localname)
-        elif isinstance(node, ClassProxy):
+        elif isinstance(node, (ClassTemplateProxy, ClassProxy)):
             if scope:
                 return '_' + camel_case_to_lower(node.localname).strip('_')
             else:
