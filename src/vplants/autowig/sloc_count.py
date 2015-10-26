@@ -2,7 +2,7 @@ from openalea.core.plugin.functor import PluginFunctor
 
 __all__ = ['sloc_count']
 
-sloc_count = PluginFunctor.factory('SLOC', implements='counter')
+sloc_count = PluginFunctor.factory('autowig.sloc_count')
 #sloc_count.__class__.__doc__ = """Source Line Of Code counters functor
 #
 #.. seealso::
@@ -12,7 +12,8 @@ sloc_count = PluginFunctor.factory('SLOC', implements='counter')
 class BasicSlocCountPlugin(object):
     """Basic plugin for source line of codes count"""
 
-    implements = 'counter'
+    def __call__(self):
+        return self
 
     def implementation(self, content, *args, **kwargs):
         """
@@ -20,22 +21,23 @@ class BasicSlocCountPlugin(object):
         return content.count('\n')+1
 
 sloc_count['basic'] = BasicSlocCountPlugin
-sloc_count.plugin = 'basic'
+#sloc_count.plugin = 'basic'
 
 class IntermediateSlocCountPlugin(object):
     """Intermediate plugin for source line of codes count"""
 
-    implements = 'counter'
+    def __call__(self):
+        return self
 
     def implementation(self, content, *args, **kwargs):
         """
         """
         return len([line for line in content.splitlines() if line])
 
+sloc_count['intermediate'] = IntermediateSlocCountPlugin
+
 class AdvancedSlocCountPlugin(object):
     """Advanced plugin for source of coudes count"""
-
-    implements = 'counter'
 
     def implementation(self, content, language=None, *args, **kwargs):
         """
@@ -77,3 +79,5 @@ class AdvancedSlocCountPlugin(object):
             warnings.warn('\'language\' parameter \'' + str(language) +'\' not found', UserWarning)
             sloc = intermediate_sloc(content)
         return sloc
+
+sloc_count['advanced'] = AdvancedSlocCountPlugin

@@ -3,8 +3,6 @@ class NodePathPlugin(object):
 
     modulename = 'vplants.autowig.node_path'
 
-    tags = ['node', 'path']
-
 class FlatNodePathPlugin(NodePathPlugin):
     """Plugin for the flat path computation of a node"""
 

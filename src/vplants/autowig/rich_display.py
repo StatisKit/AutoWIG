@@ -20,15 +20,15 @@ def load_ipython_extension(ipython):
             from pygments.lexers import CLexer, CppLexer, PythonLexer
             from pygments.formatters import HtmlFormatter
             if not self.language is None:
-                if self.language == 'c':
+                if self.language == 'c' or self.suffix == '.c':
                     lexer = CLexer()
-                elif self.language == 'c++':
+                elif self.language == 'c++' or self.suffix == '.cpp':
                     lexer = CppLexer()
-                elif self.language == 'py':
+                elif self.language == 'py' or self.suffix == '.py':
                     lexer = PythonLexer()
                 else:
                     raise NotImplementedError('\'language\': '+str(self.language))
-                return highlight(str(self), lexer, HtmlFormatter(full = True))
+                return highlight(self.content, lexer, HtmlFormatter(full = True))
             else:
                 return str(self)
 
@@ -42,24 +42,19 @@ def load_ipython_extension(ipython):
                     <div style="text-align: center">
                         <table style="margin: 0 auto; max-width: 100%;">
                             <tr>
-                                <th>Total files generated</th>
+                                <th>Total files generated""" + " on disk" * self.on_disk + " in memory" * (1-self.on_disk) + """</th>
                                 <td>""" + str(self.files) + """ <i>(f)</i></td>
                             </tr>
                             <tr>
-                                <th>Total physical source lines of code</th>
+                                <th>Total source lines of code</th>
                                 <td>""" + str(self.sloc) + """ <i>(l)</i></td>
                             </tr>
-                            <tr>
-                                <th>Elapsed time</th>
-                                <td>""" + str(round(self.elapsed, 2)) + """ <i>(s)</i></td>
-                            </tr>
-                            <tr>
-                                <th> Basic COCOMO model software project</th>
-                                <td>""" + self.project + """</td>
-                            </tr>
-                            <tr>
+                            <caption style="display: table-caption; text-align: center; color: black"> Back-end step </caption>
+                        </table>
+                            <table style="margin: 0 auto; max-width: 100%;">
+                                <tr>
                                 <th>Development effort estimate</th>
-                                <td>""" + str(round(self.effort, 2)) + """ <i>(p/m)</i></td>
+                                <td>""" + str(round(self.effort, 2)) + """ <i>(p.m)</i></td>
                             </tr>
                             <tr>
                                 <th>Schedule estimate</th>
@@ -69,7 +64,7 @@ def load_ipython_extension(ipython):
                                 <th>Estimated average number of developers</th>
                                 <td>""" + str(round(self.manpower, 2)) + """ <i>(p)</i></td>
                             </tr>
-                            <caption style="display: table-caption; text-align: center; color: black"> Back-end step </caption>
+                            <caption style="display: table-caption; text-align: center; color: black"> """ + self.project.capitalize() + """ COCOMO model </caption>
                         </table>
                     </div>"""
 
@@ -160,7 +155,7 @@ def load_ipython_extension(ipython):
                         val=int(round(pct*total/100.0, 0))
                         return '{p:.2f}%  ({v:d})'.format(p=pct,v=val)
                     kwargs['autopct'] = autopct
-                labels = ['Others', 'Enum Constants', 'Enums', 'Variables', 'Functions', 'Classes']
+                labels = ['Others', 'Constants', 'Enumerations', 'Variables', 'Functions', 'Classes']
                 values, labels = zip(*[(value, label) for value, label in zip(values, labels) if value > 0])
                 axes.pie(values, *args, labels=labels, **kwargs)
                 axes.axis('equal')
@@ -186,14 +181,14 @@ def load_ipython_extension(ipython):
 
         def _repr_svg_(self):
             fig = Figure(figsize=(15,8))
-            axes = self.plot('step', axes=fig.add_subplot(3,2,1))
+            axes = self.plot('step', axes=fig.add_subplot(2,2,1))
             axes.set_title('Front-end steps')
             axes = self.plot('asg', axes=fig.add_subplot(1,2,2))
             axes.set_title('Abstract Semantic Graph')
-            axes = self.processing.plot(axes=fig.add_subplot(3,2,3), norm=True)
-            axes.set_title('Front-end ' + self.processing.name + ' processing step')
-            axes = self.postprocessing.plot(axes=fig.add_subplot(3,2,5), norm=True)
-            axes.set_title('Front-end post-processing step')
+            #axes = self.processing.plot(axes=fig.add_subplot(2,2,3), norm=True)
+            #axes.set_title('Front-end ' + self.processing.name + ' processing step')
+            #axes = self.postprocessing.plot(axes=fig.add_subplot(3,2,5), norm=True)
+            #axes.set_title('Front-end post-processing step')
             canvas = FigureCanvasAgg(fig)
             filehandler = NamedTemporaryFile(suffix='.svg')
             canvas.print_figure(filehandler.name)
@@ -216,33 +211,34 @@ def load_ipython_extension(ipython):
             plt.close(fig)
             img = display.SVG(filename=filehandler.name)
             html += '\t\t\t<img style="margin: 0 auto; max-width: 100%;" src="data:image/svg+xml;utf8,' + img._repr_svg_().replace('"', "'") + '"/>\n'
-            html += '\t\t\t<figcaption style="display: table-caption; text-align: center">Front-end steps</figcaption>\n'
+            html += '\t\t\t<figcaption>Front-end steps</figcaption>\n'
             #del fig, axes, canvas, img
             html += '\t\t</figure>\n'
-            html += '\t\t<figure style="display: table">\n'
-            fig = Figure(figsize=(5,2))
-            axes = self.processing.plot(norm=True, axes=fig.add_subplot(1,1,1))
-            canvas = FigureCanvasAgg(fig)
-            filehandler = NamedTemporaryFile(suffix='.svg')
-            canvas.print_figure(filehandler.name)
-            plt.close(fig)
-            img = display.SVG(filename=filehandler.name)
-            html += '\t\t\t<img style="margin: 0 auto; max-width: 100%;" src="data:image/svg+xml;utf8,' + img._repr_svg_().replace('"', "'") + '"/>\n'
-            #del fig, axes, canvas, img
-            html += '\t\t\t<figcaption style="display: table-caption; text-align: center">Front-end ' + self.processing.name + ' processing step</figcaption>\n'
-            html += '\t\t</figure>\n'
-            html += '\t\t<figure style="display: table">\n'
-            fig = Figure(figsize=(5,2))
-            axes = self.postprocessing.plot(norm=True, axes=fig.add_subplot(1,1,1))
-            canvas = FigureCanvasAgg(fig)
-            filehandler = NamedTemporaryFile(suffix='.svg')
-            canvas.print_figure(filehandler.name)
-            plt.close(fig)
-            img = display.SVG(filename=filehandler.name)
-            html += '\t\t\t<img style="margin: 0 auto; max-width: 100%;" src="data:image/svg+xml;utf8,' + img._repr_svg_().replace('"', "'") + '"/>\n'
-            #del fig, axes, canvas, img
-            html += '\t\t\t<figcaption style="display: table-caption; text-align: center">Front-end post-processing step</figcaption>\n'
-            html += '\t\t</figure>\n'
+            html += '\t\t\n'.join(self.processing._repr_html_().splitlines())
+            #html += '\t\t<figure style="display: table">\n'
+            #fig = Figure(figsize=(5,2))
+            #axes = self.processing.plot(norm=True, axes=fig.add_subplot(1,1,1))
+            #canvas = FigureCanvasAgg(fig)
+            #filehandler = NamedTemporaryFile(suffix='.svg')
+            #canvas.print_figure(filehandler.name)
+            #plt.close(fig)
+            #img = display.SVG(filename=filehandler.name)
+            #html += '\t\t\t<img style="margin: 0 auto; max-width: 100%;" src="data:image/svg+xml;utf8,' + img._repr_svg_().replace('"', "'") + '"/>\n'
+            ##del fig, axes, canvas, img
+            #html += '\t\t\t<figcaption style="display: table-caption; text-align: center">Front-end ' + self.processing.name + ' processing step</figcaption>\n'
+            #html += '\t\t</figure>\n'
+            #html += '\t\t<figure style="display: table">\n'
+            #fig = Figure(figsize=(5,2))
+            #axes = self.postprocessing.plot(norm=True, axes=fig.add_subplot(1,1,1))
+            #canvas = FigureCanvasAgg(fig)
+            #filehandler = NamedTemporaryFile(suffix='.svg')
+            #canvas.print_figure(filehandler.name)
+            #plt.close(fig)
+            #img = display.SVG(filename=filehandler.name)
+            #html += '\t\t\t<img style="margin: 0 auto; max-width: 100%;" src="data:image/svg+xml;utf8,' + img._repr_svg_().replace('"', "'") + '"/>\n'
+            ##del fig, axes, canvas, img
+            #html += '\t\t\t<figcaption style="display: table-caption; text-align: center">Front-end post-processing step</figcaption>\n'
+            #html += '\t\t</figure>\n'
             html += '\t</div>\n'
             html += '\t<div style="float: right; max-width: 60%;">\n'
             html += '\t\t<figure style="display: table">\n'
@@ -255,7 +251,7 @@ def load_ipython_extension(ipython):
             img = display.SVG(filename=filehandler.name)
             html += '\t\t\t<img style="margin: 0 auto; max-width: 100%;" src="data:image/svg+xml;utf8,' + img._repr_svg_().replace('"', "'") + '"/>\n'
             #del fig, axes, canvas, img
-            html += '\t\t\t<figcaption style="display: table-caption; text-align: center">Abstract Semantic Graph</figcaption>\n'
+            html += '\t\t\t<figcaption>Abstract Semantic Graph</figcaption>\n'
             html += '\t\t</figure>\n'
             html += '\t</div>\n'
             html += '</div>'
@@ -264,39 +260,39 @@ def load_ipython_extension(ipython):
         FrontEndDiagnostic._repr_html_ = _repr_html_
         del _repr_html_
 
-        def plot(self, axes=None, norm=False, width=.8, rotation=0, *args, **kwargs):
-            if axes is None:
-                axes = plt.subplot(1,1,1)
-            elif not isinstance(axes, plt.Axes):
-                raise TypeError('`axes` parameter')
-            y = [self.overloading, self.discarding, self.templating]
-            if norm:
-                y = [i/self.total*100 for i in y]
-            axes.bar([i-width/2. for i in range(len(y))], y, *args, **kwargs)
-            axes.set_xticks(range(len(y)))
-            axes.set_xticklabels(['Overloading', 'Discarding', 'Templating'], rotation=rotation)
-            if norm:
-                axes.set_ylabel('Elapsed time (%)')
-            else:
-                axes.set_ylabel('Elapsed time (s)')
-            return axes
+        #def plot(self, axes=None, norm=False, width=.8, rotation=0, *args, **kwargs):
+        #    if axes is None:
+        #        axes = plt.subplot(1,1,1)
+        #    elif not isinstance(axes, plt.Axes):
+        #        raise TypeError('`axes` parameter')
+        #    y = [self.overloading, self.discarding, self.templating]
+        #    if norm:
+        #        y = [i/self.total*100 for i in y]
+        #    axes.bar([i-width/2. for i in range(len(y))], y, *args, **kwargs)
+        #    axes.set_xticks(range(len(y)))
+        #    axes.set_xticklabels(['Overloading', 'Discarding', 'Templating'], rotation=rotation)
+        #    if norm:
+        #        axes.set_ylabel('Elapsed time (%)')
+        #    else:
+        #        axes.set_ylabel('Elapsed time (s)')
+        #    return axes
 
-        PostProcessingDiagnostic.plot = plot
-        del plot
+        #PostProcessingDiagnostic.plot = plot
+        #del plot
 
-        def _repr_svg_(self):
-            fig = Figure(figsize=(5,5))
-            axes = self.plot(axes=fig.add_subplot(1,1,1))
-            axes.set_title('Front-end post-processing step')
-            canvas = FigureCanvasAgg(fig)
-            filehandler = NamedTemporaryFile(suffix='.svg')
-            canvas.print_figure(filehandler.name)
-            plt.close(fig)
-            img = display.SVG(filename=filehandler.name)
-            return img._repr_svg_()
+        #def _repr_svg_(self):
+        #    fig = Figure(figsize=(5,5))
+        #    axes = self.plot(axes=fig.add_subplot(1,1,1))
+        #    axes.set_title('Front-end post-processing step')
+        #    canvas = FigureCanvasAgg(fig)
+        #    filehandler = NamedTemporaryFile(suffix='.svg')
+        #    canvas.print_figure(filehandler.name)
+        #    plt.close(fig)
+        #    img = display.SVG(filename=filehandler.name)
+        #    return img._repr_svg_()
 
-        PostProcessingDiagnostic._repr_svg_ = _repr_svg_
-        del _repr_svg_
+        #PostProcessingDiagnostic._repr_svg_ = _repr_svg_
+        #del _repr_svg_
 
         #PostProcessingDiagnostic._repr_html_ = _repr_html_
 
@@ -336,7 +332,10 @@ def load_ipython_extension(ipython):
         LibclangDiagnostic._repr_svg_ = _repr_svg_
         del _repr_svg_
 
-        #LibclangDiagnostic._repr_html_ = _repr_html_
+        def _repr_html_(self):
+            return ''
+
+        LibclangDiagnostic._repr_html_ = _repr_html_
 
         from .middle_end import MiddleEndDiagnostic
 
@@ -399,22 +398,22 @@ def load_ipython_extension(ipython):
 
         def _repr_html_(self):
             html = '<div style="text-align: center; max-width: 100%;">\n'
-            html += '\t<div style="float: left; max-width: 40%;">\n'
-            html += '\t\t<figure style="display: table">\n'
-            fig = Figure(figsize=(5,5))
-            axes = self.plot('step', axes=fig.add_subplot(1,1,1))
-            canvas = FigureCanvasAgg(fig)
-            filehandler = NamedTemporaryFile(suffix='.svg')
-            canvas.print_figure(filehandler.name)
-            plt.close(fig)
-            img = display.SVG(filename=filehandler.name)
-            html += '\t\t\t<img style="margin: 0 auto; max-width: 100%;" src="data:image/svg+xml;utf8,' + img._repr_svg_().replace('"', "'") + '"/>\n'
-            html += '\t\t\t<figcaption style="display: table-caption; text-align: center">Middle-end steps</figcaption>\n'
-            #del fig, axes, canvas, img
-            html += '\t\t</figure>\n'
-            html += '\t</div>\n'
-            html += '\t<div style="float: right; max-width: 60%;">\n'
-            html += '\t\t<figure style="display: table">\n'
+            #html += '\t<div style="float: left; max-width: 40%;">\n'
+            #html += '\t\t<figure style="display: table">\n'
+            #fig = Figure(figsize=(5,5))
+            #axes = self.plot('step', axes=fig.add_subplot(1,1,1))
+            #canvas = FigureCanvasAgg(fig)
+            #filehandler = NamedTemporaryFile(suffix='.svg')
+            #canvas.print_figure(filehandler.name)
+            #plt.close(fig)
+            #img = display.SVG(filename=filehandler.name)
+            #html += '\t\t\t<img style="margin: 0 auto; max-width: 100%;" src="data:image/svg+xml;utf8,' + img._repr_svg_().replace('"', "'") + '"/>\n'
+            #html += '\t\t\t<figcaption style="display: table-caption; text-align: center">Middle-end steps</figcaption>\n'
+            ##del fig, axes, canvas, img
+            #html += '\t\t</figure>\n'
+            #html += '\t</div>\n'
+            #html += '\t<div style="float: right; max-width: 60%;">\n'
+            html += '\t<figure style="display: tables;"">\n'
             fig = Figure(figsize=(5,5))
             axes = self.plot('asg', axes=fig.add_subplot(1,1,1))
             canvas = FigureCanvasAgg(fig)
@@ -422,11 +421,11 @@ def load_ipython_extension(ipython):
             canvas.print_figure(filehandler.name)
             plt.close(fig)
             img = display.SVG(filename=filehandler.name)
-            html += '\t\t\t<img style="margin: 0 auto; max-width: 100%;" src="data:image/svg+xml;utf8,' + img._repr_svg_().replace('"', "'") + '"/>\n'
+            html += '\t\t<img style="margin: 0 auto; max-width: 100%;" src="data:image/svg+xml;utf8,' + img._repr_svg_().replace('"', "'") + '"/>\n'
             #del fig, axes, canvas, img
-            html += '\t\t\t<figcaption style="display: table-caption; text-align: center">Abstract Semantic Graph</figcaption>\n'
-            html += '\t\t</figure>\n'
-            html += '\t</div>\n'
+            html += '\t\t<figcaption>Abstract Semantic Graph</figcaption>\n'
+            html += '\t</figure>\n'
+            #html += '\t</div>\n'
             html += '</div>'
             return html
 

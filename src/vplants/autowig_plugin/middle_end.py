@@ -3,5 +3,3 @@ class MiddleEndPlugin(object):
 
     modulename = 'vplants.autowig.default_middle_end'
     objectname = 'default_middle_end'
-
-    implements = 'middle-end'

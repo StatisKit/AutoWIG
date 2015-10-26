@@ -12,6 +12,7 @@ import warnings
 import hashlib
 
 from .sloc_count import sloc_count
+sloc_count.plugin = 'basic'
 from .tools import subclasses, split_scopes, remove_templates
 from .custom_warnings import NotWrittenFileWarning, ErrorWarning, NoneTypeWarning,  UndeclaredParentWarning, MultipleDeclaredParentWarning, MultipleDefinitionWarning, NoDefinitionWarning, SideEffectWarning, ProtectedFileWarning, InfoWarning, TemplateParentWarning, TemplateParentWarning, AnonymousWarning, AnonymousFunctionWarning, AnonymousFieldWarning, AnonymousClassWarning, NotImplementedWarning, NotImplementedTypeWarning, NotImplementedDeclWarning, NotImplementedParentWarning, NotImplementedOperatorWarning, NotImplementedTemplateWarning
 
@@ -26,7 +27,10 @@ class NodeProxy(object):
         self._node = node
 
     def __eq__(self, other):
-        return self.asg == other.asg and self.node == other.node
+        if isinstance(other, NodeProxy):
+            return self.asg == other.asg and self.node == other.node
+        else:
+            return False
 
     @property
     def asg(self):
@@ -50,7 +54,7 @@ class NodeProxy(object):
         try:
             return self.asg._nodes[self.node][attr]
         except KeyError:
-            raise AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
+            raise #AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
         except:
             raise
 
@@ -179,7 +183,11 @@ class FileProxy(NodeProxy):
 
     @property
     def suffix(self):
-        return self.localname[self.localname.rfind('.'):]
+        index = self.localname.rfind('.')
+        if index > 0:
+            return self.localname[index:]
+        else:
+            return ''
 
     @property
     def sloc(self):
@@ -197,13 +205,10 @@ class FileProxy(NodeProxy):
         parent = self.parent
         if not parent.on_disk:
             parent.makedirs()
-        filehandler = open(self.globalname, 'w')
-        try:
-            filehandler.write(str(self))
-        except:
-            filehandler.close()
-            raise
-        else:
+        content = self.content
+        self.content = content
+        with open(self.globalname, 'w') as filehandler:
+            filehandler.write(content)
             filehandler.close()
             self.asg._nodes[self.node]['on_disk'] = True
 
@@ -213,13 +218,10 @@ class FileProxy(NodeProxy):
 
     @property
     def is_empty(self):
-        return str(self) == ""
+        return self.content == ""
 
     def __repr__(self):
         return self.node
-
-    def __str__(self):
-        return self.content
 
     def md5(self):
         return hashlib.md5(str(self)).hexdigest()
@@ -532,14 +534,25 @@ class TypeSpecifiersProxy(EdgeProxy):
 
     @property
     def is_const(self):
-        return self.specifiers.endswith('const')
+        if self.specifiers.endswith('&&'):
+            return self.specifiers.endswith('const &&')
+        elif self.specifiers.endswith('&'):
+            return self.specifiers.endswith('const &')
+        else:
+            return self.specifiers.endswith('const')
 
     @property
     def is_reference(self):
-        if self.is_const:
-            return self.specifiers.endswith('& const')
-        else:
-            return self.specifiers.endswith('&')
+        return self.specifiers.endswith('&') or self.specifiers.endswith('& const')
+
+    @property
+    def is_rvalue_reference(self):
+        return self.specifiers.endswith('&&') or self.specifiers.endswith('&& const')
+
+
+    @property
+    def is_lvalue_reference(self):
+        return self.is_reference() and not self.is_rvalue_reference()
 
     @property
     def is_pointer(self):
@@ -772,6 +785,28 @@ def del_is_overloaded(self):
 FunctionProxy.is_overloaded = property(get_is_overloaded, set_is_overloaded, del_is_overloaded)
 del get_is_overloaded, set_is_overloaded
 
+def get_call_policy(self):
+    if hasattr(self, '_call_policy'):
+        return self._call_policy
+    else:
+        result_type = self.result_type
+        if result_type.is_pointer:
+            return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
+        elif result_type.is_reference:
+            if result_type.is_const or isinstance(result_type.target, (FundamentalTypeProxy, EnumProxy)):
+                return 'boost::python::return_value_policy< boost::python::return_by_value >()'
+            else:
+                return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
+
+def set_call_policy(self, call_policy):
+    self.asg._nodes[self.node].pop('_call_policy', call_policy)
+
+def del_call_policy(self):
+    self.asg._nodes[self.node].pop('_call_policy', None)
+
+FunctionProxy.call_policy = property(get_call_policy, set_call_policy, del_call_policy)
+del get_call_policy, set_call_policy, del_call_policy
+
 class MethodProxy(FunctionProxy):
     """
     """
@@ -793,6 +828,54 @@ class MethodProxy(FunctionProxy):
                     raise ValueError('\'' + self.globalname + '\' parent (\'' + parent + '\') was not found')
                 parent = self.asg[parent]
             return parent
+
+def get_call_policy(self):
+    if hasattr(self, '_call_policy'):
+        return self._call_policy
+    else:
+        result_type = self.result_type
+        if result_type.is_pointer:
+            return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
+        elif result_type.is_reference:
+            if result_type.is_const or isinstance(result_type.target, (FundamentalTypeProxy, EnumProxy)):
+                return 'boost::python::return_value_policy< boost::python::return_by_value >()'
+            else:
+                return 'boost::python::return_internal_reference<>()'
+
+def set_call_policy(self, call_policy):
+    self.asg._nodes[self.node].pop('_call_policy', call_policy)
+
+def del_call_policy(self):
+    self.asg._nodes[self.node].pop('_call_policy', None)
+
+MethodProxy.call_policy = property(get_call_policy, set_call_policy, del_call_policy)
+del get_call_policy, set_call_policy, del_call_policy
+
+#class ConversionProxy(DeclarationProxy):
+#    """
+#    """
+#
+#    @property
+#    def parent(self):
+#        parent = remove_templates(self.globalname)
+#        parent = parent[:parent.rindex(':')-1]
+#        if parent == '':
+#            return self.asg['::']
+#        else:
+#            for decorator in ['class', 'struct', 'union']:
+#                decorator += ' ' + parent
+#                if decorator in self.asg._nodes:
+#                    parent = self.asg[decorator]
+#                    break
+#            if not isinstance(parent, NodeProxy):
+#                if not parent in self.asg._nodes:
+#                    raise ValueError('\'' + self.globalname + '\' parent (\'' + parent + '\') was not found')
+#                parent = self.asg[parent]
+#            return parent
+#
+#    @property
+#    def type(self):
+#        return TypeSpecifiersProxy(self.asg, **self.asg._type_edges[self.node])
 
 class ConstructorProxy(DeclarationProxy):
     """
@@ -882,10 +965,13 @@ class ClassProxy(DeclarationProxy):
 
     def bases(self, inherited=False):
         bases = []
+        already = set()
         for base in self.asg._base_edges[self.node]:
-            bases.append(self.asg[base['base']])
-            bases[-1].access = base['access']
-            bases[-1].is_virtual_base = base['is_virtual']
+            if not base['base'] in already:
+                already.add(base['base'])
+                bases.append(self.asg[base['base']])
+                bases[-1].access = base['access']
+                bases[-1].is_virtual_base = base['is_virtual']
         if not inherited:
             return bases
         else:
@@ -942,6 +1028,9 @@ class ClassProxy(DeclarationProxy):
 
     def enum_constants(self, inherited=False):
         return [cst for cst in self.declarations(inherited) if isinstance(cst, EnumConstantProxy)]
+
+    def typedefs(self, inherited=False):
+        return [tdf for tdf in self.declarations(inherited) if isinstance(tdf, TypedefProxy)]
 
     def fields(self, inherited=False):
         return [field for field in self.declarations(inherited) if isinstance(field, FieldProxy)]
@@ -1506,7 +1595,7 @@ class AbstractSemanticGraph(object):
                     if isinstance(node, ClassTemplateSpecializationProxy):
                         white.extend([tpl.target for tpl in node.templates])
                 elif isinstance(node, ClassTemplateProxy):
-                    white.extend(node.specializations())
+                    pass
                 elif isinstance(node, NamespaceProxy):
                     white.extend(node.declarations())
                 elif isinstance(node, TypedefProxy):
@@ -1535,7 +1624,7 @@ class AbstractSemanticGraph(object):
     def __getitem__(self, node):
         if isinstance(node, NodeProxy):
             node = node.globalname
-        elif not isinstance(node, basestring):
+        if not isinstance(node, basestring):
             raise TypeError('`node` parameter')
         if node in self._nodes:
             return self._nodes[node]["proxy"](self, node)
@@ -1549,7 +1638,16 @@ class AbstractSemanticGraph(object):
                     parent = directory.parent
                 return directory
             else:
-                raise KeyError('\'' + node + '\' parameter')
+                node = path(node)
+                if node.exists():
+                    if node.isfile():
+                        return self.add_file(str(node))
+                    elif node.isdir():
+                        return self.add_directory(str(node))
+                    else:
+                        raise KeyError('\'' + node + '\' parameter')
+                else:
+                    raise KeyError('\'' + node + '\' parameter')
 
 __all__ += [subclass.__name__.rsplit('.', 1).pop() for subclass in subclasses(NodeProxy)]
 __all__ += [subclass.__name__.rsplit('.', 1).pop() for subclass in subclasses(EdgeProxy)]
