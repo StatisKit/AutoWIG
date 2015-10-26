@@ -6,34 +6,6 @@ from .asg import *
 
 __all__ = [ 'middle_end']
 
-middle_end = PluginFunctor.factory('autowig', implements='middle-end')
-#middle_end.__class__.__doc__ = """AutoWIG middle-ends functor
-#
-#.. seealso::
-#    :attr:`plugin` for run-time available plugins.
-#"""
-
-class DefaultMiddleEndPlugin(object):
-    """Basic plugin for source line of codes count"""
-
-    implements = 'middle-end'
-
-    def implementation(self, asg, *args, **kwargs):
-        """
-        """
-        from vplants.autowig.middle_end import MiddleEndDiagnostic
-        diagnostic = MiddleEndDiagnostic()
-        diagnostic.previous = len(asg)
-        prev = time.time()
-        asg.clean()
-        curr = time.time()
-        diagnostic.cleaning = curr - prev
-        diagnostic.current = len(asg)
-        return diagnostic
-
-middle_end['default'] = DefaultMiddleEndPlugin
-middle_end.plugin = 'default'
-
 class MiddleEndDiagnostic(object):
     """Diagnostic class for AutoWIG middle-ends.
 
@@ -94,7 +66,14 @@ del _clean_default
 
 def _clean_default(self):
     header = self.header
-    return header is None or header.clean
+    if header is not None and not header.clean:
+        parent = self.parent
+        if isinstance(parent, ClassProxy) and not self.access == 'public':
+            return True
+        else:
+            return False
+    else:
+        return True
 
 CodeNodeProxy._clean_default = property(_clean_default, doc="""
 """)
@@ -161,30 +140,37 @@ def clean(self):
                     target.clean = False
         elif isinstance(node, ClassProxy):
             for base in node.bases():
-                if base.clean:
-                    temp.append(base)
-                else:
-                    base.clean = False
-            for ctr in node.constructors:
-                if ctr.clean:
-                    temp.append(ctr)
-                else:
-                    ctr.clean = False
-            for mtd in node.methods():
-                if mtd.clean:
-                    temp.append(mtd)
-                else:
-                    mtd.clean = False
-            for fld in node.fields():
-                if fld.clean:
-                    temp.append(fld)
-                else:
-                    fld.clean = False
-            for tdf in node.typedefs():
-                if tdf.clean:
-                    temp.append(tdf)
-                else:
-                    tdf.clean = False
+                if base.access == 'public':
+                    if base.clean:
+                        temp.append(base)
+                    else:
+                        base.clean = False
+            for dcl in node.declarations(): # constr
+                if dcl.access == 'public':
+                    if dcl.clean:
+                        temp.append(dcl)
+                    else:
+                        dcl.clean = False
+            #for mtd in node.methods():
+            #    if mtd.access == 'public':
+            #        if mtd.clean:
+            #            temp.append(mtd)
+            #        else:
+            #            mtd.clean = False
+            #for fld in node.fields():
+            #    if fld.access == 'public':
+            #        if fld.clean:
+            #            temp.append(fld)
+            #        else:
+            #            fld.clean = False
+            #for tdf in node.typedefs():
+            #    if tdf.access == 'public':
+            #        if tdf.clean:
+            #            temp.append(tdf)
+            #        else:
+            #            tdf.clean = False
+            #for cls in node.classes():
+            #    if cls.access == 'public':
             if isinstance(node, ClassTemplateSpecializationProxy):
                 specialize = node.specialize
                 if specialize.clean:
@@ -216,6 +202,9 @@ def clean(self):
             self._syntax_edges[node.parent.node].remove(node.node)
             if isinstance(node, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy)):
                 self._specialization_edges[node.specialize.node].remove(node.node)
+            #if isinstance(node, ClassProxy):
+            #    for inh in node.inheritors():
+            #        self._base_edges[inh.node] = [base for base in self._base_edges[inh.node] if not base['base'] == node.node]
     for node in nodes:
         self._nodes.pop(node.node)
         self._include_edges.pop(node.node, None)
@@ -223,11 +212,15 @@ def clean(self):
         self._base_edges.pop(node.node, None)
         self._type_edges.pop(node.node, None)
         self._specialization_edges.pop(node.node, None)
-    #for node in self.nodes():
-    #    del node.clean
-    #for node, clean in cleanbuffer:
-    #    if node.node in self:
-    #        node.clean = clean
+    nodes = set([node.node for node in nodes])
+    for node in self.nodes():
+        if isinstance(node, ClassProxy):
+            self._base_edges[node.node] = [base for base in self._base_edges[node.node] if not base['base'] in nodes]
+        del node.clean
+    for node, clean in cleanbuffer:
+        if node.node in self:
+            node.clean = clean
+
 
 AbstractSemanticGraph.clean = clean
 del clean
@@ -353,14 +346,14 @@ del clean
 
 def get_is_smart_pointer(self):
     if not hasattr(self, '_is_smart_pointer'):
-        self.asg._nodes[self.node]['_is_smart_pointer'] = all(any(mtd.localname == 'operator->' for mtd in cls.methods() if mtd.access == 'public') for cls in self.specializations(partial=False))
+        return False
     return self._is_smart_pointer
 
 def set_is_smart_pointer(self, is_smart_pointer):
     self.asg._nodes[self.node]['_is_smart_pointer'] = is_smart_pointer
 
 def del_is_smart_pointer(self):
-    self.asg._nodes[self.node].pop('_is_smart_pointer', None)
+    self.asg._nodes[self.node].pop('_is_smart_pointer', False)
 
 ClassTemplateProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc = """
 """)
@@ -378,6 +371,13 @@ def del_is_smart_pointer(self):
 doc_is_smart_pointer = """
 """
 ClassTemplateSpecializationProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc = doc_is_smart_pointer)
+del get_is_smart_pointer
+
+def get_is_smart_pointer(self):
+    return self.specialize.is_smart_pointer
+
+doc_is_smart_pointer = """
+"""
 ClassTemplatePartialSpecializationProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc = doc_is_smart_pointer)
 del get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc_is_smart_pointer
 
@@ -410,3 +410,31 @@ del get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc_is_sma
 #            if mv:
 #                self._syntax_edges[fct.parent.node].remove(fct.node)
 #                self._syntax_edges[cls.node].append(fct.node)
+
+middle_end = PluginFunctor.factory('autowig.middle_end')
+
+#middle_end.__class__.__doc__ = """AutoWIG middle-ends functor
+#
+#.. seealso::
+#    :attr:`plugin` for run-time available plugins.
+#"""
+
+#class DefaultMiddleEndPlugin(object):
+#    """Basic plugin for source line of codes count"""
+#
+#    implements = 'middle-end'
+#
+#    def implementation(self, asg, *args, **kwargs):
+#        """
+#        """
+#        from vplants.autowig.middle_end import MiddleEndDiagnostic
+#        diagnostic = MiddleEndDiagnostic()
+#        diagnostic.previous = len(asg)
+#        prev = time.time()
+#        asg.clean()
+#        curr = time.time()
+#        diagnostic.cleaning = curr - prev
+#        diagnostic.current = len(asg)
+#        return diagnostic
+
+middle_end['default'] = 'vplants.autowig_plugin.middle_end:MiddleEndPlugin'

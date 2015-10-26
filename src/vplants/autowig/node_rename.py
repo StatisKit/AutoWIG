@@ -90,8 +90,10 @@ class PEP8NodeNamePlugin(object):
         elif isinstance(node, (ClassTemplateProxy, ClassProxy)):
             if scope:
                 return '_' + camel_case_to_lower(node.localname).strip('_')
-            else:
+            elif isinstance(node, ClassProxy):
                 return to_camel_case(node.localname)
+            else:
+                return '_' + to_camel_case(node.localname)
         elif isinstance(node, NamespaceProxy):
                 return camel_case_to_lower(node.localname)
         else:

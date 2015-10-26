@@ -4,18 +4,6 @@ from .asg import AbstractSemanticGraph
 
 __all__ = ['back_end']
 
-back_end = PluginFunctor.factory('autowig', implements='back-end')
-#back_end.__class__.__doc__ = """AutoWIG back-ends functor
-#
-#.. seealso::
-#    :attr:`plugin` for run-time available plugins.
-#"""
-
-from vplants.autowig_plugin.autowig import BoostPythonInMemoryBackEndPlugin, BoostPythonOnDiskBackEndPlugin
-back_end['boost_python:in_memory'] = BoostPythonInMemoryBackEndPlugin
-back_end['boost_python:on_disk'] = BoostPythonOnDiskBackEndPlugin
-back_end.plugin = 'boost_python:in_memory'
-
 class BackEndDiagnostic(object):
     """Diagnostic class for AutoWIG back-ends.
 
@@ -81,3 +69,13 @@ def set_project(self, project):
 
 BackEndDiagnostic.project = property(get_project, set_project)
 del get_project, set_project
+
+back_end = PluginFunctor.factory('autowig.back_end')
+#back_end.__class__.__doc__ = """AutoWIG back-ends functor
+#
+#.. seealso::
+#    :attr:`plugin` for run-time available plugins.
+#"""
+
+back_end['boost_python:in_memory'] = 'vplants.autowig_plugin.back_end:BoostPythonInMemoryBackEndPlugin'
+back_end['boost_python:on_disk'] = 'vplants.autowig_plugin.back_end:BoostPythonOnDiskBackEndPlugin'

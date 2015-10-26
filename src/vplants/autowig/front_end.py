@@ -10,19 +10,6 @@ from .tools import subclasses
 
 __all__ = ['front_end']
 
-front_end = PluginFunctor.factory('autowig', implements='front-end')
-#front_end.__class__.__doc__ = """AutoWIG front-ends functor
-#
-#.. seealso::
-#    :attr:`plugin` for run-time available plugins.
-#"""
-
-from vplants.autowig_plugin.autowig import LibclangFrontEndPlugin
-front_end['libclang'] = LibclangFrontEndPlugin
-if 'pyclanglite_plugin.autowig:FrontEndPlugin' in front_end:
-    front_end.plugin = 'pyclanglite_plugin.autowig:FrontEndPlugin'
-    front_end['pyclanglite'] = front_end.plugin
-
 class FrontEndDiagnostic(object):
     """Diagnostic class for AutoWIG front-ends.
 
@@ -440,3 +427,15 @@ def resolve_templates(asg):
         if hasattr(cls, 'access'):
             for spc in cls.specializations(partial=False):
                 asg._nodes[spc.node]['access'] = cls.access
+
+front_end = PluginFunctor.factory('autowig.front_end')
+front_end['libclang'] = 'vplants.autowig_plugin.front_end:LibclangFrontEndPlugin'
+
+#front_end.__class__.__doc__ = """AutoWIG front-ends functor
+#
+#.. seealso::
+#    :attr:`plugin` for run-time available plugins.
+#"""
+
+if 'pyclanglite_plugin.autowig_front_end:PyClangLiteFrontEndPlugin' in front_end:
+    front_end['pyclanglite'] = 'pyclanglite_plugin.autowig_front_end:PyClangLiteFrontEndPlugin'
