@@ -1,0 +1,42 @@
+diagram vision {
+
+    DWC -> SCC;
+    DWC -> AGA;
+    AGA -> AGW;
+    AGA -> DEA [style = "dotted"];
+    DEA -> AGW [style = "dotted"];
+    AGW -> DWW [style = "dotted"];
+    DWW -> AGS [style = "dotted"];
+    AGW -> AGS;
+    AGS -> SWC;
+    SWC, SCC -> UUC;
+
+    lane dev {
+        label = "Developer";
+
+        DWC [label = "Write libary"];
+        DEA [label = "Edit library\nabstraction"];
+        DWW [label = "Write additional\nwrappers"];
+    }
+
+    lane autowig {
+        label = "AutoWIG";
+
+        AGA [label = "Generate library\nabstraction"];
+        AGW [label = "Generate wrappers"];
+        AGS [label = "Generate wrappers\nSConscript"];
+    }
+
+    lane scons {
+        label = "SCons";
+
+        SCC [label = "Compile library"];
+        SWC [label = "Compile wrappers"];
+    }
+
+    lane user {
+        label = "User";
+
+        UUC [label = "Use library\nin Python"];
+    }
+}
