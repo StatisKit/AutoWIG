@@ -1,89 +1,133 @@
-"""
-"""
-from IPython.display import HTML
-from pygments import highlight
-from pygments.lexers import CppLexer
-from pygments.formatters import HtmlFormatter
-import asciitree
-from clang.cindex import Config, Index, TranslationUnit
-from ConfigParser import ConfigParser
-from path import path
 
-if not Config.loaded:
-    _path_ = path(__file__)
-    while len(_path_) > 0 and not str(_path_.name) == 'src':
-        _path_ = _path_.parent
-    _path_ = _path_.parent
-    configparser = ConfigParser()
-    configparser.read(_path_/'metainfo.ini')
-    config = dict(configparser.items('libclang'))
+import re
+import inspect
+import uuid
 
-    if 'path' in config:
-            Config.set_library_path(config['path'])
-    elif 'file' in config:
-        Config.set_library_file(config['file'])
+
+class FactoryDocstring(object):
+
+    def __init__(self, method):
+        self.method = method
+
+    def __str__(self):
+        docstring = 'This method is controlled by the following identifiers:'
+        for name, method in inspect.getmembers(self.method.im_class, predicate=inspect.ismethod):
+            if re.match('^_(.*)_' + self.method.im_func.__name__+'$', name):
+                docstring += '\n - \"' + re.sub('^_(.*)_' + self.method.im_func.__name__+'$', r'\1', name) + '\"'
+        return docstring
+
+    @staticmethod
+    def as_factory(method):
+        method.im_func.func_doc = FactoryDocstring(method)
+
+    def expandtabs(self, tabsize):
+        return str(self).expandtabs(tabsize)
+
+inspect.types.StringTypes += (FactoryDocstring,)
+
+
+def subclasses(cls, recursive=True):
+    if recursive:
+        subclasses = []
+        front = [cls]
+        while len(front) > 0:
+            cls = front.pop()
+            front.extend(cls.__subclasses__())
+            subclasses.append(cls)
+        return {subclass.__name__ : subclass for subclass in subclasses}.values()
     else:
-        raise IOError('cannot find libclang path or file')
+        return cls.__subclasses__()
 
-class AST(object):
-    """
-    """
 
-    def __init__(self, *translation_units):
-        """
-        """
-        if any(not isinstance(translation_unit, TranslationUnit) for translation_unit in translation_units):
-            raise TypeError('`translation_units` parameter')
-        self._translation_units = translation_units
+def remove_regex(name):
+    for specialchar in ['.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '|']:
+        name = name.replace(specialchar, '\\' + specialchar)
+    return name
 
-    def function(self, child):
-        return not child.location.file is None and child.location.file.name == child.translation_unit.cursor.spelling
 
-    def __repr__(self):
-        """
-        """
+def split_scopes(name):
+    scopes = []
+    current = 0
+    previous = 0
+    delimiter = 0
+    if name.startswith('::'):
+        name = name[2:]
+    while current < len(name):
+        if name[current] in ['<', '(', '[']:
+            delimiter += 1
+            current += 1
+        elif name[current] in ['>', ')', ']']:
+            delimiter -= 1
+            current += 1
+        elif name[current:current+2] == '::' and delimiter == 0:
+            scopes.append(name[previous:current])
+            current += 2
+            previous = current
+        else:
+            current += 1
+    scopes.append(name[previous:current])
+    return scopes
 
-        def node_children(node):
-            return filter(self.function, node.get_children())
 
-        def print_node(node):
-            text = node.spelling or node.displayname
-            kind = str(node.kind)[str(node.kind).index('.')+1:]
-            access = node.access_specifier
-            return '{} {}'.format(kind, text)
+def remove_templates(name):
+    delimiter = name.endswith('>')
+    index = -1
+    while not delimiter == 0 and len(name)+index > 0:
+        index -= 1
+        if name[index] == '<':
+            delimiter -= 1
+        elif name[index] == '>':
+            delimiter += 1
+    if delimiter == 0:
+        return name[0:index]
+    else:
+        return name
 
-        return "\n".join(asciitree.draw_tree(translation_unit.cursor, node_children, print_node) for translation_unit in self._translation_units)
 
-def parse_file(filepath, flags=None):
-    """
-    """
-    if not isinstance(filepath, basestring):
-        raise TypeError('`filepath` parameter')
-    if not isinstance(filepath, path):
-        filepath = path(filepath)
-    if not filepath.exists():
-        print filepath
-        raise ValueError('`filepath` parameter')
+def lower(name):
+    lowername = '_'
+    index = 0
+    while index < len(name):
+        if name[index].islower():
+            lowername += name[index]
+            index += 1
+        else:
+            if lowername[-1] == '_':
+                if not name[index] == '_':
+                    lowername += name[index].lower()
+            else:
+                if not name[index] == '_':
+                    lowername += '_' + name[index].lower()
+                else:
+                    lowername += '_'
+            index += 1
+            while index < len(name) and not name[index].islower():
+                lowername += name[index].lower()
+                index += 1
+    lowername = lowername.lstrip('_')
+    return lowername
 
-    index = Index.create()
 
-    if not isinstance(filepath, basestring):
-        raise TypeError('`filepath` parameter')
-    if not isinstance(filepath, path):
-        filepath = path(filepath)
-    if flags is None: flags = []
-    flags.extend(['-x', 'c++', '-Wdocumentation'])
+def to_path(node, upper=False, offset=0, dirpath='.'):
+    path = compute_path(node).lstrip('_')
+    if not upper:
+        path = lower(path)
+    maxlength = 100#os.pathconf(dirpath, 'PC_NAME_MAX')
+    if len(path) > maxlength-offset:
+        offset += 36
+        alt_path = path[:maxlength-offset]
+        if not alt_path.endswith('_'):
+            alt_path += '_'
+            offset += 1
+        return alt_path + str(uuid.uuid5(uuid.NAMESPACE_X500, path[maxlength-offset:])).replace('-', '_')
+    else:
+        return path
 
-    return index.parse(filepath, flags)
 
-def lower(string):
-    return ''.join('_' + c.lower() if c.isupper() else c for c in string).lstrip('_')
-
-def indent(lines, tabsize=4, level=1):
-    return "\n".join(" "*tabsize*level+line for line in lines.splitlines())
-
-def H(obj, **kwargs):
-    return HTML(highlight(obj.interface(), CppLexer(), HtmlFormatter(full = True)), **kwargs)
-
-def CPP(obj, **kwargs):
-    return HTML(highlight(obj.implementation(), CppLexer(), HtmlFormatter(full = True)), **kwargs)
+def compute_path(node):
+    if node.localname == '':
+        return ''
+    elif node.localname.endswith('>'):
+        return compute_path(node.parent) + '_' + remove_templates(node.localname) + '_' + node.hash
+    else:
+        return compute_path(node.parent) + '_' + node.localname
