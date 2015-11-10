@@ -288,6 +288,20 @@ class HeaderProxy(FileProxy):
                 self.asg._nodes[self.node]['_depth'] = include.depth+1
         return self._depth
 
+    @property
+    def path(self):
+        if not self.is_independent:
+            raise ValueError
+        incpath = self.localname
+        parent = self.parent
+        while not parent.localname == '/' and not parent.as_include:
+            incpath = parent.localname + incpath
+            parent = parent.parent
+        if parent.localname == '/':
+            return '/' + incpath
+        else:
+            return incpath
+
 def get_is_primary(self):
     if hasattr(self, '_is_primary'):
         return self._is_primary
@@ -1282,7 +1296,6 @@ class AbstractSemanticGraph(object):
         self._type_edges = dict()
         self._parameter_edges = dict()
         self._template_edges = dict()
-        self._held_types = set()
         self._specialization_edges = dict()
         self._include_edges = dict()
 
@@ -1396,6 +1409,13 @@ class AbstractSemanticGraph(object):
             return self.nodes(pattern, metaclass=metaclass)
         else:
             return [f for f in self.files(pattern=pattern, header=None) if not isinstance(f, HeaderProxy)]
+
+    def declarations(self, pattern=None):
+        class _MetaClass(object):
+            __metaclass__ = ABCMeta
+        _MetaClass.register(CodeNodeProxy)
+        metaclass = _MetaClass
+        return self.nodes(pattern, metaclass=metaclass)
 
     def fundamental_types(self, pattern=None):
         class _MetaClass(object):

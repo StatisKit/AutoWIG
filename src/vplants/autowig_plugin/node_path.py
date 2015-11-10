@@ -1,14 +1,13 @@
-class NodePathPlugin(object):
-    """Plugin for the path computation of a node"""
-
-    modulename = 'vplants.autowig.node_path'
-
-class FlatNodePathPlugin(NodePathPlugin):
+class FlatNodePathPlugin(object):
     """Plugin for the flat path computation of a node"""
 
-    objectpath = 'flat_node_path'
+    name = 'flat'
+    modulename = 'vplants.autowig.flat_node_path'
+    objectname = 'flat_node_path'
 
-class NestedNodePathPlugin(NodePathPlugin):
+class NestedNodePathPlugin(object):
     """Plugin for the nested path computation of a node"""
 
-    objectpath = 'nested_node_path'
+    name = 'nested'
+    modulename = 'vplants.autowig.nested_node_path'
+    objectname = 'nested_node_path'
