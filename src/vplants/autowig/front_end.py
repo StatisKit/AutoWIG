@@ -3,6 +3,7 @@
 
 import time
 from openalea.core.plugin.functor import PluginFunctor
+import pickle
 
 from .ast import *
 from .asg import *
@@ -10,73 +11,7 @@ from .tools import subclasses
 
 __all__ = ['front_end']
 
-class FrontEndDiagnostic(object):
-    """Diagnostic class for AutoWIG front-ends.
-
-    This class enable to perform a basic analysis of called front-ends.
-    In particular, the time elapsed in the pre-processing step (:attr:`preprocessing`) and diagnostics for the processing and the post-processing time (resp. :attr:`processing` and :attr:`postprocessing`) are stored.
-    A brief summary of the Abstract Semantic Graph (ASG, see :class:`vplants.autowig.asg.AbstractSemanticGraph`) state after these steps is also computed:
-
-    * :attr:`current` denotes the total number of nodes (:class:`vplants.autowig.asg.NodeProxy`) of the ASG.
-    * :attr:`constants` denotes the number of enumeration constans (:class:`vplants.autowig.asg.EnumConstantProxy`) contained in both anonymous and non-anonymous enumerations of the ASG.
-    * :attr:`enums` denotes the number of non-anonymous enumerations (:class:`vplants.autowig.asg.EnumProxy`) present in the ASG.
-    * :attr:`variables` denotes the number of free and member variables (:class:`vplants.autowig.asg.VariableProxy`) present in the ASG.
-    * :attr:`functions` denotes the number of free and member functions (:class:`vplants.autowig.FunctionProxy`) present in the ASG.
-    * :attr:`classes` denotes the number of classes and class template specializations (:class:`vplants.autowig.asg.ClassProxy) present in the ASG.
-
-    .. seealso::
-        :var:`front_end` for a detailed documentation about AutoWIG front-end step.
-        :func:`vplants.autowig.libclang_front_end.front_end` for an example.
-    """
-
-    def __init__(self):
-        self.preprocessing = 0.
-        self.processing = None
-        self.current = 0
-        self.constants = 0
-        self.enums = 0
-        self.variables = 0
-        self.functions = 0
-        self.classes = 0
-        self.postprocessing = None
-
-    def __call__(self, asg):
-        """Compute the brief summary of the Abstract Semantic Graph (ASG) given.
-
-        :Parameter:
-            `asg` (:class:`vplants.autowig.AbstractSemanticGraph`) - The ASG to summarize.
-        """
-        self.current = len(asg)
-        self.constants = 0
-        self.enums = 0
-        self.variables = 0
-        self.functions = 0
-        self.classes = 0
-        for node in asg.nodes():
-            if isinstance(node, EnumConstantProxy):
-                self.constants += 1
-            elif isinstance(node, EnumProxy):
-                self.enums += 1
-            elif isinstance(node, VariableProxy):
-                self.variables += 1
-            elif isinstance(node, FunctionProxy):
-                self.functions += 1
-            elif isinstance(node, ClassProxy):
-                self.classes += 1
-
-    @property
-    def total(self):
-        """Total time elapsed in the AutoWIG front-end step"""
-        return self.preprocessing + self.processing.total + self.postprocessing.total
-
-    def __str__(self):
-        string = "Front-end: " + str(self.total)
-        string += "\n * Pre-processing: " + str(self.preprocessing)
-        string += "\n * Processing: " + str(self.processing.total)
-        string += "\n * Post-Processing: " + str(self.postprocessing.total)
-        return string
-
-def preprocessing(asg, filepaths, flags):
+def preprocessing(asg, filepaths, flags, cache=None):
     """Pre-processing step of an AutoWIG front-end
 
     During this step, files are added into the Abstract Semantic Graph (ASG) and a string corresponding to the content of a temporary header including all these files is returned.
@@ -104,6 +39,23 @@ def preprocessing(asg, filepaths, flags):
         :class:`FrontEndFunctor` for a detailed documentation about AutoWIG front-end step.
         :func:`vplants.autowig.libclang_front_end.front_end` for an example.
     """
+    if not cache is None:
+        try:
+            with open(cache, 'r') as f:
+                _asg, _md5 = pickle.load(f)
+                if all(filepath in _asg for filepath in filepaths):
+                    if all(_asg[header].md5() == _md5[header] for header in _md5):
+                        asg._nodes.update(_asg._nodes)
+                        asg._syntax_edges.update(_asg._syntax_edges)
+                        asg._base_edges.update(_asg._base_edges)
+                        asg._type_edges.update(_asg._type_edges)
+                        asg._parameter_edges.update(_asg._parameter_edges)
+                        asg._template_edges.update(_asg._template_edges)
+                        asg._specialization_edges.update(_asg._specialization_edges)
+                        asg._include_edges.update(_asg._include_edges)
+                        return ''
+        except:
+            pass
     if 'c' in flags:
         asg._language = 'c'
     elif 'c++' in flags:
@@ -149,42 +101,7 @@ def preprocessing(asg, filepaths, flags):
 
     return content
 
-class PostProcessingDiagnostic(object):
-    """Diagnostics for AutoWIG front-ends.
-
-    This class enable to perform a basic analysis of called front-ends.
-    In particular, the time elapsed in the pre-processing step (:attr:`preprocessing`) and diagnostics for the processing and the post-processing time (resp. :attr:`processing` and :attr:`postprocessing`) are stored.
-    A brief summary of the Abstract Semantic Graph (ASG) state after these steps is also computed:
-
-    * :attr:`current` denotes the total number of nodes (:class:`vplants.autowig.asg.NodeProxy`) of the ASG.
-    * :attr:`constants` denotes the number of enumeration constans (:class:`vplants.autowig.EnumConstantProxy`) contained in both anonymous and non-anonymous enumerations of the ASG.
-    * :attr:`enums` denotes the number of non-anonymous enumerations (:class:`vplants.autowig.EnumProxy`) present in the ASG.
-    * :attr:`variables` denotes the number of free and member variables (:class:`vplants.autowig.VariableProxy`) present in the ASG.
-    * :attr:`functions` denotes the number of free and member functions (:class:`vplants.autowig.FunctionProxy`) present in the ASG.
-    * :attr:`classes` denotes the number of classes and class template specializations (:class:`vplants.autowig.ClassProxy) present in the ASG.
-
-    .. seealso::
-        :class:`FrontEndFunctor` for a detailed documentation about AutoWIG front-end step.
-        :func:`postprocessing` and :func:`vplants.autowig.libclang_front_end.front_end` for an example.
-    """
-
-    def __init__(self):
-        self.overloading = 0.
-        self.discarding = 0.
-        self.templating = 0.
-
-    @property
-    def total(self):
-        return self.overloading + self.discarding + self.templating
-
-    def __str__(self):
-        string = "Front-end post-processing: " + str(self.total)
-        string += "\n\t* Overloading: " + str(round(self.overloading/self.total*100,2))
-        string += "\n\t* Discarding: " + str(round(self.discarding/self.total*100,2))
-        string += "\n\t* Templating: " + str(round(self.templating/self.total*100,2))
-        return string
-
-def postprocessing(asg, force_overload=True):
+def postprocessing(asg, filepaths, force_overload=True, cache=None):
     """Post-processing step of an AutoWIG front-end
 
     During this step, three distinct operations are executed:
@@ -201,30 +118,17 @@ def postprocessing(asg, force_overload=True):
     :Parameter:
         `force_overload` (bool) - The boolean considered in order to determine if the behavior of the **overloading** operation is altered or not.
 
-    :Returns:
-        A diagnostic instance containing informations about time elapsed in each of the operations hereabove mentioned.
-
     :Return Type:
-        :class:`PostProcessingDiagnostic`
+        `None`
 
     .. seealso::
         :func:`vplants.autowig.libclang_front_end.front_end` for an example.
         :func:`compute_overloads`, :func:`discard_forward_declarations` and :func:`resolve_templates` for a more detailed documentatin about AutoWIG front-end post-processing step.
     """
-    diagnostic = PostProcessingDiagnostic()
-    prev = time.time()
     compute_overloads(asg, force_overload=force_overload)
-    curr = time.time()
-    diagnostic.overloading = curr - prev
-    prev = time.time()
     discard_forward_declarations(asg)
-    curr = time.time()
-    diagnostic.discarding = curr - prev
-    prev = time.time()
     resolve_templates(asg)
-    curr = time.time()
-    diagnostic.templating = curr - prev
-    return diagnostic
+    compute_cache(asg, filepaths, cache)
 
 def compute_overloads(asg, force_overload):
     """
@@ -428,14 +332,34 @@ def resolve_templates(asg):
             for spc in cls.specializations(partial=False):
                 asg._nodes[spc.node]['access'] = cls.access
 
+def compute_cache(asg, filepaths, cache):
+    try:
+        with open(cache, 'w') as f:
+            included = {asg[filepath].globalname for filepath in filepaths}
+            curr = asg.files(header=True)
+            prev = []
+            changed = True
+            while changed:
+                prev = curr
+                curr = []
+                changed = False
+                while len(prev) > 0:
+                    header = prev.pop()
+                    if not header.include is None:
+                        if header.include.globalname in included:
+                            included.add(header.globalname)
+                            changed = True
+                        else:
+                            curr.append(header)
+            md5 = {header : asg[header].md5() for header in included}
+            pickle.dump((asg, md5), f)
+    except:
+        pass
+
 front_end = PluginFunctor.factory('autowig.front_end')
-front_end['libclang'] = 'vplants.autowig_plugin.front_end:LibclangFrontEndPlugin'
 
 #front_end.__class__.__doc__ = """AutoWIG front-ends functor
 #
 #.. seealso::
 #    :attr:`plugin` for run-time available plugins.
 #"""
-
-if 'pyclanglite_plugin.autowig_front_end:PyClangLiteFrontEndPlugin' in front_end:
-    front_end['pyclanglite'] = 'pyclanglite_plugin.autowig_front_end:PyClangLiteFrontEndPlugin'

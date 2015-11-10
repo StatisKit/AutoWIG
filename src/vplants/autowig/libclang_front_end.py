@@ -1,4 +1,3 @@
-import time
 from path import path
 from ConfigParser import ConfigParser
 from clang.cindex import Config, conf, Cursor, Index, TranslationUnit, CursorKind, Type, TypeKind
@@ -12,7 +11,7 @@ from .ast import AbstractSyntaxTree
 from .asg import *
 from .tools import remove_regex, split_scopes, remove_templates
 from .custom_warnings import NotWrittenFileWarning, ErrorWarning, NoneTypeWarning,  UndeclaredParentWarning, MultipleDeclaredParentWarning, MultipleDefinitionWarning, NoDefinitionWarning, SideEffectWarning, ProtectedFileWarning, InfoWarning, TemplateParentWarning, TemplateParentWarning, AnonymousWarning, AnonymousFunctionWarning, AnonymousFieldWarning, AnonymousClassWarning, NotImplementedWarning, NotImplementedTypeWarning, NotImplementedDeclWarning, NotImplementedParentWarning, NotImplementedOperatorWarning, NotImplementedTemplateWarning
-from .front_end import FrontEndDiagnostic, preprocessing, postprocessing
+from .front_end import preprocessing, postprocessing
 
 def is_virtual_method(self):
     """Returns True if the cursor refers to a C++ member function that
@@ -50,72 +49,40 @@ def is_copyable_record(self):
 Cursor.is_copyable_record = is_copyable_record
 del is_copyable_record
 
-class LibclangDiagnostic(object):
-    """
-    """
-
-    name = 'libclang'
-
-    def __init__(self):
-        self.parsing = 0.
-        self.translating = 0.
-
-    @property
-    def total(self):
-        return self.parsing + self.translating
-
-    def __str__(self):
-        string = "Processing: " + str(self.total)
-        string += "\n" + " * Parsing: " + str(self.parsing)
-        string += "\n" + " * Translating: " + str(self.translating)
-        return string
-
-def front_end(asg, filepaths, flags, libpath=None, silent=False, **kwargs):
-    diagnostic = FrontEndDiagnostic()
-    diagnostic.processing = LibclangDiagnostic()
-    prev = time.time()
-    content = preprocessing(asg, filepaths, flags)
-    curr = time.time()
-    diagnostic.postprocessing = curr - prev
-    step = []
-    prev = time.time()
-    if not libpath is None:
-        if Config.loaded:
-            warnings.warn('\'libpath\' parameter not used since libclang config is already loaded', SyntaxWarning)
-        else:
-            libpath = path(libpath)
-            libpath = libpath.abspath()
-            if not libpath.exists():
-                raise ValueError('\'libpath\' parameter: \'' + str(libpath) + '\' doesn\'t exists')
-            if libpath.isdir():
-                Config.set_library_path(str(libpath))
-            elif libpath.isfile():
-                Config.set_library_file(str(libpath))
+def front_end(asg, filepaths, flags, libpath=None, silent=False, cache=None, **kwargs):
+    content = preprocessing(asg, filepaths, flags, cache)
+    if content:
+        step = []
+        if not libpath is None:
+            if Config.loaded:
+                warnings.warn('\'libpath\' parameter not used since libclang config is already loaded', SyntaxWarning)
             else:
-                raise ValueError('\'libpath\' parameter: should be a path to a directory or a file')
-    else:
-        if not Config.loaded:
-            raise ValueError('\'libpath\' parameter: should not be set to \'None\'')
-    index = Index.create()
-    tempfilehandler = NamedTemporaryFile(delete=False)
-    tempfilehandler.write(content)
-    tempfilehandler.close()
-    tu = index.parse(tempfilehandler.name, args=flags, unsaved_files=None, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
-    os.unlink(tempfilehandler.name)
-    curr = time.time()
-    diagnostic.processing.parsing = curr - prev
-    prev = time.time()
-    with warnings.catch_warnings() as cw:
-        if silent:
-            warnings.simplefilter('ignore')
+                libpath = path(libpath)
+                libpath = libpath.abspath()
+                if not libpath.exists():
+                    raise ValueError('\'libpath\' parameter: \'' + str(libpath) + '\' doesn\'t exists')
+                if libpath.isdir():
+                    Config.set_library_path(str(libpath))
+                elif libpath.isfile():
+                    Config.set_library_file(str(libpath))
+                else:
+                    raise ValueError('\'libpath\' parameter: should be a path to a directory or a file')
         else:
-            warnings.simplefilter('always')
-        read_translation_unit(asg, tu)
-    curr = time.time()
-    diagnostic.processing.translating = curr - prev
-    diagnostic.postprocessing = postprocessing(asg, **kwargs)
-    diagnostic(asg)
-    return diagnostic
+            if not Config.loaded:
+                raise ValueError('\'libpath\' parameter: should not be set to \'None\'')
+        index = Index.create()
+        tempfilehandler = NamedTemporaryFile(delete=False)
+        tempfilehandler.write(content)
+        tempfilehandler.close()
+        tu = index.parse(tempfilehandler.name, args=flags, unsaved_files=None, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
+        os.unlink(tempfilehandler.name)
+        with warnings.catch_warnings() as cw:
+            if silent:
+                warnings.simplefilter('ignore')
+            else:
+                warnings.simplefilter('always')
+            read_translation_unit(asg, tu)
+    postprocessing(asg, filepaths, cache=cache, **kwargs)
 
 def read_translation_unit(asg, tu):
     for child in tu.cursor.get_children():

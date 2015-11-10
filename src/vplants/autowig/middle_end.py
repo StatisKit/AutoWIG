@@ -436,5 +436,3 @@ middle_end = PluginFunctor.factory('autowig.middle_end')
 #        diagnostic.cleaning = curr - prev
 #        diagnostic.current = len(asg)
 #        return diagnostic
-
-middle_end['default'] = 'vplants.autowig_plugin.middle_end:MiddleEndPlugin'
