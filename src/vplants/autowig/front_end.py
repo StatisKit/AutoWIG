@@ -11,7 +11,7 @@ from .tools import subclasses
 
 __all__ = ['front_end']
 
-def preprocessing(asg, filepaths, flags, cache=None):
+def preprocessing(asg, filepaths, flags, cache=None, force=False):
     """Pre-processing step of an AutoWIG front-end
 
     During this step, files are added into the Abstract Semantic Graph (ASG) and a string corresponding to the content of a temporary header including all these files is returned.
@@ -39,7 +39,7 @@ def preprocessing(asg, filepaths, flags, cache=None):
         :class:`FrontEndFunctor` for a detailed documentation about AutoWIG front-end step.
         :func:`vplants.autowig.libclang_front_end.front_end` for an example.
     """
-    if not cache is None:
+    if cache is not None and not force:
         try:
             with open(cache, 'r') as f:
                 _asg, _md5 = pickle.load(f)

@@ -29,6 +29,8 @@ class NodeProxy(object):
     def __eq__(self, other):
         if isinstance(other, NodeProxy):
             return self.asg == other.asg and self.node == other.node
+        elif isinstance(other, basestring):
+            return self.node == other
         else:
             return False
 
@@ -566,7 +568,7 @@ class TypeSpecifiersProxy(EdgeProxy):
 
     @property
     def is_lvalue_reference(self):
-        return self.is_reference() and not self.is_rvalue_reference()
+        return self.is_reference and not self.is_rvalue_reference
 
     @property
     def is_pointer(self):
@@ -1017,16 +1019,22 @@ class ClassProxy(DeclarationProxy):
                 self.asg._nodes[self.node]['_depth'] = max([base.type.target.depth if isinstance(base, TypedefProxy) else base.depth for base in self.bases()])+1
             return self._depth
 
-    def declarations(self, inherited=False):
-        declarations = [self.asg[node] for node in self.asg._syntax_edges[self.node]]
+    def declarations(self, pattern=None, metaclass=None, inherited=False):
+        if metaclass is None:
+            if pattern is None:
+                declarations = [self.asg[node] for node in self.asg._syntax_edges[self.node]]
+            else:
+                declarations = [self.asg[node] for node in self.asg._syntax_edges[self.node] if re.match(pattern, node)]
+        else:
+            declarations = [declaration for declaration in self.declarations(pattern=pattern, metaclass=None, inherited=False) if isinstance(declaration, metaclass)]
         if not inherited:
             return declarations
         else:
             for base in self.bases(True):
                 if isinstance(base, TypedefProxy):
-                    basedeclarations = [basedeclaration for basedeclaration in base.type.target.declarations(False) if not basedeclaration.access == 'private']
+                    basedeclarations = [basedeclaration for basedeclaration in base.type.target.declarations(pattern=pattern, metaclass=metaclass, inherited=False) if not basedeclaration.access == 'private']
                 else:
-                    basedeclarations = [basedeclaration for basedeclaration in base.declarations(False) if not basedeclaration.access == 'private']
+                    basedeclarations = [basedeclaration for basedeclaration in base.declarations(pattern=pattern, metaclass=metaclass, inherited=False) if not basedeclaration.access == 'private']
                 if base.access == 'protected':
                     for basedeclaration in basedeclarations:
                         if basedeclaration.access == 'public':
@@ -1037,22 +1045,42 @@ class ClassProxy(DeclarationProxy):
                 declarations += basedeclarations
             return declarations
 
-    def enums(self, inherited=False):
-        return [enm for enm in self.declarations(inherited) if isinstance(enm, EnumProxy)]
+    def enums(self, pattern=None, inherited=False):
+        class _MetaClass(object):
+            __metaclass__ = ABCMeta
+        _MetaClass.register(EnumProxy)
+        metaclass = _MetaClass
+        return self.declarations(pattern=pattern, metaclass=metaclass, inherited=inherited)
 
-    def enum_constants(self, inherited=False):
-        return [cst for cst in self.declarations(inherited) if isinstance(cst, EnumConstantProxy)]
+    def enum_constants(self, pattern=None, inherited=False):
+        class _MetaClass(object):
+            __metaclass__ = ABCMeta
+        _MetaClass.register(EnumConstantProxy)
+        metaclass = _MetaClass
+        return self.declarations(pattern=pattern, metaclass=metaclass, inherited=inherited)
 
-    def typedefs(self, inherited=False):
-        return [tdf for tdf in self.declarations(inherited) if isinstance(tdf, TypedefProxy)]
+    def typedefs(self, pattern=None, inherited=False):
+        class _MetaClass(object):
+            __metaclass__ = ABCMeta
+        _MetaClass.register(TypedefProxy)
+        metaclass = _MetaClass
+        return self.declarations(pattern=pattern, metaclass=metaclass, inherited=inherited)
 
-    def fields(self, inherited=False):
-        return [field for field in self.declarations(inherited) if isinstance(field, FieldProxy)]
+    def fields(self, pattern=None, inherited=False):
+        class _MetaClass(object):
+            __metaclass__ = ABCMeta
+        _MetaClass.register(FieldProxy)
+        metaclass = _MetaClass
+        return self.declarations(pattern=pattern, metaclass=metaclass, inherited=inherited)
 
-    def methods(self, inherited=False):
-        return [method for method in self.declarations(inherited) if isinstance(method, MethodProxy)]
+    def methods(self, pattern=None, inherited=False):
+        class _MetaClass(object):
+            __metaclass__ = ABCMeta
+        _MetaClass.register(MethodProxy)
+        metaclass = _MetaClass
+        return self.declarations(pattern=pattern, metaclass=metaclass, inherited=inherited)
 
-    def classes(self, inherited=False, recursive=False, templated=None, specialized=None):
+    def classes(self, pattern=None, inherited=False, recursive=False, templated=None, specialized=None):
         if recursive:
             classes = self.classes(inherited=inherited, recursive=False, templated=templated, specialized=specialized)
             for cls in classes:
@@ -1062,35 +1090,35 @@ class ClassProxy(DeclarationProxy):
         else:
             if templated is None:
                 if specialized is None:
-                    return [cls for cls in self.declarations(inherited) if isinstance(cls, (ClassProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy))]
+                    return [cls for cls in self.declarations(inherited=inherited) if isinstance(cls, (ClassProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy))]
                 elif specialized:
-                    return [cls for cls in self.declarations(inherited) if isinstance(cls, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy))]
+                    return [cls for cls in self.declarations(inherited=inherited) if isinstance(cls, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy))]
                 else:
-                    return [cls for cls in self.declarations(inherited) if isinstance(cls, (ClassProxy, ClassTemplateProxy)) and not isinstance(cls, ClassTemplateSpecializationProxy)]
+                    return [cls for cls in self.declarations(inherited=inherited) if isinstance(cls, (ClassProxy, ClassTemplateProxy)) and not isinstance(cls, ClassTemplateSpecializationProxy)]
             elif templated:
                 if specialized is None:
-                    return [cls for cls in self.declarations(inherited) if isinstance(cls, (ClassTemplateProxy, ClassTemplatePartialSpecializationProxy))]
+                    return [cls for cls in self.declarations(inherited=inherited) if isinstance(cls, (ClassTemplateProxy, ClassTemplatePartialSpecializationProxy))]
                 elif specialized:
-                    return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassTemplatePartialSpecializationProxy)]
+                    return [cls for cls in self.declarations(inherited=inherited) if isinstance(cls, ClassTemplatePartialSpecializationProxy)]
                 else:
-                    return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassTemplateProxy)]
+                    return [cls for cls in self.declarations(inherited=inherited) if isinstance(cls, ClassTemplateProxy)]
             else:
                 if specialized is None:
-                    return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassProxy)]
+                    return [cls for cls in self.declarations(inherited=inherited) if isinstance(cls, ClassProxy)]
                 elif specialized:
-                    return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassTemplateSpecializationProxy)]
+                    return [cls for cls in self.declarations(inherited=inherited) if isinstance(cls, ClassTemplateSpecializationProxy)]
                 else:
-                    return [cls for cls in self.declarations(inherited) if isinstance(cls, ClassProxy) and not isinstance(cls, ClassTemplateSpecializationProxy)]
+                    return [cls for cls in self.declarations(inherited=inherited) if isinstance(cls, ClassProxy) and not isinstance(cls, ClassTemplateSpecializationProxy)]
 
 
     @property
     def constructors(self):
-        return [constructor for constructor in self.declarations(False) if isinstance(constructor, ConstructorProxy)]
+        return [constructor for constructor in self.declarations(inherited=False) if isinstance(constructor, ConstructorProxy)]
 
     @property
     def destructor(self):
         try:
-            return [destructor for destructor in self.declarations(False) if isinstance(destructor, DestructorProxy)].pop()
+            return [destructor for destructor in self.declarations(inherited=False) if isinstance(destructor, DestructorProxy)].pop()
         except:
             return None
 

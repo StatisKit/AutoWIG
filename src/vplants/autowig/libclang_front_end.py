@@ -49,8 +49,8 @@ def is_copyable_record(self):
 Cursor.is_copyable_record = is_copyable_record
 del is_copyable_record
 
-def front_end(asg, filepaths, flags, libpath=None, silent=False, cache=None, **kwargs):
-    content = preprocessing(asg, filepaths, flags, cache)
+def front_end(asg, filepaths, flags, libpath=None, silent=False, cache=None, force=False, **kwargs):
+    content = preprocessing(asg, filepaths, flags, cache, force)
     if content:
         step = []
         if not libpath is None:
