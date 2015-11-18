@@ -669,6 +669,23 @@ class EnumProxy(DeclarationProxy):
 class TypedefProxy(DeclarationProxy):
     """
     """
+    @property
+    def parent(self):
+        parent = self.globalname
+        parent = parent[:parent.rindex(':')-1]
+        if parent == '':
+            return self.asg['::']
+        else:
+            for decorator in ['class', 'struct', 'union']:
+                decorator += ' ' + parent
+                if decorator in self.asg._nodes:
+                    parent = self.asg[decorator]
+                    break
+            if not isinstance(parent, NodeProxy):
+                if not parent in self.asg._nodes:
+                    raise ValueError('\'' + self.globalname + '\' parent (\'' + parent + '\') was not found')
+                parent = self.asg[parent]
+            return parent
 
     @property
     def type(self):
@@ -747,6 +764,7 @@ class ParameterProxy(EdgeProxy):
             self.asg._parameter_edges[self._source][self._index]['name'] = 'parm_' + str(self.index)
         else:
             self.asg._parameter_edges[self._source][self._index]['name'] = name
+
 
 class FunctionProxy(DeclarationProxy):
     """

@@ -198,13 +198,25 @@ def get_boost_python_export(self):
         else:
             return self.asg[boost_python_export]
     else:
-        parent = self.parent
-        if isinstance(parent, ClassProxy) and not(self.access == 'public' and parent.boost_python_export):
+        return is_valid_operator(self) and not(is_invalid_pointer(self.result_type) or is_invalid_reference(self.result_type) or any(is_invalid_pointer(prm.type) or is_invalid_reference(prm.type) for prm in self.parameters))
+
+FunctionProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
+del get_boost_python_export
+
+def get_boost_python_export(self):
+    if hasattr(self, '_boost_python_export'):
+        boost_python_export = self._boost_python_export
+        if isinstance(boost_python_export, bool):
+            return boost_python_export
+        else:
+            return self.asg[boost_python_export]
+    else:
+        if not self.access == 'public' or self.is_virtual and not self.is_pure:
             return False
         else:
             return is_valid_operator(self) and not(is_invalid_pointer(self.result_type) or is_invalid_reference(self.result_type) or any(is_invalid_pointer(prm.type) or is_invalid_reference(prm.type) for prm in self.parameters))
 
-FunctionProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
+MethodProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
 del get_boost_python_export, set_boost_python_export, del_boost_python_export
 
 class BoostPythonExportFileProxy(FileProxy):
@@ -508,7 +520,7 @@ def export_back_end(asg, directory, prefix='', suffix='.cpp', pattern='.*', prox
     nodes = set()
     for node in asg.declarations(pattern=pattern):
         if node.boost_python_export is True:
-            if isinstance(node, EnumConstantProxy) and isinstance(node.parent, EnumProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
+            if isinstance(node, EnumConstantProxy) and isinstance(node.parent, EnumProxy) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
                 continue
             else:
                 node.boost_python_export = asg.add_file(directory.globalname + node_path(node, prefix=prefix, suffix=suffix), proxy=proxy)
@@ -815,6 +827,8 @@ ${node_rename(tdf.type.target)}\
                 for wrap in export.wraps:
                     if isinstance(wrap, TypedefProxy) and wrap.type.target.boost_python_export and not wrap.type.target.boost_python_export is True:
                         typedefs.append(wrap)
+                    elif isinstance(wrap, ClassProxy):
+                        typedefs.extend([tdf for tdf in wrap.typedefs() if tdf.boost_python_export and tdf.type.target.boost_python_export and not tdf.type.target.boost_python_export is True])
             content.append(self.TYPEDEFS.render(typedefs = typedefs, module = self.module, node_rename=node_rename))
             self.content = "\n".join(content)
         return self._content
@@ -915,6 +929,8 @@ def std_filter_back_end(asg, memory=True, __gnu_cxx=True):
             asg['class ::std::unique_ptr'].is_smart_pointer = True
         if 'class ::std::shared_ptr' in asg:
             asg['class ::std::shared_ptr'].is_smart_pointer = True
+        #if 'class ::std::__shared_ptr' in asg:
+        #    asg['class ::std::__shared_ptr'].boost_python_export = False
         if 'class ::std::weak_ptr' in asg:
             asg['class ::std::weak_ptr'].is_smart_pointer = True
         if 'class ::std::auto_ptr' in asg:

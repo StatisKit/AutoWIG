@@ -265,21 +265,18 @@ def discard_forward_declarations(asg):
         nb += 1
     gray = set(black)
     for tdf in asg.typedefs():
-        if tdf.type.target.node in black or tdf.parent.node in black:
+        if tdf.type.target.node in black:
             gray.add(tdf.node)
             asg._type_edges.pop(tdf.node)
             asg._nodes.pop(tdf.node)
     for var in asg.variables():
-        if var.type.target.node in black or var.parent.node in black:
+        if var.type.target.node in black:
             gray.add(var.node)
             asg._type_edges.pop(var.node)
             asg._nodes.pop(var.node)
     for fct in asg.functions():
-        if fct.parent.node in black or fct.result_type.target.node in black or any(prm.type.target.node in black for prm in fct.parameters):
+        if fct.result_type.target.node in black or any(prm.type.target.node in black for prm in fct.parameters):
             gray.add(fct.node)
-            #for prm in fct.parameters:
-            #    asg._type_edges.pop(prm.node)
-            #    asg._nodes.pop(prm.node)
             asg._parameter_edges.pop(fct.node)
             asg._type_edges.pop(fct.node)
             asg._nodes.pop(fct.node)
@@ -291,10 +288,6 @@ def discard_forward_declarations(asg):
             for ctr in cls.constructors:
                 if any(prm.type.target.node in black for prm in ctr.parameters):
                     gray.add(ctr.node)
-                    #for prm in ctr.parameters:
-                    #    asg._type_edges.pop(prm.node)
-                    #    asg._nodes.pop(prm.node)
-                    #asg._syntax_edges.pop(ctr.node)
                     asg._parameter_edges.pop(ctr.node)
                     asg._nodes.pop(ctr.node)
             asg._base_edges[cls.node] = [dict(base = base['base'], access = base['access'], is_virtual = base['is_virtual']) for base in asg._base_edges[cls.node] if not base['base'] in black]
@@ -302,6 +295,9 @@ def discard_forward_declarations(asg):
             enum_constants = cls.enum_constants()
             dtr = cls.destructor
             constructors = cls.constructors
+            typedefs = cls.typedefs()
+            fields = cls.fields()
+            methods = cls.methods()
             for cst in enum_constants:
                 gray.add(cst.node)
                 asg._nodes.pop(cst.node)
@@ -309,12 +305,21 @@ def discard_forward_declarations(asg):
                 asg._nodes.pop(dtr.node)
             for ctr in constructors:
                 gray.add(ctr.node)
-                #for prm in ctr.parameters:
-                #    asg._type_edges.pop(prm.node)
-                #    asg._nodes.pop(prm.node)
                 asg._parameter_edges.pop(ctr.node)
                 asg._nodes.pop(ctr.node)
-                #asg._syntax_edges.pop(ctr.node)
+            for tdf in typedefs:
+                gray.add(tdf.node)
+                asg._type_edges.pop(tdf.node)
+                asg._nodes.pop(tdf.node)
+            for fld in fields:
+                gray.add(fld.node)
+                asg._type_edges.pop(fld.node)
+                asg._nodes.pop(fld.node)
+            for mtd in methods:
+                gray.add(mtd.node)
+                asg._parameter_edges.pop(mtd.node)
+                asg._type_edges.pop(mtd.node)
+                asg._nodes.pop(mtd.node)
     for parent, children in asg._syntax_edges.items():
         asg._syntax_edges[parent] = [child for child in children if not child in gray]
     for cls in asg.classes(templated=True, specialized=False):

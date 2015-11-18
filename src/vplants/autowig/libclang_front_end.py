@@ -374,7 +374,7 @@ def read_function(asg, cursor, scope):
                     is_static=cursor.is_static_method(),
                     is_virtual=True,
                     is_const=False,
-                    is_pure_virtual=True,
+                    is_pure=True,
                     cursor=cursor)
         elif cursor.kind is CursorKind.CONSTRUCTOR:
             asg._nodes[spelling] = dict(proxy=ConstructorProxy,
