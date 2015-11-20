@@ -184,11 +184,12 @@ def clean(self):
                     else:
                         target.clean = False
         elif isinstance(node, ClassTemplateProxy):
-            for specialization in node.specializations():
-                if specialization.clean:
-                    temp.append(specialization)
-                else:
-                    specialization.clean = False
+            pass
+            #for specialization in node.specializations():
+            #    if specialization.clean:
+            #        temp.append(specialization)
+            #    else:
+            #        specialization.clean = False
     for tdf in self.typedefs():
         if tdf.clean and not tdf.type.target.clean and not tdf.parent.clean:
             tdf.clean = False
@@ -211,6 +212,7 @@ def clean(self):
         self._syntax_edges.pop(node.node, None)
         self._base_edges.pop(node.node, None)
         self._type_edges.pop(node.node, None)
+        self._parameter_edges.pop(node.node, None)
         self._specialization_edges.pop(node.node, None)
     nodes = set([node.node for node in nodes])
     for node in self.nodes():

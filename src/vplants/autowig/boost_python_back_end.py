@@ -947,3 +947,12 @@ def std_filter_back_end(asg, memory=True, __gnu_cxx=True):
         asg['class ::std::_Rb_tree_node'].boost_python_export = False
     if __gnu_cxx and '::__gnu_cxx' in asg:
         asg['::__gnu_cxx'].boost_python_export = False
+
+def std_mapping_back_end(asg, vector=True, suffix='_mapping'):
+    if vector and 'class ::std::vector' in asg:
+        vectors = asg['class ::std::vector'].specializations(partial=False)
+        for vector in vectors:
+            export = vector.boost_python_export
+            if export and not export is True:
+                mapping = asg.add_file(export.parent + export.prefix + suffix + export.suffix, proxy=BoostPythonVectorMappingFileProxy, maps=vector.globalname)
+                mapping.boost_python_module = vector.boost_python_export.boost_python_module
