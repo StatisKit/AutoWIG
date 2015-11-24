@@ -19,40 +19,7 @@ struct vector_${template.replace(' ', '').replace('::', '_').replace('<', '').re
     }
 };
 
-struct vector_${template.replace(' ', '').replace('::', '_').replace('<', '').replace('>', '')}_from_python
-{
-    vector_${template.replace(' ', '').replace('::', '_').replace('<', '').replace('>', '')}_from_python()
-    {
-        boost::python::converter::registry::push_back(
-            &convertible,
-            &construct,
-            boost::python::type_id< std::vector< ${template} > >());
-    }
 
-    static void* convertible(PyObject* obj_ptr)
-    { return obj_ptr; }
-
-    static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data)
-    {
-        boost::python::handle<> obj_iter(PyObject_GetIter(obj_ptr));
-        void* storage = ((boost::python::converter::rvalue_from_python_storage< std::vector< ${template} > >*)data)->storage.bytes;
-        new (storage) std::vector< ${template} >();
-        data->convertible = storage;
-        std::vector< ${template} >& result = *((std::vector< ${template} >*)storage);
-        unsigned int i = 0;
-        for(;; i++)
-        {
-            boost::python::handle<> py_elem_hdl(boost::python::allow_null(PyIter_Next(obj_iter.get())));
-            if(PyErr_Occurred())
-            { boost::python::throw_error_already_set(); }
-            if(!py_elem_hdl.get()) 
-            { break; }
-            boost::python::object py_elem_obj(py_elem_hdl);
-            result.push_back(${template}(boost::python::extract< ${template} >(py_elem_obj)));
-        }
-    }
-      
-};
 
 % endfor
 % for template in settemplates:

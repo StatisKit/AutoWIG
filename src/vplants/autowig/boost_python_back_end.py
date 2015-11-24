@@ -948,11 +948,135 @@ def std_filter_back_end(asg, memory=True, __gnu_cxx=True):
     if __gnu_cxx and '::__gnu_cxx' in asg:
         asg['::__gnu_cxx'].boost_python_export = False
 
-def std_mapping_back_end(asg, vector=True, suffix='_mapping'):
-    if vector and 'class ::std::vector' in asg:
-        vectors = asg['class ::std::vector'].specializations(partial=False)
-        for vector in vectors:
-            export = vector.boost_python_export
-            if export and not export is True:
-                mapping = asg.add_file(export.parent + export.prefix + suffix + export.suffix, proxy=BoostPythonVectorMappingFileProxy, maps=vector.globalname)
-                mapping.boost_python_module = vector.boost_python_export.boost_python_module
+class BoostPythonExportMappingFileProxy(BoostPythonExportTemplateFileProxy):
+
+    MAPPING = {"class ::std::vector" : Template(r"""\
+    struct vector_${cls.hash}_from_python
+    {
+        vector_${cls.hash}_from_python()
+        {
+            boost::python::converter::registry::push_back(
+                &convertible,
+                &construct,
+                boost::python::type_id< ${cls.globalname} >());
+        }
+
+        static void* convertible(PyObject* obj_ptr)
+        { return obj_ptr; }
+
+        static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data)
+        {
+            boost::python::handle<> obj_iter(PyObject_GetIter(obj_ptr));
+            void* storage = ((boost::python::converter::rvalue_from_python_storage< ${cls.globalname} >*)data)->storage.bytes;
+            new (storage) ${cls.globalname}();
+            data->convertible = storage;
+            ${cls.globalname}& result = *((${cls.globalname}*)storage);
+            unsigned int i = 0;
+            for(;; i++)
+            {
+                boost::python::handle<> py_elem_hdl(boost::python::allow_null(PyIter_Next(obj_iter.get())));
+                if(PyErr_Occurred())
+                { boost::python::throw_error_already_set(); }
+                if(!py_elem_hdl.get())
+                { break; }
+                boost::python::object py_elem_obj(py_elem_hdl);
+                result.push_back((${cls.templates[0].globalname})(boost::python::extract< ${cls.templates[0].globalname} >(py_elem_obj)));
+            }
+        }
+    };
+
+    vector_${cls.hash}_from_python();"""),
+
+            "class ::std::set" : Template(r"""\
+    struct set_${cls.hash}_from_python
+    {
+        set_${cls.hash}_from_python()
+        {
+            boost::python::converter::registry::push_back(
+            &convertible,
+            &construct,
+            boost::python::type_id< ${cls.globalname} >());
+        }
+
+        static void* convertible(PyObject* obj_ptr)
+        { return obj_ptr; }
+
+        static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data)
+        {
+            boost::python::handle<> obj_iter(PyObject_GetIter(obj_ptr));
+            void* storage = ((boost::python::converter::rvalue_from_python_storage< ${cls.globalname} >*)data)->storage.bytes;
+            new (storage) ${cls.globalname}();
+            data->convertible = storage;
+            ${cls.globalname}& result = *((${cls.globalname}*)storage);
+            unsigned int i = 0;
+            for(;; i++)
+            {
+                boost::python::handle<> py_elem_hdl(boost::python::allow_null(PyIter_Next(obj_iter.get())));
+                if(PyErr_Occurred())
+                { boost::python::throw_error_already_set(); }
+                if(!py_elem_hdl.get())
+                { break; }
+                boost::python::object py_elem_obj(py_elem_hdl);
+                result.insert((${cls.templates[0].globalname})(boost::python::extract< ${cls.templates[0].globalname} >(py_elem_obj)));
+            }
+        }
+
+    };
+
+    set_${cls.hash}_from_python();""")}
+
+    @property
+    def content(self):
+        if not hasattr(self, '_content') or self._content == "":
+            content = self.HEADER.render(headers = self.asg.headers(*self.wraps))
+            content += '\n\nvoid ' + self.prefix + '()\n{\n'
+            content += self.SCOPE.render(scopes = self.scopes,
+                    node_rename = node_rename)
+            for arg in self.wraps:
+                if isinstance(arg, EnumConstantProxy):
+                    content += '\n' + self.CONSTANT.render(constant = arg,
+                            node_rename = node_rename)
+                elif isinstance(arg, EnumProxy):
+                    content += '\n' + self.ENUM.render(enum = arg,
+                            node_rename = node_rename)
+                elif isinstance(arg, VariableProxy):
+                    content += '\n' + self.VARIABLE.render(variable = arg,
+                            node_rename = node_rename)
+                elif isinstance(arg, FunctionProxy):
+                    content += '\n' + self.FUNCTION.render(function = arg,
+                            node_rename = node_rename,
+                            call_policy = call_policy)
+                elif isinstance(arg, ClassProxy):
+                    content += '\n' + self.CLASS.render(cls = arg,
+                            node_rename = node_rename,
+                            held_type = held_type,
+                            call_policy = call_policy)
+                    if arg.globalname in self.MAPPING:
+                        content += '\n' + self.MAPPING[arg.globalname].render(cls = arg)
+                    elif isinstance(arg, ClassTemplateSpecializationProxy) and arg.specialize.globalname in self.MAPPING:
+                        content += '\n' + self.MAPPING[arg.specialize.globalname].render(cls = arg)
+                elif isinstance(arg, TypedefProxy):
+                    continue
+                else:
+                    raise NotImplementedError(arg.__class__.__name__)
+            content += '\n}'
+            self.content = content
+        return self._content
+
+    @content.setter
+    def content(self, content):
+        self.asg._nodes[self.node]['_content'] = content
+
+    @content.deleter
+    def del_content(self):
+        self.asg._nodes[self.node].pop('_content', False)
+
+
+#def std_mapping_back_end(asg, vector=True, suffix='_mapping'):
+#    if vector and 'class ::std::vector' in asg:
+#        vectors = asg['class ::std::vector'].specializations(partial=False)
+#        for vector in vectors:
+#            export = vector.boost_python_export
+#            if export and not export is True:
+#                mapping = asg.add_file(export.parent + export.prefix + suffix + export.suffix, proxy=BoostPythonVectorMappingFileProxy, maps=vector.globalname)
+#                mapping.boost_python_module = vector.boost_python_export.boost_python_module
