@@ -671,6 +671,9 @@ def closure_back_end(asg):
     for node in asg.nodes():
         if hasattr(node, 'boost_python_export'):
             if node.boost_python_export and not node.boost_python_export is True:
+                if node.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
+                    import pdb
+                    pdb.set_trace()
                 nodes.append(node)
             elif not node.boost_python_export:
                 target = node
@@ -695,8 +698,13 @@ def closure_back_end(asg):
                 node.boost_python_export = True
             if isinstance(node, (TypedefProxy, VariableProxy)):
                 target = node.type.target
+                while isinstance(target, ClassTemplateSpecializationProxy) and target.is_smart_pointer:
+                    target = target.templates[0].target
                 if not target.node in forbidden:
                     if not target.boost_python_export:
+                        if target.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
+                            import pdb
+                            pdb.set_trace()
                         nodes.append(target)
                 else:
                     node.boost_python_export = False
@@ -710,9 +718,15 @@ def closure_back_end(asg):
                         parameters[index] = parameters[index].templates[0].target
                 if not result_type.node in forbidden and not any([parameter.node in forbidden for parameter in parameters]):
                     if not result_type.boost_python_export:
+                        if result_type.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
+                            import pdb
+                            pdb.set_trace()
                         nodes.append(result_type)
                     for parameter in parameters:
                         if not parameter.boost_python_export:
+                            if parameter.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
+                                import pdb
+                                pdb.set_trace()
                             nodes.append(parameter)
                 else:
                     node.boost_python_export = False
@@ -724,6 +738,9 @@ def closure_back_end(asg):
                 if not any([parameter.node in forbidden for parameter in parameters]):
                     for parameter in parameters:
                         if not parameter.boost_python_export:
+                            if parameter.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
+                                import pdb
+                                pdb.set_trace()
                             nodes.append(parameter)
                 else:
                     node.boost_python_export = False
@@ -737,6 +754,9 @@ def closure_back_end(asg):
             elif isinstance(node, ClassProxy):
                 for base in node.bases():
                     if not base.boost_python_export and base.access == 'public':
+                        if base.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
+                            import pdb
+                            pdb.set_trace()
                         nodes.append(base)
                 for dcl in node.declarations():
                     if dcl.boost_python_export is True and dcl.access == 'public':
@@ -751,6 +771,8 @@ def closure_back_end(asg):
                     parent = parent.parent
             else:
                 tdf.boost_python_export = False
+
+# class ::std::__shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator, __gnu_cxx::_Lock_policy::_S_atomic>
 
 class BoostPythonImportFileProxy(FileProxy):
 
@@ -935,6 +957,8 @@ def std_filter_back_end(asg, memory=True, __gnu_cxx=True):
             asg['class ::std::weak_ptr'].is_smart_pointer = True
         if 'class ::std::auto_ptr' in asg:
             asg['class ::std::auto_ptr'].is_smart_pointer = True
+    for node in asg.functions('^::std::.*::swap::.*'):
+        node.boost_python_export = False
     if 'class ::std::less' in asg:
         asg['class ::std::less'].boost_python_export = False
     if 'class ::std::allocator' in asg:
