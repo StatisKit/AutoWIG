@@ -383,6 +383,24 @@ doc_is_smart_pointer = """
 ClassTemplatePartialSpecializationProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc = doc_is_smart_pointer)
 del get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc_is_smart_pointer
 
+def get_is_error(self):
+    if not hasattr(self, '_is_error'):
+        if any(base.is_error for base in self.bases()):
+            self.is_error = True
+        else:
+            self.is_error = self.node == 'class ::std::exception'
+
+    return self._is_error
+
+def set_is_error(self, is_error):
+    self.asg._nodes[self.node]['_is_error'] = is_error
+
+def del_is_error(self):
+    self.asg._nodes[self.node].pop('_is_error', None)
+
+ClassProxy.is_error = property(get_is_error, set_is_error, del_is_error)
+del get_is_error, set_is_error, del_is_error
+
 middle_end = PluginFunctor.factory('autowig.middle_end')
 
 #middle_end.__class__.__doc__ = """AutoWIG middle-ends functor
