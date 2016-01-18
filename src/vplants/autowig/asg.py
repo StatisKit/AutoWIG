@@ -1333,6 +1333,9 @@ class NamespaceProxy(DeclarationProxy):
                 namespaces.extend(namespace.namespaces(False))
             return nestednamespaces
 
+    def typedefs(self, nested=False):
+        return [typedef for typedef in self.declarations(nested) if isinstance(typedef, TypedefProxy)]
+
 class AbstractSemanticGraph(object):
 
     def __init__(self, *args, **kwargs):

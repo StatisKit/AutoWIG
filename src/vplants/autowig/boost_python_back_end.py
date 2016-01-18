@@ -297,24 +297,13 @@ extern "C" { \
  }\
     % endif
 % endfor
-% if translator:
+% for error in errors:
 
-template<class T> class Translator
-{
-    public:
-        Translator(PyObject* type)
-        { _type = type; }
+PyObject* error_type_${error.hash} = 0;
 
-        static void translate(const T& error)
-        {
-            boost::python::object object_f926cb231a7f5da09f313cd361ff94c7(error);
-            PyErr_SetObject(_type, object_f926cb231a7f5da09f313cd361ff94c7.ptr());
-        }
-
-    protected:
-        static PyObject* _type;
-};
-% endif
+void translate_error_${error.hash}(${error.globalname} const & error)
+{ PyErr_SetObject(error_type_${error.hash}, boost::python::object(error).ptr()); }
+% endfor
 """)
 
     SCOPE = Template(text=r"""\
@@ -448,8 +437,14 @@ ${field.globalname})\
     % endif
     % if cls.is_error:
 
-        Translator< ${cls.globalname} > translator(class_${cls.hash}.ptr());
-        boost::python::register_exception_translator< ${cls.globalname} >(&translator.translate);
+        //static PyObject* _type = class_${cls.hash}.ptr();
+        //struct Translator
+        //{ static void translate(${cls.globalname} const & error) { PyErr_SetObject(_type, boost::python::object(error).ptr()); } };
+        //Translator< ${cls.globalname} > translator = Translator< ${cls.globalname} >(class_${cls.hash}.ptr());
+        //boost::python::register_exception_translator< ${cls.globalname} >(&translator.translate);
+        error_type_${cls.hash} = class_${cls.hash}.ptr();
+        boost::python::register_exception_translator< ${cls.globalname} >(&translate_error_${cls.hash});
+
     % endif
     """)
 
@@ -496,7 +491,7 @@ ${field.globalname})\
     @property
     def content(self):
         if not hasattr(self, '_content') or self._content == "":
-            content = self.HEADER.render(headers = self.asg.headers(*self.wraps), translator = any(wrap.is_error for wrap in self.wraps if isinstance(wrap, ClassProxy)))
+            content = self.HEADER.render(headers = self.asg.headers(*self.wraps), errors = [wrap for wrap in self.wraps if isinstance(wrap, ClassProxy) and wrap.is_error])
             content += '\n\nvoid ' + self.prefix + '()\n{\n'
             content += self.SCOPE.render(scopes = self.scopes,
                     node_rename = node_rename)
@@ -1082,7 +1077,7 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportTemplateFileProxy):
     @property
     def content(self):
         if not hasattr(self, '_content') or self._content == "":
-            content = self.HEADER.render(headers = self.asg.headers(*self.wraps), translator = any(wrap.is_error for wrap in self.wraps if isinstance(wrap, ClassProxy)))
+            content = self.HEADER.render(headers = self.asg.headers(*self.wraps), errors = [wrap for wrap in self.wraps if isinstance(wrap, ClassProxy) and wrap.is_error])
             content += '\n\nvoid ' + self.prefix + '()\n{\n'
             content += self.SCOPE.render(scopes = self.scopes,
                     node_rename = node_rename)
