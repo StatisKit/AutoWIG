@@ -1,7 +1,8 @@
-import os
+
 import re
 import inspect
 import uuid
+
 
 class FactoryDocstring(object):
 
@@ -24,6 +25,7 @@ class FactoryDocstring(object):
 
 inspect.types.StringTypes += (FactoryDocstring,)
 
+
 def subclasses(cls, recursive=True):
     if recursive:
         subclasses = []
@@ -36,10 +38,12 @@ def subclasses(cls, recursive=True):
     else:
         return cls.__subclasses__()
 
+
 def remove_regex(name):
     for specialchar in ['.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '|']:
         name = name.replace(specialchar, '\\' + specialchar)
     return name
+
 
 def split_scopes(name):
     scopes = []
@@ -64,6 +68,7 @@ def split_scopes(name):
     scopes.append(name[previous:current])
     return scopes
 
+
 def remove_templates(name):
     delimiter = name.endswith('>')
     index = -1
@@ -77,6 +82,7 @@ def remove_templates(name):
         return name[0:index]
     else:
         return name
+
 
 def lower(name):
     lowername = '_'
@@ -101,6 +107,7 @@ def lower(name):
     lowername = lowername.lstrip('_')
     return lowername
 
+
 def to_path(node, upper=False, offset=0, dirpath='.'):
     path = compute_path(node).lstrip('_')
     if not upper:
@@ -115,6 +122,7 @@ def to_path(node, upper=False, offset=0, dirpath='.'):
         return alt_path + str(uuid.uuid5(uuid.NAMESPACE_X500, path[maxlength-offset:])).replace('-', '_')
     else:
         return path
+
 
 def compute_path(node):
     if node.localname == '':
