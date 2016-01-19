@@ -5,10 +5,24 @@ class OnDiskBackEndPlugin(object):
     modulename = 'vplants.autowig.on_disk_back_end'
     objectname = 'on_disk_back_end'
 
+class CppBackEndPlugin(object):
+
+    modulename = 'vplants.autowig.cpp_back_end'
+
+class CharPtrToStringBackEndPlugin(CppBackEndPlugin):
+
+    name = 'cpp:char_ptr_to_string'
+    objectname = 'char_ptr_to_string'
 
 class BoostPythonBackEndPlugin(object):
 
     modulename = 'vplants.autowig.boost_python_back_end'
+
+class BoostPythonStdFilterBackEndPlugin(BoostPythonBackEndPlugin):
+    """Boost.Python plugin for the AutoWIG back-end generating files in memory for Boost.Python wrappers"""
+
+    name = 'boost_python:std_filter'
+    objectname = 'std_filter_back_end'
 
 class BoostPythonExportBackEndPlugin(BoostPythonBackEndPlugin):
     """Boost.Python plugin for the AutoWIG back-end generating files in memory for Boost.Python wrappers"""

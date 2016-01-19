@@ -184,11 +184,12 @@ def clean(self):
                     else:
                         target.clean = False
         elif isinstance(node, ClassTemplateProxy):
-            for specialization in node.specializations():
-                if specialization.clean:
-                    temp.append(specialization)
-                else:
-                    specialization.clean = False
+            pass
+            #for specialization in node.specializations():
+            #    if specialization.clean:
+            #        temp.append(specialization)
+            #    else:
+            #        specialization.clean = False
     for tdf in self.typedefs():
         if tdf.clean and not tdf.type.target.clean and not tdf.parent.clean:
             tdf.clean = False
@@ -211,6 +212,7 @@ def clean(self):
         self._syntax_edges.pop(node.node, None)
         self._base_edges.pop(node.node, None)
         self._type_edges.pop(node.node, None)
+        self._parameter_edges.pop(node.node, None)
         self._specialization_edges.pop(node.node, None)
     nodes = set([node.node for node in nodes])
     for node in self.nodes():
@@ -381,35 +383,23 @@ doc_is_smart_pointer = """
 ClassTemplatePartialSpecializationProxy.is_smart_pointer = property(get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc = doc_is_smart_pointer)
 del get_is_smart_pointer, set_is_smart_pointer, del_is_smart_pointer, doc_is_smart_pointer
 
-#def c_struct_to_class(self):
-#    """
-#    """
-#    for cls in [cls for cls in self['::'].classes() if hasattr(cls, '_header') and cls.header.language == 'c' and cls.traverse]:
-#        for fct in [fct for fct in self['::'].functions() if fct.traverse]:
-#            mv = False
-#            rtype = fct.result_type
-#            if rtype.target.node == cls.node:
-#                self._nodes[fct.node].update(proxy=MethodProxy,
-#                        is_static=True,
-#                        is_virtual=False,
-#                        is_pure_virtual=False,
-#                        is_const=ptype.is_const,
-#                        as_constructor=True,
-#                        access='public')
-#                mv = True
-#            elif fct.nb_parameters > 0:
-#                ptype = fct.parameters[0].type
-#                if ptype.target.node == cls.node and (ptype.is_reference or ptype.is_pointer):
-#                    self._nodes[fct.node].update(proxy=MethodProxy,
-#                            is_static=False,
-#                            is_virtual=False,
-#                            is_pure_virtual=False,
-#                            is_const=ptype.is_const,
-#                            access='public')
-#                    mv = True
-#            if mv:
-#                self._syntax_edges[fct.parent.node].remove(fct.node)
-#                self._syntax_edges[cls.node].append(fct.node)
+def get_is_error(self):
+    if not hasattr(self, '_is_error'):
+        if any(base.is_error for base in self.bases()):
+            self.is_error = True
+        else:
+            self.is_error = self.node == 'class ::std::exception'
+
+    return self._is_error
+
+def set_is_error(self, is_error):
+    self.asg._nodes[self.node]['_is_error'] = is_error
+
+def del_is_error(self):
+    self.asg._nodes[self.node].pop('_is_error', None)
+
+ClassProxy.is_error = property(get_is_error, set_is_error, del_is_error)
+del get_is_error, set_is_error, del_is_error
 
 middle_end = PluginFunctor.factory('autowig.middle_end')
 

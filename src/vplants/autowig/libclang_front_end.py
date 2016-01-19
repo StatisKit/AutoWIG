@@ -49,8 +49,8 @@ def is_copyable_record(self):
 Cursor.is_copyable_record = is_copyable_record
 del is_copyable_record
 
-def front_end(asg, filepaths, flags, libpath=None, silent=False, cache=None, **kwargs):
-    content = preprocessing(asg, filepaths, flags, cache)
+def front_end(asg, filepaths, flags, libpath=None, silent=False, cache=None, force=False, **kwargs):
+    content = preprocessing(asg, filepaths, flags, cache, force)
     if content:
         step = []
         if not libpath is None:
@@ -374,7 +374,7 @@ def read_function(asg, cursor, scope):
                     is_static=cursor.is_static_method(),
                     is_virtual=True,
                     is_const=False,
-                    is_pure_virtual=True,
+                    is_pure=True,
                     cursor=cursor)
         elif cursor.kind is CursorKind.CONSTRUCTOR:
             asg._nodes[spelling] = dict(proxy=ConstructorProxy,
