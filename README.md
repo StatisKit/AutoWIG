@@ -7,8 +7,8 @@ Official documentation is available at [virtualplants.github.io](http://virtualp
 ## Install
 
 To install VPlants.AutoWIG, you need to install these dependencies:
-  - LLVM (http://llvm.org/git/llvm),
-  - Clang (https://github.com/llvm-mirror/clang.git),
+  - LLVM (https://github.com/llvm-mirror/llvm),
+  - Clang (https://github.com/llvm-mirror/clang),
   - Zlib (http://www.zlib.net/),
   - Boost.Python (https://github.com/boostorg/python),
   - Mako Templates (http://www.makotemplates.org/).
@@ -31,4 +31,4 @@ You will probably need to copy the Clang python bindings (libclang) into your Py
 
 ## Contribute
 
-If you want to contribute to code, please have a look to [github workflow](http://virtualplants.github.io/contribute/devel/git-workflow.html)
+If you want to contribute, please have a look to the [github workflow](http://virtualplants.github.io/contribute/devel/git-workflow.html)

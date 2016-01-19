@@ -76,6 +76,3 @@ back_end = PluginFunctor.factory('autowig.back_end')
 #.. seealso::
 #    :attr:`plugin` for run-time available plugins.
 #"""
-
-back_end['boost_python:in_memory'] = 'vplants.autowig_plugin.back_end:BoostPythonInMemoryBackEndPlugin'
-back_end['boost_python:on_disk'] = 'vplants.autowig_plugin.back_end:BoostPythonOnDiskBackEndPlugin'
