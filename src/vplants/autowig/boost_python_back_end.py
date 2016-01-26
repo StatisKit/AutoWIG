@@ -290,11 +290,12 @@ class BoostPythonExportTemplateFileProxy(BoostPythonExportFileProxy):
 % for header in headers:
 
     % if header.language == 'c':
-extern "C" { \
+extern "C" {
     % endif
 #include <${header.path}>\
     % if header.language == 'c':
- }\
+
+}\
     % endif
 % endfor
 % for error in errors:
@@ -573,6 +574,20 @@ BOOST_PYTHON_MODULE(${modulename})
 % endfor
 }""")
 
+    COMPLEMENT = Template(text=r"""\
+#include <>
+
+namespace autowig
+{
+    template<class T> using held_type = \
+    % if held_type:
+${held_type}<T>\
+    % else:
+T*\
+    % endif
+;
+}
+""")
 
     def __init__(self, asg, node):
         super(BoostPythonModuleFileProxy, self).__init__(asg, node)
@@ -982,20 +997,20 @@ def std_filter_back_end(asg, memory=True, __gnu_cxx=True):
             asg['class ::std::weak_ptr'].is_smart_pointer = True
         if 'class ::std::auto_ptr' in asg:
             asg['class ::std::auto_ptr'].is_smart_pointer = True
-    for node in asg.functions('^::std::.*::swap::.*'):
-        node.boost_python_export = False
-    if 'class ::std::less' in asg:
-        asg['class ::std::less'].boost_python_export = False
-    if 'class ::std::allocator' in asg:
-        asg['class ::std::allocator'].boost_python_export = False
-    if 'class ::std::initializer_list' in asg:
-        asg['class ::std::initializer_list'].boost_python_export = False
-    if 'class ::std::reverse_iterator' in asg:
-        asg['class ::std::reverse_iterator'].boost_python_export = False
-    if 'class ::std::_Rb_tree_node' in asg:
-        asg['class ::std::_Rb_tree_node'].boost_python_export = False
-    if __gnu_cxx and '::__gnu_cxx' in asg:
-        asg['::__gnu_cxx'].boost_python_export = False
+    #for node in asg.functions('^::std::.*::swap::.*'):
+    #    node.boost_python_export = False
+    #if 'class ::std::less' in asg:
+    #    asg['class ::std::less'].boost_python_export = False
+    #if 'class ::std::allocator' in asg:
+    #    asg['class ::std::allocator'].boost_python_export = False
+    #if 'class ::std::initializer_list' in asg:
+    #    asg['class ::std::initializer_list'].boost_python_export = False
+    #if 'class ::std::reverse_iterator' in asg:
+    #    asg['class ::std::reverse_iterator'].boost_python_export = False
+    #if 'class ::std::_Rb_tree_node' in asg:
+    #    asg['class ::std::_Rb_tree_node'].boost_python_export = False
+    #if __gnu_cxx and '::__gnu_cxx' in asg:
+    #    asg['::__gnu_cxx'].boost_python_export = False
 
 class BoostPythonExportMappingFileProxy(BoostPythonExportTemplateFileProxy):
 
