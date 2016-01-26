@@ -1,5 +1,5 @@
 from pygments import highlight
-from pygments.lexers import ShellSessionLexer
+from pygments.lexers import BashSessionLexer
 from pygments.formatters import HtmlFormatter
 from abc import ABCMeta
 import subprocess
@@ -27,7 +27,7 @@ class ShellSession(object):
         self.out = out
         self.err = err
         if lexer is None:
-            self.lexer = ShellSessionLexer()
+            self.lexer = BashSessionLexer()
         else:
             self.lexer = lexer
 

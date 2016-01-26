@@ -6,7 +6,10 @@ from ConfigParser import ConfigParser
 import os
 from tempfile import NamedTemporaryFile
 from path import path
-import asciitree
+try:
+	import asciitree
+except:
+	pass
 from itertools import chain, imap
 
 __all__ = ['AbstractSyntaxTree']

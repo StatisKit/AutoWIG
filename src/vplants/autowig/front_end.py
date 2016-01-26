@@ -4,6 +4,8 @@
 import time
 from openalea.core.plugin.functor import PluginFunctor
 import pickle
+import subprocess
+from path import path
 
 from .ast import *
 from .asg import *
@@ -58,10 +60,25 @@ def preprocessing(asg, filepaths, flags, cache=None, force=False):
             pass
     if 'c' in flags:
         asg._language = 'c'
+        s = subprocess.Popen(['clang', '-x', 'c', '-v', '-E', '/dev/null'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     elif 'c++' in flags:
         asg._language = 'c++'
+        s = subprocess.Popen(['clang++', '-x', 'c++', '-v', '-E', '/dev/null'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         asg._language = None
+    if not asg._language is None:
+        if s.returncode:
+            warnings.warn('System includes not computed: clang command failed', Warning)
+        else:
+            out, err = s.communicate()
+            sysincludes = err.splitlines()
+            if '#include <...> search starts here:' not in sysincludes or 'End of search list.' not in sysincludes:
+                warnings.warn('System includes not computed: parsing clang command output failed', Warning)
+            else:
+                sysincludes = sysincludes[sysincludes.index('#include <...> search starts here:')+1:sysincludes.index('End of search list.')]
+                flags.extend(['-I'+str(path(sysinclude.strip()).abspath()) for sysinclude in sysincludes])
     content = ""
     for filenode in [asg.add_file(filepath, proxy=HeaderProxy) for filepath in filepaths]:
         filenode.is_primary = True
@@ -81,7 +98,6 @@ def preprocessing(asg, filepaths, flags, cache=None, force=False):
                     arg.language = asg._language
         else:
             content += '#include "' + filenode.globalname + '"\n'
-
     if not '::' in asg._nodes:
         asg._nodes['::'] = dict(proxy = NamespaceProxy)
     if not '::' in asg._syntax_edges:
@@ -336,6 +352,9 @@ def resolve_templates(asg):
         if hasattr(cls, 'access'):
             for spc in cls.specializations(partial=False):
                 asg._nodes[spc.node]['access'] = cls.access
+    for cls in asg.classes(templated=None, specialized=True):
+        if hasattr(cls, 'access') and not hasattr(cls.specialize, 'access'):
+            asg._nodes[cls.specialize.node]['access'] = cls.access
 
 def compute_cache(asg, filepaths, cache):
     try:
