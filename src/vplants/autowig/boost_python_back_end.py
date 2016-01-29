@@ -19,127 +19,79 @@ from .node_rename import node_rename, PYTHON_OPERATOR, CONST_PYTHON_OPERATOR, NO
 __all__ = []
 
 def get_boost_python_export(self):
-    return False
-
-CodeNodeProxy.boost_python_export = property(get_boost_python_export)
-
-def get_boost_python_export(self):
-    return any(dcl.boost_python_export for dcl in self.declarations())
-
-def set_boost_python_export(self, boost_python_export):
-    for enm in self.enums():
-        enm.boost_python_export = boost_python_export
-    for cst in self.enum_constants():
-        cst.boost_python_export = boost_python_export
-    for var in self.variables():
-        var.boost_python_export = boost_python_export
-    for fct in self.functions():
-        fct.boost_python_export = boost_python_export
-    for cls in self.classes():
-        cls.boost_python_export = boost_python_export
-    for nsp in self.namespaces():
-        nsp.boost_python_export = boost_python_export
-
-def del_boost_python_export(self):
-    for enm in self.enums():
-        del enm.boost_python_export
-    for cst in self.enum_constants():
-        del cst.boost_python_export
-    for var in self.variables():
-        del var.boost_python_export
-    for fct in self.functions():
-        del fct.boost_python_export
-    for cls in self.classes():
-        del cls.boost_python_export
-    for nsp in self.namespaces():
-        del nsp.boost_python_export
-
-NamespaceProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-del get_boost_python_export, set_boost_python_export, del_boost_python_export
-
-def get_boost_python_export(self):
     if hasattr(self, '_boost_python_export'):
         boost_python_export = self._boost_python_export
         if isinstance(boost_python_export, bool):
             return boost_python_export
         else:
             return self.asg[boost_python_export]
+    elif self.globalname == '::':
+        return True
+    elif self._valid_boost_python_export and getattr(self, 'access', 'public') == 'public':
+        return self._default_boost_python_export and self.parent.boost_python_export
     else:
-        return not self.is_smart_pointer and any(spc.boost_python_export for spc in self.specializations(partial=False))
+        return False
 
 def set_boost_python_export(self, boost_python_export):
-    self.asg._nodes[self.node]['_boost_python_export'] = boost_python_export
-    for spc in self.specializations(partial=False):
-        spc.boost_python_export = boost_python_export
-
-def del_boost_python_export(self):
-    self.asg._nodes[self.node].pop('_boost_python_export', None)
-    for spc in self.specializations(partial=False):
-        del spc.boost_python_export
-
-ClassTemplateProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-#ClassTemplatePartialSpecializationProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-del get_boost_python_export, set_boost_python_export, del_boost_python_export
-
-def get_boost_python_export(self):
-    if hasattr(self, '_boost_python_export'):
-        boost_python_export = self._boost_python_export
-        if isinstance(boost_python_export, bool):
-            return boost_python_export
-        else:
-            return self.asg[boost_python_export]
-    else:
-        parent = self.parent
-        if isinstance(parent, ClassProxy) and not(self.access == 'public' and parent.boost_python_export):
-            return False
-        else:
-            return True
-
-def set_boost_python_export(self, boost_python_export):
-    if not isinstance(boost_python_export, (bool, BoostPythonExportFileProxy)):
-        raise TypeError('\'boost_python_export\' parameter')
-    #if boost_python_export:
-    #    del self.boost_python_export
-    #    if not self.boost_python_export:
-    #        raise ValueError('\'boost_python_export\' parameter')
+    if boost_python_export and not self._valid_boost_python_export:
+        raise ValueError('\'boost_python_export\' cannot be set to another value than \'False\'')
+    elif not boost_python_export and self.globalname == '::'
+        raise ValueError('\'boost_python_export\' cannot be set to \'False\'')
+    if isinstance(boost_python_export, basestring):
+        boost_python_export = self._asg[boost_python_export]
     if isinstance(boost_python_export, BoostPythonExportFileProxy):
         scope = boost_python_export.scope
         if scope is None or scope == self.parent:
             del self.boost_python_export
             boost_python_export._wraps.add(self.node)
             boost_python_export = boost_python_export.node
-    else:
-        del self.boost_python_export
+    elif not isinstance(boost_python_export, bool):
+        raise TypeError('\'boost_python_export\' parameter must be boolean, a \'' + BoostPythonExportFileProxy.__class__.__name__ + '\' instance or identifer')
     self.asg._nodes[self.node]['_boost_python_export'] = boost_python_export
 
 def del_boost_python_export(self):
-    if isinstance(self.boost_python_export, BoostPythonExportFileProxy):
-        self.boost_python_export._wraps.remove(self.node)
-    self.asg._nodes[self.node].pop('_boost_python_export', None)
+    boost_python_export = self.boost_python_export
+    if isinstance(boost_python_export, BoostPythonExportFileProxy):
+        boost_python_export._wraps.remove(self.node)
+    self.asg._nodes[self.node].pop('_boost_python_export', boost_python_export)
 
-EnumConstantProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-EnumProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-DestructorProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-ClassProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-TypedefProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-del get_boost_python_export
+CodeNodeProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
+CodeNodeProxy._default_boost_python_export = False
+CodeNodeProxy._valid_boost_python_export = True
 
-def get_boost_python_export(self):
-    if hasattr(self, '_boost_python_export'):
-        boost_python_export = self._boost_python_export
-        if isinstance(boost_python_export, bool):
-            return boost_python_export
-        else:
-            return self.asg[boost_python_export]
-    else:
-        parent = self.parent
-        if isinstance(parent, ClassProxy) and not(self.access == 'public' and parent.boost_python_export):
+def _default_boost_python_export(self):
+    return not self.localname.startswith('_')
+
+NamespaceProxy._default_boost_python_export = property(_default_boost_python_export)
+ClassProxy._default_boost_python_export = property(_default_boost_python_export)
+del _default_boost_python_export
+
+def _default_boost_python_export(self):
+    return not self.localname.startswith('_') and not self.is_smart_pointer
+
+ClassTemplateProxy._default_boost_python_export = property(_default_boost_python_export)
+del _default_boost_python_export
+
+def _default_boost_python_export(self):
+    return self.specialize is None and not self.is_smart_pointer or self.specialize.boost_python_export
+
+ClassTemplateSpecializationProxy._default_boost_python_export = property(_default_boost_python_export)
+del _default_boost_python_export
+
+def _default_boost_python_export(self):
+    edge = self.type
+    if edge.is_pointer:
+        if edge.nested.is_pointer or edge.target.is_fundamental_type:
             return False
         else:
-            return not self.is_smart_pointer
+            return True
+    elif edge.is_reference:
+        return False
+    else:
+        return True
 
-ClassTemplateSpecializationProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-del get_boost_python_export
+VariableProxy._default_boost_python_export = property(_default_boost_python_export)
+del _default_boost_python_export
 
 def is_invalid_pointer(edge):
     return edge.nested.is_pointer or edge.is_pointer and not isinstance(edge.target, ClassProxy)
@@ -198,7 +150,7 @@ def get_boost_python_export(self):
         else:
             return self.asg[boost_python_export]
     else:
-        return is_valid_operator(self) and not(is_invalid_pointer(self.result_type) or is_invalid_reference(self.result_type) or any(is_invalid_pointer(prm.type) or is_invalid_reference(prm.type) for prm in self.parameters))
+        return not self.localname.startswith('operator') and not(is_invalid_pointer(self.result_type) or is_invalid_reference(self.result_type) or any(is_invalid_pointer(prm.type) or is_invalid_reference(prm.type) for prm in self.parameters))
 
 FunctionProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
 del get_boost_python_export
@@ -269,6 +221,8 @@ def set_boost_python_module(self, boost_python_module):
     _boost_python_module = self.boost_python_module
     if _boost_python_module:
         _boost_python_module._boost_python_exports.remove(self.node)
+    if isinstance(boost_python_module, BoostPythonModuleFileProxy):
+        boost_python_module = boost_python_module.node
     self.asg._nodes[self.node]['_boost_python_module'] = boost_python_module
     self.boost_python_module._boost_python_exports.add(self.node)
 

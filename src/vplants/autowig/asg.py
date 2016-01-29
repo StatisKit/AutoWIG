@@ -14,12 +14,13 @@ import hashlib
 from .sloc_count import sloc_count
 sloc_count.plugin = 'basic'
 from .tools import subclasses, split_scopes, remove_templates
-from .custom_warnings import NotWrittenFileWarning, ErrorWarning, NoneTypeWarning,  UndeclaredParentWarning, MultipleDeclaredParentWarning, MultipleDefinitionWarning, NoDefinitionWarning, SideEffectWarning, ProtectedFileWarning, InfoWarning, TemplateParentWarning, TemplateParentWarning, AnonymousWarning, AnonymousFunctionWarning, AnonymousFieldWarning, AnonymousClassWarning, NotImplementedWarning, NotImplementedTypeWarning, NotImplementedDeclWarning, NotImplementedParentWarning, NotImplementedOperatorWarning, NotImplementedTemplateWarning
 
 __all__ = ['AbstractSemanticGraph']
 
 class NodeProxy(object):
-    """
+    """Abstract semantic graph node proxy
+
+    .. seealso:: :class:`AbstractSemanticGraph`
     """
 
     def __init__(self, asg, node):
@@ -36,345 +37,440 @@ class NodeProxy(object):
 
     @property
     def asg(self):
+        """Node abstract semantic graph"""
         return self._asg
 
     @property
     def node(self):
+        """Node identifier
+
+        The node identifier is unique in the abstract semantic graph
+
+        .. seealso:: :attr:`globalname`
+        """
         return self._node
 
     @property
-    def hash(self):
-        return str(uuid.uuid5(uuid.NAMESPACE_X500, self.node)).replace('-', '')
-
-    def __repr__(self):
-        return self.node
-
-    def __dir__(self):
-        return sorted([key for key in self.asg._nodes[self.node].keys() if not key.startswith('_')])
-
-    def __getattr__(self, attr):
-        try:
-            return self.asg._nodes[self.node][attr]
-        except KeyError:
-            raise #AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
-        except:
-            raise
-
-class EdgeProxy(object):
-    """
-    """
-
-
-class DirectoryProxy(NodeProxy):
-    """
-    """
-
-    @property
     def globalname(self):
+        """Node global name
+
+        The node name is not neccessarily unique in the abstract semantic graph (e.g. overload functions)
+
+        .. seealso:: :attr:`node`
+        """
         return self.node
 
     @property
-    def localname(self):
-        return self.globalname[self.globalname.rfind(os.sep, 0, -1)+1:]
-
-    def relativename(self, directory):
-        relativename = './'
-        dirancestors = [ancestor.globalname for ancestor in self.asg[directory].ancestors] + [self.asg[directory].globalname]
-        selfancestors = [ancestor.globalname for ancestor in self.ancestors] + [self.globalname]
-        if len(dirancestors) > len(selfancestors):
-            relativename = '../'*(len(dirancestors)-len(selfancestors))
-            dirancestors = dirancestors[:-(len(dirancestors)-len(selfancestors))]
-        index = -1
-        while len(dirancestors)+index > 0:
-            if dirancestors[index] == selfancestors[index]:
-                break
-            else:
-                relativename += '../'
-                index -= 1
-        return relativename + selfancestors[-1][len(selfancestors[index]):]
+    def children(self):
+        """Node children
+        """
+        return [self.asg[node] for node in self.asg._syntax_edges[self.node]]
 
     @property
     def ancestors(self):
-        ancestors = [self.parent]
-        while not ancestors[-1].globalname == '/':
-            ancestors.append(ancestors[-1].parent)
-        return list(reversed(ancestors))
-
-    @property
-    def parent(self):
-        parent = os.sep.join(self.globalname.split(os.sep)[:-2]) + os.sep
-        if parent == '':
-            parent = os.sep
-        return self.asg[parent]
-
-    #@property
-    #def depth(self):
-    #    if self.globalname == os.sep:
-    #        return 0
-    #    else:
-    #        return self.parent.depth+1
-
-    def makedirs(self):
-        if not self.on_disk:
-            os.makedirs(self.globalname)
-            self.asg._nodes[self.node]['on_disk'] = True
-
-    def remove(self, recursive=False, force=False):
-        if self.on_disk:
-            if recursive:
-                for dirnode in reversed(sorted(self.walkdirs(), key=lambda node: node.depth)):
-                    dirnode.remove(False, force=force)
-            for filenode in self.glob():
-                filenode.remove(force=force)
-            os.rmdir(self.globalname)
-            self.asg._nodes[self.node]['on_disk'] = False
-
-    @property
-    def directories(self):
-        return [d for d in [self.asg[d] for d in self.asg._syntax_edges[self.node]] if isinstance(d, DirectoryProxy)]
-
-    @property
-    def files(self):
-        return [f for f in [self.asg[f] for f in self.asg._syntax_edges[self.node]] if isinstance(f, FileProxy)]
-
-    def walkdirs(self, pattern=None):
-        if pattern is None:
-            directories = self.directories
+        """Node ancestors
+        """
+        parent = self.parent
+        if parent is None:
+            return []
         else:
-            directories = [d for d in self.directories if fnmatch(d.globalname, pattern)]
-        return directories + list(itertools.chain(*[d.walkdirs(pattern=pattern) for d in self.directories]))
+            return parent.ancestors + [parent]
 
-    def walkfiles(self, pattern=None):
-        if pattern is None:
-            files = self.files
+    @property
+    def hash(self):
+        """Node hash
+
+        The node hash is usefull for having a valid an unique Python or C/C++ identifiers
+
+        .. seealso:: :attr:`node`
+        """
+        return str(uuid.uuid5(uuid.NAMESPACE_X500, self.node)).replace('-', '')
+
+    def __dir__(self):
+        return sorted([key for key in self.asg._nodes[self.node].keys() if not key.startswith('_')] + [key for key in dir(self.__class__) if not key.startswith('_')])
+
+    def __getattr__(self, attr):
+        if not attr in dir(self):
+            raise AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
         else:
-            files =  [f for f in self.files if fnmatch(f.globalname, pattern)]
-        return files + list(itertools.chain(*[d.walkfiles(pattern=pattern) for d in self.directories]))
+            try:
+                return self.asg._nodes[self.node][attr]
+            except:
+                raise
 
-def get_as_include(self):
-    if hasattr(self, '_as_include'):
-        return self._as_include
-    else:
-        return False
+class EdgeProxy(object):
+    """Abstract semantic graph node proxy
 
-def set_as_include(self, as_include):
-    self.asg._nodes[self.node]['_as_include'] = as_include
-
-def del_as_include(self):
-    self.asg._nodes[self.node].pop('_as_include', False)
-
-DirectoryProxy.as_include = property(get_as_include, set_as_include, del_as_include, doc = """
-        """)
-del get_as_include, set_as_include, del_as_include
-
-class FileProxy(NodeProxy):
+    .. seealso:: :class:`AbstractSemanticGraph`
     """
+
+    def __init__(self, asg, source, target):
+        self._asg = asg
+        self._source = source
+        self._target = target
+
+    @property
+    def asg(self):
+        """Edge abstract semantic graph"""
+        return self._asg
+
+    @property
+    def source(self):
+        """Edge source node"""
+        return self.asg[source]
+
+    @property
+    def target(self):
+        """Edge target node"""
+        return self.asg[target]
+
+class FilesytemProxy(NodeProxy):
+    """Abstract semantic graph node proxy for a filesystem component
     """
 
     @property
-    def globalname(self):
-        return self.node
+    def on_disk(self):
+        """Is the filesystem component on disk"""
+        return os.path.exists(self.globalname)
+
+class DirectoryProxy(FilesystemProxy):
+    """Abstract semantic graph node proxy for a directory
+
+    .. seealso:: :class:`FileProxy`
+    """
 
     @property
     def localname(self):
+        """Directory local name
+
+        The directory local name is computed by removing the parent directory global name in the directory globalname
+
+        .. seealso:: :attr:`globalname`
+        """
+        return self.globalname[self.globalname.rfind(os.sep, 0, -1)+1:]
+
+    @property
+    def parent(self):
+        """Parent directory
+
+        .. warning:: The parent directory is `None` only for the system root directory
+        """
+        if self.node == os.sep:
+            return None
+        else:
+            return self.asg[self.globalname[:self.globalname.rfind(os.sep, 0, -1)]]
+
+    def relpath(self, location):
+        """Compute the relative path from the directory to the given location
+
+        :Parameter:
+          `location` (:class:`FilesystemProxy`) - The given location.
+
+        :Returns Type:
+          str
+        """
+        if isinstance(location, basestring):
+            try:
+                location = self.asg[location]
+            except:
+                raise ValueError('\'location\' parameter')
+        elif not isinstance(location, FilesystemProxy):
+            raise TypeError('\'location\' parameter')
+        ancestors = self.ancestors, location.ancestors
+        i = 0
+        while i < min(len(ancestors[0]), len(ancestors[1])) and ancestors[0][i] == ancestors[1][i]:
+            i += 1
+        return './' + ('..' + os.sep) * (len(ancestors[0]) - i - 1) + os.sep.join(ancestors[1][i+1:])
+
+    def makedirs(self):
+        """Write the directory and its ancestral directories into the filesystem"""
+        if not self.on_disk:
+            os.makedirs(self.globalname)
+
+    #@property
+    #def directories(self):
+    #    return [d for d in [self.asg[d] for d in self.asg._syntax_edges[self.node]] if isinstance(d, DirectoryProxy)]
+
+    #@property
+    #def files(self):
+    #    return [f for f in [self.asg[f] for f in self.asg._syntax_edges[self.node]] if isinstance(f, FileProxy)]
+
+    #def walkdirs(self, pattern=None):
+    #    if pattern is None:
+    #        directories = self.directories
+    #    else:
+    #        directories = [d for d in self.directories if fnmatch(d.globalname, pattern)]
+    #    return directories + list(itertools.chain(*[d.walkdirs(pattern=pattern) for d in self.directories]))
+
+    #def walkfiles(self, pattern=None):
+    #    if pattern is None:
+    #        files = self.files
+    #    else:
+    #        files =  [f for f in self.files if fnmatch(f.globalname, pattern)]
+    #    return files + list(itertools.chain(*[d.walkfiles(pattern=pattern) for d in self.directories]))
+
+def get_is_searchpath(self):
+    if hasattr(self, '_is_searchpath'):
+        return self._is_searchpath
+    else:
+        return False
+
+def set_is_searchpath(self, is_searchpath):
+    self.asg._nodes[self.node]['_is_searchpath'] = is_searchpath
+
+def del_is_searchpath(self):
+    self.asg._nodes[self.node].pop('_is_searchpath', False)
+
+DirectoryProxy.is_searchpath = property(get_is_searchpath, set_is_searchpath, del_is_searchpath, doc = """Is this directory a search path
+
+.. note:: A compilation dependent property
+
+    This property is setted at each front-end execution.
+    Any application of a front-end reset this property since search paths can differ from one compilation to another.
+
+.. seealso:: :func:`autowig.front_end.preprocessing`""")
+del get_is_searchpath, set_is_searchpath, del_is_searchpath
+
+class FileProxy(FilesystemProxy):
+    """Abstract semantic graph node proxy for a filename
+
+    .. seealso:: :class:`DirectoryProxy`
+    """
+
+    @property
+    def parent(self):
+        """Parent directory"""
+        return self.asg[self.globalname[:self.globalname.rfind(os.sep)+1]]
+
+    @property
+    def localname(self):
+        """File local name
+
+        The file local name is computed by removing the parent directory global name in the file global name
+
+        .. seealso:: :attr:`globalname`
+        """
         return self.globalname[self.globalname.rfind(os.sep)+1:]
 
     @property
     def prefix(self):
+        """File prefix
+
+        The file prefix is the path of the local name posterior to the `.` character
+
+        .. seealso:: :attr:`localname`
+        """
         return self.localname[:self.localname.rfind('.')]
 
     @property
     def suffix(self):
+        """File prefix
+
+        The file prefix is the path of the local name anterior to the `.` character
+
+        .. seealso:: :attr:`localname`
+        """
         index = self.localname.rfind('.')
         if index > 0:
             return self.localname[index:]
         else:
             return ''
 
-    @property
-    def sloc(self):
-        return sloc_count(self.content, language=self.language)
-
-    def touch(self):
-        parent = self.parent
-        if not parent.on_disk:
-            parent.makedirs()
-        filehandler = open(self.globalname, 'w')
-        filehandler.close()
-        self.asg._nodes[self.node]['on_disk'] = True
+    #@property
+    #def sloc(self):
+    #    return sloc_count(self.content, language=self.language)
 
     def write(self, database=None, force=False):
-        parent = self.parent
-        if not parent.on_disk:
-            parent.makedirs()
-        content = self.content
-        self.content = content
-        with open(self.globalname, 'w') as filehandler:
-            filehandler.write(content)
-            filehandler.close()
-            self.asg._nodes[self.node]['on_disk'] = True
+        """Write the file and its ancestral directories into the filesystem
 
-    def remove(self, force=False):
-        os.remove(self.globalname)
-        self.asg._nodes[self.node]['on_disk'] = False
+        :Optional Parameters:
+         - `database` ({str:str}) - A database interfaced as a dictionnary.
+                                    A database key correspond to a file global name.
+                                    A database value correspond to a file md5.
+                                    If the database is given, the file is written to the disk only if its current md5 is the same as the one stored in the database.
+                                    If a file is written to the disk, its md5 is updated.
+         - `force` (bool) - If set to true, files are written to disk whatever the md5 stored in the database.
+                            Yet, if its current md5 is the same as the one stored in the database, a warning is displayed.
+        """
+        if database:
+            if self.on_disk and self.globalname in database:
+                with open(self.globalname, 'r') as filehandler:
+                    if not hashlib.md5(filehandler.read()).hexdigest() == database[self.globalname]:
+                        if force:
+                            warnings.warn('File written to disk while md5 signature was not up to date', UserWarning)
+                        else:
+                            raise IOError('File not written to disk since md5 signature was not up to date')
+            elif not self.on_disk:
+                parent = self.parent
+                if not parent.on_disk:
+                    parent.makedirs()
+            with open(self.globalname, 'w') as filehandler:
+                filehandler.write(self.content)
+                database[self.globalname] = hashlib.md5(self.content).hexdigest()
+        else:
+            if not self.on_disk:
+                parent = self.parent
+                if not parent.on_disk:
+                    parent.makedirs()
+            with open(self.globalname, 'w') as filehandler:
+                filehandler.write(self.content)
 
     @property
     def is_empty(self):
+        """Is the file empty"""
         return self.content == ""
 
-    def __repr__(self):
-        return self.node
-
-    def md5(self):
-        return hashlib.md5(str(self)).hexdigest()
-
-    @property
-    def ancestors(self):
-        ancestors = [self.parent]
-        while not ancestors[-1].globalname == '/':
-            ancestors.append(ancestors[-1].parent)
-        return list(reversed(ancestors))
-
-    @property
-    def parent(self):
-        return self.asg[os.sep.join(self.globalname.split(os.sep)[:-1]) + os.sep]
-
-def get_language(self):
-    if hasattr(self, '_language'):
-        return self._language
-    else:
-        return None
-
-def set_language(self, language):
-    self.asg._nodes[self.node]['_language'] = language
-
-def del_language(self):
-    self.asg._nodes[self.node].pop('_language', None)
-
-FileProxy.language = property(get_language, set_language, del_language)
-del get_language, set_language, del_language
-
 def get_content(self):
-    if not hasattr(self, '_content') or self._content == "":
-        filepath = path(self.globalname)
-        if filepath.exists():
-            return "".join(filepath.lines())
-        else:
-            return ""
-    else:
+    if hasattr(self, '_content'):
         return self._content
+    elif self.on_disk:
+        with open(self.globalname, 'r') as filehandler:
+            content = filehandler.read()
+        return content
+    else:
+        return ""
 
 def set_content(self, content):
     self.asg._nodes[self.node]['_content'] = content
 
 def del_content(self):
-    self.asg._nodes[self.node].pop('_content', False)
+    self.asg._nodes[self.node].pop('_content', "")
 
-FileProxy.content = property(get_content, set_content, del_content)
+FileProxy.content = property(get_content, set_content, del_content, doc="""File content
+
+.. warning:: The content can be different of the content of the real file content on the disk.
+
+.. seealso:: :func:`write`
+""")
 del get_content, set_content, del_content
 
 class HeaderProxy(FileProxy):
+    """Abstract semantic graph node proxy for a header file"""
 
     @property
     def include(self):
+        """Header including this header
+
+        .. warning:: If no header include this header, `None` is returned
+        """
         if self.node in self.asg._include_edges:
             return self.asg[self.asg._include_edges[self.node]]
 
     @property
     def depth(self):
+        """Depth of the header
+
+        The depth of a header is `0` if it is not included by any header or the depth of the including header plus `1`.
+
+        .. seealso:: :attr:`include`
+        """
         if not hasattr(self, '_depth'):
             include = self.include
             if include is None:
                 self.asg._nodes[self.node]['_depth'] = 0
             else:
-                self.asg._nodes[self.node]['_depth'] = include.depth+1
+                self.asg._nodes[self.node]['_depth'] = include.depth + 1
         return self._depth
 
     @property
-    def path(self):
-        if not self.is_independent:
-            raise ValueError
+    def searchpath(self):
+        """Path to file relatively to search path directories"""
         incpath = self.localname
         parent = self.parent
-        while not parent.localname == '/' and not parent.as_include:
+        while parent is not None and not parent.is_searchpath:
             incpath = parent.localname + incpath
             parent = parent.parent
-        if parent.localname == '/':
+        if parent is None:
             return '/' + incpath
         else:
             return incpath
 
-def get_is_primary(self):
-    if hasattr(self, '_is_primary'):
-        return self._is_primary
+def get_language(self):
+    return self._language
+
+def set_language(self, language):
+    if not isinstance(language, basestring):
+        raise TypeError('\'language\' parameter')
+    language = language.lower()
+    if not language in ['c', 'c++']:
+        raise ValueError('\'language\' parameter')
+    self._asg._nodes[self.node]['_language'] = language
+
+HeaderProxy.language = property(get_language, set_language, doc="""Language of the header file
+
+Possible languages for a header file is either `c` or `c++`
+""")
+del get_language, set_language
+
+def get_is_standalone(self):
+    if hasattr(self, '_is_standalone'):
+        return self._is_standalone
     else:
         return False
 
-def set_is_primary(self, is_primary):
-    self.asg._nodes[self.node]['_is_primary'] = is_primary
+def set_is_standalone(self, is_standalone):
+    self.asg._nodes[self.node]['_is_standalone'] = is_standalone
 
-def del_is_primary(self):
-    self.asg._nodes[self.node].pop('_is_primary', None)
+def del_is_standalone(self):
+    self.asg._nodes[self.node].pop('_is_standalone', None)
 
-HeaderProxy.is_primary = property(get_is_primary, set_is_primary, del_is_primary)
-del get_is_primary, set_is_primary, del_is_primary
+HeaderProxy.is_standalone = property(get_is_standalone, set_is_standalone, del_is_standalone, doc="""Is this a stand-alone header
 
-def get_is_independent(self):
-    if hasattr(self, '_is_independent'):
-        return self._is_independent
-    else:
-        return self.is_primary
+A header is considered as stand-alone if it can be included in a source file without producing any errors.
+By default, only header given as input of an AutoWIG front-end are considered as stand-alone.
 
-def set_is_independent(self, is_independent):
-    self.asg._nodes[self.node]['_is_independent'] = is_independent
+.. seealso:: :func:`autowig.front_end.postprocessing`""")
+del get_is_standalone, set_is_standalone, del_is_standalone
 
-def del_is_independent(self):
-    self.asg._nodes[self.node].pop('_is_independent', None)
-
-HeaderProxy.is_independent = property(get_is_independent, set_is_independent, del_is_independent)
-del get_is_independent, set_is_independent, del_is_independent
-
-class CodeNodeProxy(NodeProxy):
+class DeclarationProxy(NodeProxy):
+    """Abstract semantic graph node proxy for a declaration
+    """
 
     @property
     def header(self):
+        """File in which the declaration has been written
+
+        .. warning:: Some declarations are not really declared in headers.
+                     In particular:
+
+                       * The global scope (`::`) or fundamental types are not declared in any headers, therefore the result is `None`.
+                       * A class template specialization can be instantiated or declared.
+                         In the former case, the header in which the template class has been declared is returned.
+                         In the latter case, the header in which the template class specialization has been declared is returned.
+
+        .. seealso:: :class:`NamespaceProxy`, :class:`FundamentalTypeProxy` and :class:`ClassTemplateSpecializationProxy`.
+        """
         if not hasattr(self, '_header'):
             return self.parent.header
         else:
             return self.asg[self._header]
 
-    @property
-    def ancestors(self):
-        ancestors = [self.parent]
-        while not ancestors[-1].globalname == '::':
-            ancestors.append(ancestors[-1].parent)
-        return list(reversed(ancestors))
-
 class FundamentalTypeProxy(CodeNodeProxy):
-    """
-    http://www.cplusplus.com/doc/tutorial/variables/
+    """Abstract semantic graph node proxy for a fundamental type
     """
 
     @property
     def globalname(self):
+        """Fundamental type global name
+
+        For fundamental types, the global name is computed from its identifier minus the global scope operator (`::`)
+        """
         return self.node.lstrip('::')
 
     @property
     def localname(self):
-        return self.globalname
+        """Fundamental type local name
 
-    def __str__(self):
-        return self.node
+        The fundamental type local name is the same as its global name
+
+        .. seealso:: :attr:`globalname`
+        """
+        return self.globalname
 
     @property
     def parent(self):
+        """Global scope"""
         return self.asg['::']
-
-class UnexposedTypeProxy(FundamentalTypeProxy):
-    """
-    """
-
-    node = '::unexposed'
 
 class CharacterFundamentalTypeProxy(FundamentalTypeProxy):
     """
@@ -424,7 +520,7 @@ class SignedShortIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-    node = "::short"
+    node = "::short int"
 
 class SignedIntegerTypeProxy(SignedIntegerTypeProxy):
     """
@@ -436,13 +532,13 @@ class SignedLongIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-    node = "::long"
+    node = "::long int"
 
 class SignedLongLongIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-    node = "::long long"
+    node = "::long long int"
 
 class UnsignedIntegerTypeProxy(FundamentalTypeProxy):
     """
@@ -452,7 +548,7 @@ class UnsignedShortIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    node = "::unsigned short"
+    node = "::unsigned short int"
 
 class UnsignedIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
@@ -464,13 +560,13 @@ class UnsignedLongIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    node = "::unsigned long"
+    node = "::unsigned long int"
 
 class UnsignedLongLongIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    node = "::unsigned long long"
+    node = "::unsigned long long int"
 
 class SignedFloatingPointTypeProxy(FundamentalTypeProxy):
     """
@@ -504,19 +600,107 @@ class ComplexTypeProxy(FundamentalTypeProxy):
     """
     """
 
+class ComplexFloatTypeProxy(ComplexTypeProxy):
+
     node = "::_Complex float"
+
+class ComplexDoubleTypeProxy(ComplexTypeProxy):
+
+    node = "::_Complex double"
+
+class ComplexLongDoubleTypeProxy(ComplexTypeProxy):
+
+    node = "::_Complex long double"
 
 class NullPtrTypeProxy(FundamentalTypeProxy):
     """
     """
 
-    node = "::null_ptr"
+    node = "::nullptr_t"
 
 class VoidTypeProxy(FundamentalTypeProxy):
     """
     """
 
     node = "::void"
+
+
+class QualifiedType(EdgeProxy):
+    """Abstract semantic graph edge proxy for qualified type
+    """
+
+    def __init__(self, asg, source, target, qualifiers):
+        self._asg = asg
+        self._source = source
+        self._target = target
+        self._qualifiers = qualifiers
+
+    @property
+    def globalname(self):
+        """Qualified type global name
+
+        The qualified type global name is computed using the target global name
+        """
+        return self.target.globalname + ' ' + self._qualifiers
+
+    @property
+    def localname(self):
+        """Qualified type local name
+
+        The qualified type local name is computed using the target local name
+        """
+        return self.target.localname + ' ' + self._qualifiers
+
+    @property
+    def unqualified_type(self):
+        """
+        """
+        unqualified_type = self.target
+        while isinstance(unqualified_type, TypedefProxy):
+            unqualified_type = unqualified_type.qualified_type.unqualified_type
+        return unqualified_type
+
+    @property
+    def qualifiers(self):
+        unqualified_type = self.target
+        if isinstance(unqualified_type, TypedefProxy):
+            return unqualified_type.qualified_type.qualifiers + self._qualifiers
+        else:
+            return self._qualifiers
+
+    def is_fundamental_type(self):
+        """Is the unqualified type a fundamental type"""
+        return isinstance(self.unqualified_type, FundamentalTypeProxy)
+
+    def is_pointer(self):
+        """Is the qualified type a pointer"""
+        return '*' in self.qualifiers
+
+    def is_pointer_chain(self):
+        """Is the qualified type a chain of pointers"""
+        return self.qualifiers.count('*') > 1
+
+    def is_reference(self):
+        """Is the qualified type a reference"""
+        return self.qualifiers.endswith('&') or self.qualifiers.endswith('& const')
+
+    @property
+    def is_rvalue_reference(self):
+        return self.qualifiers.endswith('&&') or self.qualifiers.endswith('&& const')
+
+    @property
+    def is_lvalue_reference(self):
+        return self.is_reference and not self.is_rvalue_reference
+
+    def is_const(self):
+        """
+        """
+        if self.qualifiers.endswith('&&'):
+            return self.qualifiers.endswith('const &&')
+        elif self.qualifiers.endswith('&'):
+            return self.qualifiers.endswith('const &')
+        else:
+            return self.qualifiers.endswith('const')
 
 class TypeSpecifiersProxy(EdgeProxy):
     """
@@ -564,7 +748,6 @@ class TypeSpecifiersProxy(EdgeProxy):
     @property
     def is_rvalue_reference(self):
         return self.specifiers.endswith('&&') or self.specifiers.endswith('&& const')
-
 
     @property
     def is_lvalue_reference(self):
@@ -638,6 +821,8 @@ class EnumProxy(DeclarationProxy):
     """
     """
 
+    is_fundamental_type = False
+
     @property
     def parent(self):
         parent = self.globalname
@@ -669,6 +854,11 @@ class EnumProxy(DeclarationProxy):
 class TypedefProxy(DeclarationProxy):
     """
     """
+
+    @property
+    def is_fundamental_type(self):
+        return self.type.target.is_fundamental_type
+
     @property
     def parent(self):
         parent = self.globalname
@@ -1348,6 +1538,18 @@ class AbstractSemanticGraph(object):
         self._specialization_edges = dict()
         self._include_edges = dict()
 
+    def merge(self, other):
+        if not isinstance(other, AbstractSemanticGraph):
+            raise TypeError('\'other\' parameter must be a `' + self.__class__.__name__ + '` instance')
+        self._nodes.update(other._nodes)
+        self._syntax_edges.update(other._syntax_edges)
+        self._base_edges.update(other._base_edges)
+        self._type_edges.update(other._type_edges)
+        self._parameter_edges.update(other._parameter_edges)
+        self._template_edges.update(other._template_edges)
+        self._specialization_edges.update(other._specialization_edges)
+        self._include_edges.update(other._include_edges)
+
     def __len__(self):
         return len(self._nodes)
 
@@ -1606,26 +1808,26 @@ class AbstractSemanticGraph(object):
         metaclass = _MetaClass
         return self.nodes(pattern, metaclass=metaclass)
 
-    def include_path(self, header, absolute=False):
-        if not header.is_independent:
-            include = header.include
-            while include is not None and not include.is_indepentent:
-                include = include.include
-            if include is None:
-                raise ValueError('\'header\' parameter is not independent and has no include parent file independent')
-            header = include
-        if absolute:
-            return header.globalname
-        else:
-            include = header.localname
-            parent = header.parent
-            while not parent.localname == '/' and not parent.as_include:
-                include = parent.localname + include
-                parent = parent.parent
-            if parent.localname == '/':
-                return '/' + include
-            else:
-                return include
+    #def include_path(self, header, absolute=False):
+    #    if not header.is_standalone:
+    #        include = header.include
+    #        while include is not None and not include.is_indepentent:
+    #            include = include.include
+    #        if include is None:
+    #            raise ValueError('\'header\' parameter is not independent and has no include parent file independent')
+    #        header = include
+    #    if absolute:
+    #        return header.globalname
+    #    else:
+    #        include = header.localname
+    #        parent = header.parent
+    #        while not parent.localname == '/' and not parent.is_searchpath:
+    #            include = parent.localname + include
+    #            parent = parent.parent
+    #        if parent.localname == '/':
+    #            return '/' + include
+    #        else:
+    #            return include
 
     def headers(self, *nodes):
         white = []
@@ -1672,7 +1874,7 @@ class AbstractSemanticGraph(object):
                 else:
                     raise NotImplementedError(node.__class__.__name__)
                 header = node.header
-                while not header is None and not header.is_independent:
+                while not header is None and not header.is_standalone:
                     header = header.include
                 if not header is None:
                     headers.append(header)

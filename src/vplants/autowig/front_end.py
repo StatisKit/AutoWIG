@@ -13,7 +13,7 @@ from .tools import subclasses
 
 __all__ = ['front_end']
 
-def preprocessing(asg, filepaths, flags, cache=None, force=False):
+def preprocessing(asg, headers, flags):
     """Pre-processing step of an AutoWIG front-end
 
     During this step, files are added into the Abstract Semantic Graph (ASG) and a string corresponding to the content of a temporary header including all these files is returned.
@@ -21,92 +21,62 @@ def preprocessing(asg, filepaths, flags, cache=None, force=False):
     Nodes corresponding to the C++ global scope and C/C++ fundamental types (:class:`vplants.autowig.asg.FundamentalTypeProxy`) are also added to the ASG if not present.
 
     :Parameters:
-        * `asg` (:class:'vplants.autowig.asg.AbstractSemanticGraph') - The ASG in which the files are added.
-        * `filepaths` ([basestring|path]) - Paths to the files. Note that a path can be relative or absolute.
-        * `flags ([basestring]) - Flags needed to perform`
+     - `asg` (:class:'vplants.autowig.asg.AbstractSemanticGraph') - The ASG in which the files are added.
+     - `headers` ([basestring|path]) - Paths to the source code. Note that a path can be relative or absolute.
+     - `flags` ([basestring]) - Flags needed to perform the syntaxic analysis of source code.
+
 
     :Returns:
-        A temporary header content including all given files.
+        A source code including all given source code paths.
 
     :Return Type:
         str
 
-    .. note:: Determine the language of parsed files
+    .. note:: Determine the language of source code
 
         A temporary protected attribute `_language` is added to the ASG.
-        This protected attribute is used to determine the language (C or C++) of parsed files during the processing step.
+        This protected attribute is used to determine the language (C or C++) of header files during the processing step.
         This temporary attribute is deleted during the post-processing step.
+        The usage of the `-x` option in flags is therefore mandatory.
 
     .. seealso::
         :class:`FrontEndFunctor` for a detailed documentation about AutoWIG front-end step.
         :func:`vplants.autowig.libclang_front_end.front_end` for an example.
     """
-    if cache is not None and not force:
-        try:
-            with open(cache, 'r') as f:
-                _asg, _md5 = pickle.load(f)
-                if all(filepath in _asg for filepath in filepaths):
-                    if all(_asg[header].md5() == _md5[header] for header in _md5):
-                        asg._nodes.update(_asg._nodes)
-                        asg._syntax_edges.update(_asg._syntax_edges)
-                        asg._base_edges.update(_asg._base_edges)
-                        asg._type_edges.update(_asg._type_edges)
-                        asg._parameter_edges.update(_asg._parameter_edges)
-                        asg._template_edges.update(_asg._template_edges)
-                        asg._specialization_edges.update(_asg._specialization_edges)
-                        asg._include_edges.update(_asg._include_edges)
-                        return ''
-        except:
-            pass
-    if 'c' in flags:
+    cmd = ' '.join(flag.strip() for flag in flags)
+    if '-x c' in cmd:
         asg._language = 'c'
         s = subprocess.Popen(['clang', '-x', 'c', '-v', '-E', '/dev/null'],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    elif 'c++' in flags:
+    elif '-x c++' in cmd:
         asg._language = 'c++'
         s = subprocess.Popen(['clang++', '-x', 'c++', '-v', '-E', '/dev/null'],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
-        asg._language = None
-    if not asg._language is None:
-        if s.returncode:
-            warnings.warn('System includes not computed: clang command failed', Warning)
+        raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
+    if s.returncode:
+        warnings.warn('System includes not computed: clang command failed', Warning)
+    else:
+        out, err = s.communicate()
+        sysincludes = err.splitlines()
+        if '#include <...> search starts here:' not in sysincludes or 'End of search list.' not in sysincludes:
+            warnings.warn('System includes not computed: parsing clang command output failed', Warning)
         else:
-            out, err = s.communicate()
-            sysincludes = err.splitlines()
-            if '#include <...> search starts here:' not in sysincludes or 'End of search list.' not in sysincludes:
-                warnings.warn('System includes not computed: parsing clang command output failed', Warning)
-            else:
-                sysincludes = sysincludes[sysincludes.index('#include <...> search starts here:')+1:sysincludes.index('End of search list.')]
-                flags.extend(['-I'+str(path(sysinclude.strip()).abspath()) for sysinclude in sysincludes])
-    content = ""
-    for filenode in [asg.add_file(filepath, proxy=HeaderProxy) for filepath in filepaths]:
-        filenode.is_primary = True
-        if asg._language == 'c++':
-            if filenode.language == 'c':
-                content += 'extern "C" { #include "' + filenode.globalname + '" }\n'
-            else:
-                content += '#include "' + filenode.globalname + '"\n'
-                if filenode.language is None:
-                    filenode.language = asg._language
-        elif asg._language == 'c':
-            if filenode.language == 'c++':
-                content += 'extern "C++" { #include "' + filenode.globalname + '" }\n'
-            else:
-                content += '#include "' + filenode.globalname + '" }\n'
-                if arg.language is None:
-                    arg.language = asg._language
-        else:
-            content += '#include "' + filenode.globalname + '"\n'
+            sysincludes = sysincludes[sysincludes.index('#include <...> search starts here:')+1:sysincludes.index('End of search list.')]
+            flags.extend(['-I'+str(path(sysinclude.strip()).abspath()) for sysinclude in sysincludes])
+
     if not '::' in asg._nodes:
         asg._nodes['::'] = dict(proxy = NamespaceProxy)
     if not '::' in asg._syntax_edges:
         asg._syntax_edges['::'] = []
 
+    for directory in asg.directories():
+        directory.is_searchpath = False
+
     for flag in flags:
         if flag.startswith('-I'):
             includedir = asg.add_directory(flag.strip('-I'))
-            includedir.as_include = True
+            includedir.is_searchpath = True
 
     for fundamental in subclasses(FundamentalTypeProxy):
         if isinstance(fundamental.node, basestring):
@@ -115,9 +85,10 @@ def preprocessing(asg, filepaths, flags, cache=None, force=False):
             if not fundamental.node in asg._syntax_edges['::']:
                 asg._syntax_edges['::'].append(fundamental.node)
 
-    return content
+    headers = [path(header) if not isinstance(header, path) else header for header in headers]
+    return "\n".join('#include "' + header.abspath() + '"')
 
-def postprocessing(asg, filepaths, force_overload=True, cache=None):
+def postprocessing(asg, headers, overload=True):
     """Post-processing step of an AutoWIG front-end
 
     During this step, three distinct operations are executed:
@@ -132,7 +103,7 @@ def postprocessing(asg, filepaths, force_overload=True, cache=None):
         * The **templating** operation.
 
     :Parameter:
-        `force_overload` (bool) - The boolean considered in order to determine if the behavior of the **overloading** operation is altered or not.
+        `overload` (bool) - The boolean considered in order to determine if the behavior of the **overloading** operation is altered or not.
 
     :Return Type:
         `None`
@@ -141,15 +112,16 @@ def postprocessing(asg, filepaths, force_overload=True, cache=None):
         :func:`vplants.autowig.libclang_front_end.front_end` for an example.
         :func:`compute_overloads`, :func:`discard_forward_declarations` and :func:`resolve_templates` for a more detailed documentatin about AutoWIG front-end post-processing step.
     """
-    compute_overloads(asg, force_overload=force_overload)
+    for header in headers:
+        asg[header].is_standalone = True
+    compute_overloads(asg, overload=overload)
     discard_forward_declarations(asg)
     resolve_templates(asg)
-    compute_cache(asg, filepaths, cache)
 
-def compute_overloads(asg, force_overload):
+def compute_overloads(asg, overload):
     """
     """
-    if force_overload:
+    if overload:
         for fct in asg.functions(free=None):
             fct.is_overloaded = True
     else:
@@ -355,30 +327,6 @@ def resolve_templates(asg):
     for cls in asg.classes(templated=None, specialized=True):
         if hasattr(cls, 'access') and not hasattr(cls.specialize, 'access'):
             asg._nodes[cls.specialize.node]['access'] = cls.access
-
-def compute_cache(asg, filepaths, cache):
-    try:
-        with open(cache, 'w') as f:
-            included = {asg[filepath].globalname for filepath in filepaths}
-            curr = asg.files(header=True)
-            prev = []
-            changed = True
-            while changed:
-                prev = curr
-                curr = []
-                changed = False
-                while len(prev) > 0:
-                    header = prev.pop()
-                    if not header.include is None:
-                        if header.include.globalname in included:
-                            included.add(header.globalname)
-                            changed = True
-                        else:
-                            curr.append(header)
-            md5 = {header : asg[header].md5() for header in included}
-            pickle.dump((asg, md5), f)
-    except:
-        pass
 
 front_end = PluginFunctor.factory('autowig.front_end')
 
