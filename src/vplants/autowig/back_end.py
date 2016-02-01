@@ -1,6 +1,6 @@
 from openalea.core.plugin.functor import PluginFunctor
 
-from .asg import AbstractSemanticGraph
+from autowig.asg import AbstractSemanticGraph
 
 __all__ = ['back_end']
 
@@ -11,14 +11,14 @@ class BackEndDiagnostic(object):
     In particular, time elapsed (:attr:`elapsed`) for this step is stored and a brief summary of generated files is performed:
 
     * :attr:`files` denotes the total number of files generated.
-    * :attr:`sloc` denotes the total number of source line of codes counted (see :var:`vplants.autowig.sloc_count.sloc_count`).
+    * :attr:`sloc` denotes the total number of source line of codes counted (see :var:`autowig.sloc_count.sloc_count`).
     * :attr:`project` denotes the type of basic COCOMO model software project ('organic', 'semi-detached' or 'embded').
     * :attr:`effort` denotes the estimated number of persons by month considering the basic COCOMO model.
     * :attr:`schedule` denotes the estimated number of months necessary to deliver considering the basic COCOMO model.
     * :attr:`manpower` denotes the estimated number of persons necessary to deliver considering the basic COCOMO model.
     .. seealso::
         :var:`back_end` for a detailed documentation about AutoWIG back-end step.
-        :func:`vplants.autowig.boost_python_back_end.back_end` for an example.
+        :func:`autowig.boost_python_back_end.back_end` for an example.
     """
 
     def __init__(self):

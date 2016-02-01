@@ -300,7 +300,7 @@ def read_enum_constant(asg, cursor, scope):
     else:
         spelling = scope + cursor.spelling
     spelling = spelling.replace('enum ', '')
-    asg._nodes[spelling] = dict(proxy=EnumConstantProxy)
+    asg._nodes[spelling] = dict(proxy=EnumeratorProxy)
     asg._syntax_edges[scope].append(spelling)
     return [spelling]
 

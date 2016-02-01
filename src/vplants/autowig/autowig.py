@@ -6,8 +6,8 @@ else:
     front_end.plugin = 'libclang'
 from .middle_end import middle_end
 middle_end.plugin = 'default'
-from .call_policy import call_policy
-call_policy.plugin = 'boost_python:default'
+from .boost_python_call_policy import boost_python_call_policy
+boost_python_call_policy.plugin = 'boost_python:default'
 from .held_type import held_type
 held_type.plugin = 'std:shared_ptr'
 from .node_path import node_path

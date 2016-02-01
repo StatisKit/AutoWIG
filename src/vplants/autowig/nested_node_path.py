@@ -1,9 +1,9 @@
 from openalea.core.util import camel_case_to_lower
-from vplants.autowig.asg import CodeNodeProxy, ClassTemplateSpecializationProxy
+from autowig.asg import CodeNodeProxy, ClassTemplateSpecializationProxy
 
 def nested_node_path(node, prefix, suffix, camel_case=False):
     if not isinstance(node, CodeNodeProxy):
-        raise TypeError('\'node\' parameter is not \'vplants.autowig.asg.CodeNodeProxy\' instance but a \'' + node.__class__.__name__ + '\' instance')
+        raise TypeError('\'node\' parameter is not \'autowig.asg.CodeNodeProxy\' instance but a \'' + node.__class__.__name__ + '\' instance')
     if node.globalname == '::':
         filepath = '.' + prefix + suffix
     else:

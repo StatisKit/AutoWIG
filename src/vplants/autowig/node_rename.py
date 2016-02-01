@@ -59,7 +59,7 @@ class PEP8NodeNamePlugin(object):
 
 
     def implementation(self, node, scope=False):
-        from vplants.autowig.asg import VariableProxy, FunctionProxy, MethodProxy, ClassProxy, ClassTemplateSpecializationProxy, ClassTemplateProxy, TypedefProxy, EnumProxy, EnumConstantProxy, NamespaceProxy
+        from autowig.asg import VariableProxy, FunctionProxy, MethodProxy, ClassProxy, ClassTemplateSpecializationProxy, ClassTemplateProxy, TypedefProxy, EnumProxy, EnumConstantProxy, NamespaceProxy
         if isinstance(node, MethodProxy) and node.localname.startswith('operator'):
             operator = node.localname.strip('operator').strip()
             if operator in PYTHON_OPERATOR:

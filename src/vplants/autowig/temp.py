@@ -286,7 +286,7 @@ BoostPythonExportStlContainerFileProxy.content = property(get_content, set_conte
 del get_content, set_content, del_content
 
 def stl_back_end(asg, filename, **kwargs):
-    from vplants.autowig.back_end import BackEndDiagnostic
+    from autowig.back_end import BackEndDiagnostic
     prev = time.time()
     if filename in asg:
         modulenode = asg[filename]

@@ -1,6 +1,6 @@
 from openalea.core.plugin.functor import PluginFunctor
 from openalea.core.util import camel_case_to_lower
-from vplants.autowig.asg import CodeNodeProxy, ClassTemplateSpecializationProxy
+from autowig.asg import CodeNodeProxy, ClassTemplateSpecializationProxy
 
 __all__ = ['node_path']
 

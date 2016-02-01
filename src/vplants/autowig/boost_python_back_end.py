@@ -18,6 +18,21 @@ from .node_rename import node_rename, PYTHON_OPERATOR, CONST_PYTHON_OPERATOR, NO
 
 __all__ = []
 
+def get_boost_python_call_policy(self):
+    if hasattr(self, '_boost_python_call_policy'):
+        return self._boost_python_call_policy
+    else:
+        return boost_python_call_policy(self)
+
+def set_boost_python_call_policy(self, call_policy):
+    self._asg._nodes[self._node].pop('_boost_python_call_policy', call_policy)
+
+def del_boost_python_call_policy(self):
+    self._asg._nodes[self._node].pop('_boost_python_call_policy', None)
+
+FunctionProxy.boost_python_call_policy = property(get_boost_python_call_policy, set_boost_python_call_policy, del_boost_python_call_policy)
+del get_boost_python_call_policy, set_boost_python_call_policy, del_boost_python_call_policy
+
 def get_boost_python_export(self):
     if hasattr(self, '_boost_python_export'):
         boost_python_export = self._boost_python_export

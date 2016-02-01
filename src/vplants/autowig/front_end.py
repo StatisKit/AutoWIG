@@ -7,9 +7,9 @@ import pickle
 import subprocess
 from path import path
 
-from .ast import *
-from .asg import *
-from .tools import subclasses
+from autowig.ast import *
+from autowig.asg import *
+from autowig.tools import subclasses
 
 __all__ = ['front_end']
 
@@ -17,11 +17,11 @@ def preprocessing(asg, headers, flags):
     """Pre-processing step of an AutoWIG front-end
 
     During this step, files are added into the Abstract Semantic Graph (ASG) and a string corresponding to the content of a temporary header including all these files is returned.
-    The attribute :attr:`is_primary` of nodes corresponding to these files is set to `True` (see :func:`vplants.autowig.middle_end.clean` for a detailed explanation of this operation).
-    Nodes corresponding to the C++ global scope and C/C++ fundamental types (:class:`vplants.autowig.asg.FundamentalTypeProxy`) are also added to the ASG if not present.
+    The attribute :attr:`is_primary` of nodes corresponding to these files is set to `True` (see :func:`autowig.middle_end.clean` for a detailed explanation of this operation).
+    Nodes corresponding to the C++ global scope and C/C++ fundamental types (:class:`autowig.asg.FundamentalTypeProxy`) are also added to the ASG if not present.
 
     :Parameters:
-     - `asg` (:class:'vplants.autowig.asg.AbstractSemanticGraph') - The ASG in which the files are added.
+     - `asg` (:class:'autowig.asg.AbstractSemanticGraph') - The ASG in which the files are added.
      - `headers` ([basestring|path]) - Paths to the source code. Note that a path can be relative or absolute.
      - `flags` ([basestring]) - Flags needed to perform the syntaxic analysis of source code.
 
@@ -41,7 +41,7 @@ def preprocessing(asg, headers, flags):
 
     .. seealso::
         :class:`FrontEndFunctor` for a detailed documentation about AutoWIG front-end step.
-        :func:`vplants.autowig.libclang_front_end.front_end` for an example.
+        :func:`autowig.libclang_front_end.front_end` for an example.
     """
     cmd = ' '.join(flag.strip() for flag in flags)
     if '-x c' in cmd:
@@ -88,7 +88,7 @@ def preprocessing(asg, headers, flags):
     headers = [path(header) if not isinstance(header, path) else header for header in headers]
     return "\n".join('#include "' + header.abspath() + '"')
 
-def postprocessing(asg, headers, overload=True):
+def postprocessing(asg, headers, overload='all'):
     """Post-processing step of an AutoWIG front-end
 
     During this step, three distinct operations are executed:
@@ -109,7 +109,7 @@ def postprocessing(asg, headers, overload=True):
         `None`
 
     .. seealso::
-        :func:`vplants.autowig.libclang_front_end.front_end` for an example.
+        :func:`autowig.libclang_front_end.front_end` for an example.
         :func:`compute_overloads`, :func:`discard_forward_declarations` and :func:`resolve_templates` for a more detailed documentatin about AutoWIG front-end post-processing step.
     """
     for header in headers:
@@ -121,16 +121,31 @@ def postprocessing(asg, headers, overload=True):
 def compute_overloads(asg, overload):
     """
     """
-    if overload:
+    if isinstance(overload, bool):
+        if overload:
+            overload = 'all'
+        else:
+            overload = 'none'
+    if not isinstance(overload, basestring):
+        raise TypeError('\'overload\' parameter')
+    if overload == 'all':
+        free = None
+    elif overload == 'namespace':
+        free = True
+    elif overload == 'class':
+        free = False
+    elif not overload == 'none':
+        raise ValueError('\'overload\' parameter')
+    if overload == 'none':
         for fct in asg.functions(free=None):
-            fct.is_overloaded = True
+            fct.is_overload = True
     else:
-        for fct in asg.functions(free=None):
+        for fct in asg.functions(free=free):
             if not fct.is_overloaded:
                 overloads = fct.overloads
                 if len(overloads) > 1:
-                    for old in overloads:
-                        old.is_overloaded = True
+                    for overload in overloads:
+                        overload.is_overloaded = True
 
 def discard_forward_declarations(asg):
     black = set()
