@@ -12,7 +12,7 @@ To install VPlants.AutoWIG, you need to install these dependencies:
   - Zlib (http://www.zlib.net/),
   - Boost.Python (https://github.com/boostorg/python.git),
   - Mako Templates (http://www.makotemplates.org/),
-  - OpenAlea.OpenAlea (git@github.com:openalea/openalea.git)
+  - OpenAlea.OpenAlea (https://github.com/openalea/openalea.git)
   
 But it is also highly recommended to install
   - PyClangLite (https://github.com/VirtualPlants/PyClangLite.git)
