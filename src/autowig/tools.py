@@ -1,30 +1,93 @@
+import pkg_resources
 
-import re
-import inspect
-import uuid
+__all__ = ['Plugin', 'camel_case_to_lower', 'to_camel_case', 'camel_case_to_upper']
+
+def build_plugin_doc(self):
+    self.__doc__ = []
+    if self._brief:
+        self.__doc__.append(self._brief)
+        self.__doc__.append('')
+    if self._detailed:
+        self.__doc__.append(self._detailed)
+        self.__doc__.append('')
+    self.__doc__.append(":Available Plugins:")
+    self.__doc__.extend(" - \'" + plugin.name + '\'' for plugin in pkg_resources.iter_entry_points(self._group))
+    self.__doc__.extend(" - \'" + plugin + '\'' for plugin in self._cache)
+    self.__doc__ = '\n'.join(self.__doc__)
+
+class PluginImplementationDescriptor(object):
+    """A plugin descriptor that returns and sets plugin implementations
+    """
+
+    def __get__(self, obj, objtype):
+        if hasattr(obj, '_plugin'):
+            plugin = obj._plugin
+            while plugin in obj._cache:
+                plugin = obj._cache[plugin]
+            if callable(plugin):
+                return plugin
+            else:
+                return pkg_resources.iter_entry_points(obj._group, plugin).next().load()
+        else:
+            def __call__(*args, **kwargs):
+                """No plugin implementation selected"""
+                raise NotImplementedError("A plugin implementation must be selected using \'plugin\' field")
+            return __call__
+
+class PluginIdentificationDescriptor(object):
+    """
+    """
+
+    def __get__(self, obj, cls):
+        if not hasattr(obj, '_plugin'):
+            raise ValueError('\'plugin\' identification not setted')
+        return obj._plugin
+
+    def __set__(self, obj, plugin):
+        obj._plugin = plugin
+        build_plugin_doc(obj)
 
 
-class FactoryDocstring(object):
+class Plugin(object):
 
-    def __init__(self, method):
-        self.method = method
+    __call__ = PluginImplementationDescriptor()
 
-    def __str__(self):
-        docstring = 'This method is controlled by the following identifiers:'
-        for name, method in inspect.getmembers(self.method.im_class, predicate=inspect.ismethod):
-            if re.match('^_(.*)_' + self.method.im_func.__name__+'$', name):
-                docstring += '\n - \"' + re.sub('^_(.*)_' + self.method.im_func.__name__+'$', r'\1', name) + '\"'
-        return docstring
+    plugin = PluginIdentificationDescriptor()
 
-    @staticmethod
-    def as_factory(method):
-        method.im_func.func_doc = FactoryDocstring(method)
+    def __init__(self, group, brief="", detailed=""):
+        """Create a plugin"""
+        self._group = group
+        self._brief = brief
+        self._detailed = detailed
+        self._cache = dict()
+        build_plugin_doc(self)
 
-    def expandtabs(self, tabsize):
-        return str(self).expandtabs(tabsize)
+    def __contains__(self, plugin):
+        """
+        """
+        return plugin in self._cache or len(list(pkg_resources.iter_entry_points(self._group, plugin))) > 0
 
-inspect.types.StringTypes += (FactoryDocstring,)
+    def __getitem__(self, plugin):
+        """
+        """
+        plugin, self.plugin = self.plugin, plugin
+        plugin, self.plugin = self.__call__, plugin
+        return plugin
 
+    def __setitem__(self, plugin, implementation):
+        if not isinstance(plugin, basestring):
+            raise TypeError('\'plugin\' parameter must be a basestring instance')
+        if callable(implementation):
+            self._cache[plugin] = implementation
+        elif isinstance(implementation, basestring):
+            if not implementation in self:
+                raise ValueError('\'implementation\' parameter must be an existing plugin')
+            if plugin == implementation:
+                raise ValueError('\'plugin\' and \'implementation\' parameters cannot have the same value')
+            self._cache[plugin] = implementation
+        else:
+            raise TypeError('must be callable or a basestring instance')
+        build_plugin_doc(self)
 
 def subclasses(cls, recursive=True):
     if recursive:
@@ -38,53 +101,18 @@ def subclasses(cls, recursive=True):
     else:
         return cls.__subclasses__()
 
-
-def remove_regex(name):
-    for specialchar in ['.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '|']:
-        name = name.replace(specialchar, '\\' + specialchar)
-    return name
-
-
-def split_scopes(name):
-    scopes = []
-    current = 0
-    previous = 0
-    delimiter = 0
-    if name.startswith('::'):
-        name = name[2:]
-    while current < len(name):
-        if name[current] in ['<', '(', '[']:
-            delimiter += 1
-            current += 1
-        elif name[current] in ['>', ')', ']']:
-            delimiter -= 1
-            current += 1
-        elif name[current:current+2] == '::' and delimiter == 0:
-            scopes.append(name[previous:current])
-            current += 2
-            previous = current
-        else:
-            current += 1
-    scopes.append(name[previous:current])
-    return scopes
-
-
-def remove_templates(name):
-    delimiter = name.endswith('>')
-    index = -1
-    while not delimiter == 0 and len(name)+index > 0:
-        index -= 1
-        if name[index] == '<':
-            delimiter -= 1
-        elif name[index] == '>':
-            delimiter += 1
-    if delimiter == 0:
-        return name[0:index]
-    else:
-        return name
-
-
-def lower(name):
+def camel_case_to_lower(name):
+    """
+    :Examples:
+    >>> camel_case_to_lower('squareRoot')
+    'square_root'
+    >>> camel_case_to_lower('SquareRoot')
+    'square_root'
+    >>> camel_case_to_lower('ComputeSQRT')
+    'compute_sqrt'
+    >>> camel_case_to_lower('SQRTCompute')
+    'sqrt_compute'
+    """
     lowername = '_'
     index = 0
     while index < len(name):
@@ -92,42 +120,86 @@ def lower(name):
             lowername += name[index]
             index += 1
         else:
-            if lowername[-1] == '_':
-                if not name[index] == '_':
-                    lowername += name[index].lower()
-            else:
-                if not name[index] == '_':
-                    lowername += '_' + name[index].lower()
-                else:
+            if not name[index] == '_':
+                if not lowername[-1] == '_':
                     lowername += '_'
-            index += 1
-            while index < len(name) and not name[index].islower():
                 lowername += name[index].lower()
+                index += 1
+                if index < len(name) and not name[index].islower():
+                    while index < len(name) and not name[index].islower():
+                        lowername += name[index].lower()
+                        index += 1
+                    if index < len(name):
+                        lowername = lowername[:-1] + '_' + lowername[-1]
+            else:
+                if not lowername[-1] == '_':
+                    lowername += '_'
                 index += 1
     lowername = lowername.lstrip('_')
     return lowername
 
+def camel_case_to_upper(name):
+    """
+    :Examples:
+    >>> camel_case_to_upper('squareRoot')
+    'SQUARE_ROOT'
+    >>> camel_case_to_upper('SquareRoot')
+    'SQUARE_ROOT'
+    >>> camel_case_to_upper('ComputeSQRT')
+    'COMPUTE_SQRT'
+    >>> camel_case_to_upper('SQRTCompute')
+    'SQRT_COMPUTE'
+    >>> camel_case_to_upper('Char_U')
+    """
+    lowername = '_'
+    index = 0
+    while index < len(name):
+        if name[index].islower():
+            lowername += name[index].upper()
+            index += 1
+        else:
+            if not name[index] == '_':
+                if not lowername[-1] == '_':
+                    lowername += '_'
+                lowername += name[index].upper()
+                index += 1
+                if index < len(name) and not name[index].islower():
+                    while index < len(name) and not name[index].islower():
+                        lowername += name[index]
+                        index += 1
+                    if index < len(name):
+                        lowername = lowername[:-1] + '_' + lowername[-1]
+            else:
+                if not lowername[-1] == '_':
+                    lowername += '_'
+                index += 1
+    lowername = lowername.lstrip('_')
+    return lowername
 
-def to_path(node, upper=False, offset=0, dirpath='.'):
-    path = compute_path(node).lstrip('_')
-    if not upper:
-        path = lower(path)
-    maxlength = 100#os.pathconf(dirpath, 'PC_NAME_MAX')
-    if len(path) > maxlength-offset:
-        offset += 36
-        alt_path = path[:maxlength-offset]
-        if not alt_path.endswith('_'):
-            alt_path += '_'
-            offset += 1
-        return alt_path + str(uuid.uuid5(uuid.NAMESPACE_X500, path[maxlength-offset:])).replace('-', '_')
-    else:
-        return path
-
-
-def compute_path(node):
-    if node.localname == '':
-        return ''
-    elif node.localname.endswith('>'):
-        return compute_path(node.parent) + '_' + remove_templates(node.localname) + '_' + node.hash
-    else:
-        return compute_path(node.parent) + '_' + node.localname
+def to_camel_case(name):
+    """
+    :Examples:
+    >>> lower_to_camel_case(camel_case_to_lower('squareRoot'))
+    'SquareRoot'
+    >>> lower_to_camel_case(camel_case_to_lower('SquareRoot'))
+    'SquareRoot'
+    >>> lower_to_camel_case(camel_case_to_lower('ComputeSQRT'))
+    'ComputeSqrt'
+    >>> lower_to_camel_case(camel_case_to_lower('SQRTCompute'))
+    'SqrtCompute'
+    """
+    camelname = ''
+    index = 0
+    while index < len(name):
+        if name[index] == '_':
+            index += 1
+            while index < len(name) and name[index] == '_':
+                index += 1
+            if index < len(name):
+                camelname += name[index].upper()
+        else:
+            camelname += name[index]
+        index += 1
+    if camelname[0].islower():
+       camelname  = camelname[0].upper() + camelname[1:]
+    return camelname

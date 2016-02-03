@@ -107,16 +107,14 @@ setup(
 
     # Declare scripts and wralea as entry_points (extensions) of your package
     entry_points = {
-        'autowig.sloc_count': [],
-        'autowig.node_path': ['autowig.node_path/autowig = vplants.autowig_plugin.node_path'],
-        'autowig.diagnostic': ['autowig.diagnostic/autowig = vplants.autowig_plugin.diagnostic'],
-        'autowig.held_type': ['autowig.held_type/autowig = vplants.autowig_plugin.held_type'],
-        'autowig.call_policy': ['autowig.call_policy/autowig = vplants.autowig_plugin.call_policy'],
-        'autowig.front_end': ['autowig.front_end/autowig = vplants.autowig_plugin.front_end'],
-        'autowig.middle_end': ['autowig.middle_end/autowig = vplants.autowig_plugin.middle_end'],
-        'autowig.back_end': ['autowig.back_end/autowig = vplants.autowig_plugin.back_end'],
+        'autowig.front_end': ['libclang = autowig.libclang_front_end:front_end'],
+        'autowig.middle_end': [],
+        'autowig.back_end': ['boost_python = autowig.boost_python_back_end:back_end', 'on_disk = autowig.on_disk_back_end:back_end'],
+        'autowig.node_rename' : ['PEP8 = autowig.node_rename:pep8_node_rename'],
+        'autowig.node_path' : ['flat = autowig.node_rename:flat_node_path', 'nested = autowig.node_rename:nested_node_path'],
+
         'console_scripts': [
-               'alea_headache = vplants.autowig.headache:alea_headache', ],
+               'alea_headache = autowig.headache:alea_headache', ],
         # 'gui_scripts': [
         #      'fake_gui = openalea.fakepackage.amodule:gui_script',],
         #	'wralea': wralea_entry_points

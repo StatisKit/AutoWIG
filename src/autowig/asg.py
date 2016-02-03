@@ -1,19 +1,15 @@
-from clang.cindex import Index, TranslationUnit, CursorKind, Type, TypeKind
+"""
+"""
+
 import uuid
-from mako.template import Template
-from path import path
 import itertools
 import os
-from tempfile import NamedTemporaryFile
-from abc import ABCMeta
-from fnmatch import fnmatch
 import re
 import warnings
 import hashlib
+from path import path
 
-from .sloc_count import sloc_count
-sloc_count.plugin = 'basic'
-from .tools import subclasses, split_scopes, remove_templates
+from .tools import subclasses
 
 __all__ = ['AbstractSemanticGraph']
 
@@ -36,6 +32,9 @@ class NodeProxy(object):
             return self._node == other
         else:
             return False
+
+    def __repr__(self):
+        return self.globalname
 
     @property
     def globalname(self):
@@ -74,7 +73,7 @@ class NodeProxy(object):
         return str(uuid.uuid5(uuid.NAMESPACE_X500, self._node)).replace('-', '')
 
     def __dir__(self):
-        return sorted([key for key in self._asg._nodes[self._node].keys() if not key.startswith('_')] + [key for key in dir(self.__class__) if not key.startswith('_')])
+        return sorted([key for key in self._asg._nodes[self._node].keys()] + [key for key in dir(self.__class__)])
 
     def __getattr__(self, attr):
         if not attr in dir(self):
@@ -97,11 +96,11 @@ class NodeProxy(object):
     def clean(self, clean):
         if not isinstance(clean, bool):
             raise TypeError('\'clean\' parameter')
-        self.asg._nodes[self.node]['_clean'] = clean
+        self._asg._nodes[self._node]['_clean'] = clean
 
     @clean.deleter
     def clean(self):
-        self.asg._nodes[self.node].pop('_clean', self._clean_default)
+        self._asg._nodes[self._node].pop('_clean', self._clean_default)
 
 class EdgeProxy(object):
     """Abstract semantic graph node proxy
@@ -119,7 +118,7 @@ class EdgeProxy(object):
         """Edge abstract semantic graph"""
         return self._asg
 
-class FilesytemProxy(NodeProxy):
+class FilesystemProxy(NodeProxy):
     """Abstract semantic graph node proxy for a filesystem component
     """
 
@@ -142,7 +141,7 @@ class DirectoryProxy(FilesystemProxy):
 
         .. seealso:: :attr:`globalname`
         """
-        return self.globalname[self.globalname.rfind(os.sep, 0, -1)+1:]
+        return self.globalname[self.globalname.rfind(os.sep, 0, -2)+1:]
 
     @property
     def parent(self):
@@ -153,7 +152,7 @@ class DirectoryProxy(FilesystemProxy):
         if self._node == os.sep:
             return None
         else:
-            return self._asg[self.globalname[:self.globalname.rfind(os.sep, 0, -1)]]
+            return self._asg[self.globalname[:len(self.globalname)-len(self.localname)]]
 
     def relpath(self, location):
         """Compute the relative path from the directory to the given location
@@ -181,28 +180,6 @@ class DirectoryProxy(FilesystemProxy):
         """Write the directory and its ancestral directories into the filesystem"""
         if not self.on_disk:
             os.makedirs(self.globalname)
-
-    #@property
-    #def directories(self):
-    #    return [d for d in [self._asg[d] for d in self._asg._syntax_edges[self._node]] if isinstance(d, DirectoryProxy)]
-
-    #@property
-    #def files(self):
-    #    return [f for f in [self._asg[f] for f in self._asg._syntax_edges[self._node]] if isinstance(f, FileProxy)]
-
-    #def walkdirs(self, pattern=None):
-    #    if pattern is None:
-    #        directories = self.directories
-    #    else:
-    #        directories = [d for d in self.directories if fnmatch(d.globalname, pattern)]
-    #    return directories + list(itertools.chain(*[d.walkdirs(pattern=pattern) for d in self.directories]))
-
-    #def walkfiles(self, pattern=None):
-    #    if pattern is None:
-    #        files = self.files
-    #    else:
-    #        files =  [f for f in self.files if fnmatch(f.globalname, pattern)]
-    #    return files + list(itertools.chain(*[d.walkfiles(pattern=pattern) for d in self.directories]))
 
 def get_is_searchpath(self):
     if hasattr(self, '_is_searchpath'):
@@ -450,7 +427,7 @@ class DeclarationProxy(NodeProxy):
 
     @property
     def globalname(self):
-        if isinstance(self, FunctionProxy):
+        if isinstance(self, (FunctionProxy, ConstructorProxy)):
             return re.sub('::[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}', '', self._node)
         else:
             return self._node
@@ -459,30 +436,29 @@ class DeclarationProxy(NodeProxy):
     def localname(self):
         localname = self.globalname
         if isinstance(self, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy)):
-            delimiter = 0
-            current = 0
-            while current < len(localname):
+            delimiter = 1
+            current = -2
+            while current > -len(localname):
                 if localname[current] == '<':
-                    delimiter += 1
-                    current += 1
-                elif localname[current] == '>':
                     delimiter -= 1
-                    current += 1
-                elif localname[current:current+2] == '::' and delimiter == 0:
+                    current -= 1
+                elif localname[current] == '>':
+                    delimiter += 1
+                    current -= 1
+                elif localname[current-2:current] == '::' and delimiter == 0:
                     break
                 else:
-                    current += 1
+                    current -= 1
             return localname[current:]
         else:
-            return localname[localname.rindex(':'):]
+            return localname[localname.rindex(':')+1:]
 
-    @property
-    def parent(self):
-        parentname = self.globalname[:len(self.localname)-2]
+    def get_parent(self):
+        parentname = self.globalname[:-len(self.localname)-2]
         if isinstance(self, EnumerationProxy):
             if parentname.startswith('enum '):
                 parentname = parentname[len('enum '):]
-        elif isinstance(self, ClassProxy):
+        elif isinstance(self, (ClassProxy, ClassTemplatePartialSpecializationProxy)):
             if parentname.startswith('class '):
                 parentname = parentname[len('class '):]
             elif parentname.startswith('struct '):
@@ -490,17 +466,22 @@ class DeclarationProxy(NodeProxy):
             elif parentname.startswith('union '):
                 parentname = parentname[len('union '):]
         elif isinstance(self, ClassTemplateProxy):
-            parentname = parentname[len('class ':]
-        if parent == '':
+            parentname = parentname[len('class '):]
+        if parentname == '':
             return self._asg['::']
         else:
             for keyword in self._pakwargs:
                 if keyword + parentname in self._asg:
                     parent = self._asg[keyword + parentname]
                     break
-            return parent
+            if isinstance(parent, TypedefProxy):
+                return parent.qualified_type.desugared_type.unqualified_type
+            else:
+                return parent
 
-class FundamentalTypeProxy(DeclarationNodeProxy):
+DeclarationProxy.parent = property(DeclarationProxy.get_parent)
+
+class FundamentalTypeProxy(DeclarationProxy):
     """Abstract semantic graph node proxy for a fundamental type
 
     .. seealso:: `C++ fundamental types <http://en.cppreference.com/w/cpp/language/types>`
@@ -533,41 +514,46 @@ class CharacterFundamentalTypeProxy(FundamentalTypeProxy):
     """
     """
 
+    def __init__(self, asg, node):
+        self._asg = asg
+        if not node == self._node:
+            raise ValueError('\'node\' parameter')
+
 class CharTypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-    node = '::char'
+    _node = '::char'
 
 class UnsignedCharTypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-    node = '::unsigned char'
+    _node = '::unsigned char'
 
 class SignedCharTypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-    node = '::signed char'
+    _node = '::signed char'
 
 class Char16TypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-    node = "::char16_t"
+    _node = "::char16_t"
 
 class Char32TypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-    node = "::char32_t"
+    _node = "::char32_t"
 
 class WCharTypeProxy(CharacterFundamentalTypeProxy):
     """
     """
 
-    node = "::wchar_t"
+    _node = "::wchar_t"
 
 class SignedIntegerTypeProxy(FundamentalTypeProxy):
     """
@@ -577,25 +563,25 @@ class SignedShortIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-    node = "::short int"
+    _node = "::short int"
 
 class SignedIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-    node = "::int"
+    _node = "::int"
 
 class SignedLongIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-    node = "::long int"
+    _node = "::long int"
 
 class SignedLongLongIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
-    node = "::long long int"
+    _node = "::long long int"
 
 class UnsignedIntegerTypeProxy(FundamentalTypeProxy):
     """
@@ -605,25 +591,25 @@ class UnsignedShortIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    node = "::unsigned short int"
+    _node = "::unsigned short int"
 
 class UnsignedIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    node = "::unsigned int"
+    _node = "::unsigned int"
 
 class UnsignedLongIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    node = "::unsigned long int"
+    _node = "::unsigned long int"
 
 class UnsignedLongLongIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
-    node = "::unsigned long long int"
+    _node = "::unsigned long long int"
 
 class SignedFloatingPointTypeProxy(FundamentalTypeProxy):
     """
@@ -633,25 +619,25 @@ class SignedFloatTypeProxy(SignedFloatingPointTypeProxy):
     """
     """
 
-    node = "::float"
+    _node = "::float"
 
 class SignedDoubleTypeProxy(SignedFloatingPointTypeProxy):
     """
     """
 
-    node = "::double"
+    _node = "::double"
 
 class SignedLongDoubleTypeProxy(SignedFloatingPointTypeProxy):
     """
     """
 
-    node = "::long double"
+    _node = "::long double"
 
 class BoolTypeProxy(FundamentalTypeProxy):
     """
     """
 
-    node = "::bool"
+    _node = "::bool"
 
 class ComplexTypeProxy(FundamentalTypeProxy):
     """
@@ -659,27 +645,27 @@ class ComplexTypeProxy(FundamentalTypeProxy):
 
 class ComplexFloatTypeProxy(ComplexTypeProxy):
 
-    node = "::_Complex float"
+    _node = "::_Complex float"
 
 class ComplexDoubleTypeProxy(ComplexTypeProxy):
 
-    node = "::_Complex double"
+    _node = "::_Complex double"
 
 class ComplexLongDoubleTypeProxy(ComplexTypeProxy):
 
-    node = "::_Complex long double"
+    _node = "::_Complex long double"
 
 class NullPtrTypeProxy(FundamentalTypeProxy):
     """
     """
 
-    node = "::nullptr_t"
+    _node = "::nullptr_t"
 
 class VoidTypeProxy(FundamentalTypeProxy):
     """
     """
 
-    node = "::void"
+    _node = "::void"
 
 
 class QualifiedTypeProxy(EdgeProxy):
@@ -751,6 +737,14 @@ class QualifiedTypeProxy(EdgeProxy):
         """Is the unqualified type a fundamental type"""
         return isinstance(self.unqualified_type, FundamentalTypeProxy)
 
+    def is_enumeration(self):
+        """Is the unqualified type an enumeration type"""
+        return isinstance(self.unqualified_type, EnumerationProxy)
+
+    def is_class(self):
+        """Is the unqualified type an enumeration type"""
+        return isinstance(self.unqualified_type, ClassProxy)
+
     def is_pointer(self):
         """Is the qualified type a pointer"""
         return '*' in self.qualifiers
@@ -797,7 +791,7 @@ class EnumeratorProxy(DeclarationProxy):
     .. seealso:: `Enumerators <http://en.cppreference.com/w/cpp/language/enum>`
     """
 
-    _pakwargs = ['enum ', 'class ', '']
+    _pakwargs = ['enum ', 'class ', 'struct ', 'union ', '']
 
 class EnumerationProxy(DeclarationProxy):
     """
@@ -805,7 +799,7 @@ class EnumerationProxy(DeclarationProxy):
     .. seealso:: `Enumerations <http://en.cppreference.com/w/cpp/language/enum>`
     """
 
-    _pakwargs = ['', 'class ']
+    _pakwargs = ['', 'class ', 'struct ', 'union ']
 
     @property
     def is_complete(self):
@@ -821,22 +815,22 @@ class TypedefProxy(DeclarationProxy):
     .. seealso:: `Typedefs <http://en.cppreference.com/w/cpp/language/typedef>`
     """
 
-    _pakwargs = ['', 'class ']
+    _pakwargs = ['', 'class ', 'struct ', 'union ']
 
     @property
     def qualified_type(self):
-        return QualifiedType(self._asg, self._node, **self._asg._type_edges[self._node])
+        return QualifiedTypeProxy(self._asg, self._node, **self._asg._type_edges[self._node])
 
 
 class VariableProxy(DeclarationProxy):
     """
     """
 
-    _pakwargs = ['', 'class ']
+    _pakwargs = ['', 'class ', 'struct ', 'union ']
 
     @property
     def qualified_type(self):
-        return QualifiedType(self._asg, self._node, **self._asg._type_edges[self._node])
+        return QualifiedTypeProxy(self._asg, self._node, **self._asg._type_edges[self._node])
 
 class FieldProxy(VariableProxy):
     """
@@ -857,7 +851,7 @@ class ParameterProxy(EdgeProxy):
 
     @property
     def qualified_type(self):
-        return QualifiedType(self._asg, self._source, self._asg._parameter_edges[self._source][self._target]['target'], self._asg._parameter_edges[self._source][self._target]['specifiers'])
+        return QualifiedTypeProxy(self._asg, self._source, self._asg._parameter_edges[self._source][self._target]['target'], self._asg._parameter_edges[self._source][self._target]['qualifiers'])
 
     @property
     def localname(self):
@@ -881,11 +875,11 @@ class FunctionProxy(DeclarationProxy):
     """
     """
 
-    _pakwargs = ['', 'class ']
+    _pakwargs = ['', 'class ', 'struct ', 'union ']
 
     @property
     def return_type(self):
-        return QualifiedType(self._asg, self._node, **self._asg._type_edges[self._node])
+        return QualifiedTypeProxy(self._asg, self._node, **self._asg._type_edges[self._node])
 
     @property
     def nb_parameters(self):
@@ -945,7 +939,7 @@ class MethodProxy(FunctionProxy):
     def is_const(self):
         return self._is_const
 
-    @propertyglobalname
+    @property
     def is_volatile(self):
         return self._is_volatile
 
@@ -957,35 +951,11 @@ class MethodProxy(FunctionProxy):
     def is_pure(self):
         return self._is_pure
 
-#class ConversionProxy(DeclarationProxy):
-#    """
-#    """
-#
-#    @property
-#    def parent(self):
-#        parent = remove_templates(self.globalname)
-#        parent = parent[:parent.rindex(':')-1]
-#        if parent == '':
-#            return self._asg['::']
-#        else:
-#            for decorator in ['class', 'struct', 'union']:
-#                decorator += ' ' + parent
-#                if decorator in self._asg._nodes:
-#                    parent = self._asg[decorator]
-#                    break
-#            if not isinstance(parent, NodeProxy):
-#                if not parent in self._asg._nodes:
-#                    raise ValueError('\'' + self.globalname + '\' parent (\'' + parent + '\') was not found')
-#                parent = self._asg[parent]
-#            return parent
-#
-#    @property
-#    def type(self):
-#        return TypeSpecifiersProxy(self._asg, **self._asg._type_edges[self._node])
-
 class ConstructorProxy(DeclarationProxy):
     """
     """
+
+    _pakwargs = ['class ', 'struct ', 'union ']
 
     @property
     def nb_parameters(self):
@@ -1003,6 +973,8 @@ class DestructorProxy(DeclarationProxy):
     """
     """
 
+    _pakwargs = ['class ', 'struct ', 'union ']
+
     @property
     def is_virtual(self):
         return self._is_virtual
@@ -1012,6 +984,8 @@ class ClassProxy(DeclarationProxy):
 
     .. see:: `<http://en.cppreference.com/w/cpp/language/class>_`
     """
+
+    _pakwargs = ['', 'class ', 'struct ', 'union ']
 
     @property
     def is_complete(self):
@@ -1036,15 +1010,15 @@ class ClassProxy(DeclarationProxy):
             if not base['base'] in already:
                 already.add(base['base'])
                 bases.append(self._asg[base['base']])
-                bases[-1].access = base['access']
-                bases[-1].is_virtual_base = base['is_virtual']
+                bases[-1].access = base['_access']
+                bases[-1].is_virtual_base = base['_is_virtual']
         if not inherited:
             return bases
         else:
             inheritedbases = []
             for base in bases:
                 if isinstance(base, TypedefProxy):
-                    basebases = base.type.target.bases(True)
+                    basebases = base.qualified_type.desugared_type.bases(True)
                 else:
                     basebases = base.bases(True)
                 if base.access == 'protected':
@@ -1058,7 +1032,7 @@ class ClassProxy(DeclarationProxy):
             return bases+inheritedbases
 
     def inheritors(self, recursive=False):
-        return [cls for cls in self._asg.classes() if any(base.node == self._node for base in cls.bases(inherited=recursive))]
+        return [cls for cls in self._asg.classes() if any(base._node == self._node for base in cls.bases(inherited=recursive))]
 
     @property
     def depth(self):
@@ -1075,7 +1049,7 @@ class ClassProxy(DeclarationProxy):
         else:
             declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node] if re.match(pattern, node)]
         for declaration in declarations:
-            declaration.access = self._asg._node[declaration._node]['_access']
+            declaration.access = self._asg._nodes[declaration._node]['_access']
         if inherited:
             for base in self.bases(True):
                 if isinstance(base, TypedefProxy):
@@ -1102,19 +1076,19 @@ class ClassProxy(DeclarationProxy):
             raise ValueError('\'access\' parameter')
 
     def enumerations(self, **kwargs):
-        return [dcl for dcl in self.declarations(metaclass=metaclass, **kwargs) if isinstance(dcl, EnumerationProxy)]
+        return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, EnumerationProxy)]
 
     def enumerators(self, **kwargs):
-        return [dcl for dcl in self.declarations(metaclass=metaclass, **kwargs) if isinstance(dcl, EnumeratorProxy)]
+        return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, EnumeratorProxy)]
 
     def typedefs(self, **kwargs):
-        return [dcl for dcl in self.declarations(metaclass=metaclass, **kwargs) if isinstance(dcl, TypedefProxy)]
+        return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, TypedefProxy)]
 
     def fields(self, **kwargs):
-        return [dcl for dcl in self.declarations(metaclass=metaclass, **kwargs) if isinstance(dcl, FieldProxy)]
+        return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, FieldProxy)]
 
     def methods(self, **kwargs):
-        return [dcl for dcl in self.declarations(metaclass=metaclass, **kwargs) if isinstance(dcl, MethodProxy)]
+        return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, MethodProxy)]
 
     def classes(self, templated=None, specialized=None, **kwargs):
         if templated is None:
@@ -1180,19 +1154,18 @@ class TemplateSpecializationProxy(object):
     @property
     def specialize(self):
         specialize = self.globalname
-        delimiter = 0
-        current = 0
-        while current < len(localname):
-            if localname[current] == '<':
-                delimiter += 1
-                current += 1
-            elif localname[current] == '>':
+        delimiter = 1
+        current = -2
+        while current > -len(specialize):
+            if specialize[current] == '<':
                 delimiter -= 1
-                current += 1
-            elif localname[current:current+2] == '::' and delimiter == 0:
+            elif specialize[current] == '>':
+                delimiter += 1
+            if delimiter == 0:
                 break
             else:
-                current += 1
+                current -= 1
+        specialize = specialize[:current]
         if specialize.startswith('struct '):
             specialize = 'class ' + specialize[len('struct '):]
         elif specialize.startswith('union '):
@@ -1218,12 +1191,14 @@ class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
 
     @property
     def templates(self):
-        return [QualifiedTypeProxy(self._asg, **template) for template in self._asg._template_edges[self._node]] #TODO
+        return [QualifiedTypeProxy(self._asg, self._node, **template) for template in self._asg._template_edges[self._node]] #TODO
 
 
 class ClassTemplateProxy(DeclarationProxy):
     """
     """
+
+    _pakwargs = ['', 'class ', 'struct ', 'union ']
 
     def specializations(self, partial=None):
         if partial is None:
@@ -1242,6 +1217,8 @@ class NamespaceProxy(DeclarationProxy):
 
     .. see:: `<http://en.cppreference.com/w/cpp/language/namespace>_`
     """
+
+    _pakwargs = ['']
 
     @property
     def is_inline(self):
@@ -1377,78 +1354,63 @@ class AbstractSemanticGraph(object):
         else:
             return [self[node] for node in self._nodes.keys() if re.match(pattern, node)]
 
-    def directories(self, pattern=None):
-        class _MetaClass(object):
-            __metaclass__ = ABCMeta
-        _MetaClass.register(DirectoryProxy)
-        metaclass = _MetaClass
-        return self._nodes(pattern, metaclass=metaclass)
-        return [node for node in self.nodes(**kwargs) if isinstance(node, )]
+    def directories(self, **kwargs):
+        return [node for node in self.nodes(**kwargs) if isinstance(node, DirectoryProxy)]
 
-    def files(self, pattern=None, header=None):
-        return [node for node in self.nodes(**kwargs) if isinstance(node, )]
-
+    def files(self, header=None, **kwargs):
         if header is None:
-            class _MetaClass(object):
-                __metaclass__ = ABCMeta
-            _MetaClass.register(FileProxy)
-            metaclass = _MetaClass
-            return self._nodes(pattern, metaclass=metaclass)
+            return [node for node in self.nodes(**kwargs) if isinstance(node, FileProxy)]
         elif header:
-            class _MetaClass(object):
-                __metaclass__ = ABCMeta
-            _MetaClass.register(HeaderProxy)
-            metaclass = _MetaClass
-            return self._nodes(pattern, metaclass=metaclass)
+            return [node for node in self.files(header=None, **kwargs) if isinstance(node, HeaderProxy)]
         else:
-            return [f for f in self.files(pattern=pattern, header=None) if not isinstance(f, HeaderProxy)]
+            return [node for node in self.files(header=None, **kwargs) if not isinstance(node, HeaderProxy)]
 
     def declarations(self, free=None, **kwargs):
         if free is None:
             return [node for node in self.nodes(**kwargs) if isinstance(node, DeclarationProxy)]
         elif free:
-            return [node for node in self.nodes(free=None, **kwargs) if not isinstance(node.parent, ClassProxy)]
+            return [node for node in self.declarations(free=None, **kwargs) if not isinstance(node.parent, ClassProxy)]
         else:
-            return [node for node in self.nodes(free=None, **kwargs) if isinstance(node.parent, ClassProxy)]
+            return [node for node in self.declarations(free=None, **kwargs) if isinstance(node.parent, ClassProxy)]
 
     def fundamental_types(self, **kwargs):
-        return [node for node in self.nodes(**kwargs) if isinstance(node, FundamentalTypeProxy)]
+        return [node for node in self.declarations(**kwargs) if isinstance(node, FundamentalTypeProxy)]
 
     def typedefs(self, **kwargs):
-        return [node for node in self.nodes(**kwargs) if isinstance(node, TypedefProxy)]
+        return [node for node in self.declarations(**kwargs) if isinstance(node, TypedefProxy)]
 
     def enumarations(self, **kwargs):
-        return [node for node in self.nodes(**kwargs) if isinstance(node, EnumerationProxy)]
+        return [node for node in self.declarations(**kwargs) if isinstance(node, EnumerationProxy)]
 
     def enumerators(self, anonymous=None, **kwargs):
         if anonymous is None:
-            return [node for node in self.nodes(**kwargs) if isinstance(node, EnumeratorProxy)]
+            return [node for node in self.declarations(**kwargs) if isinstance(node, EnumeratorProxy)]
         elif anonymous:
             return [node for node in self.enumerators(anonymous=None, **kwargs) if not isinstance(node.parent, EnumerationProxy)]
         else:
             return [node for node in self.enumerators(anonymous=None, **kwargs) if isinstance(node.parent, EnumerationProxy)]
 
     def variables(self, **kwargs):
-        return [node for node in self.nodes(**kwargs) if isinstance(node, VariableProxy)]
+        return [node for node in self.declarations(**kwargs) if isinstance(node, VariableProxy)]
 
     def functions(self, **kwargs):
-        return [node for node in self.nodes(**kwargs) if isinstance(node, FunctionProxy)]
+        return [node for node in self.declarations(**kwargs) if isinstance(node, FunctionProxy)]
 
     def classes(self, specialized=None, templated=False, **kwargs):
-        if spelicalized is None:
+        if specialized is None:
             if templated is None:
                 return self.classes(specialized=None, templated=True) + self.classes(specialized=None, templated=False)
-            elif templated
-                return [node for node in self.nodes(**kwargs) if isinstance(node, ClassTemplateProxy)]
+            elif templated:
+                return [node for node in self.declarations(**kwargs) if isinstance(node, ClassTemplateProxy)]
             else:
-                return [node for node in self.nodes(**kwargs) if isinstance(node, ClassProxy)]
+                return [node for node in self.declarations(**kwargs) if isinstance(node, ClassProxy)]
         elif specialized:
             return [cls for cls in self.classes(specialized=None, templated=templated, **kwargs) if isinstance(cls, TemplateSpecializationProxy)]
         else:
             return [cls for cls in self.classes(specialized=None, templated=templated, **kwargs) if not isinstance(cls, TemplateSpecializationProxy)]
 
     def namespaces(self, **kwargs):
-        return [node for node in self.nodes(**kwargs) if isinstance(node, NamespaceProxy)]
+        return [node for node in self.declarations(**kwargs) if isinstance(node, NamespaceProxy)]
 
     #def include_path(self, header, absolute=False):
     #    if not header.is_standalone:
@@ -1482,8 +1444,8 @@ class AbstractSemanticGraph(object):
         black = set()
         while len(white) > 0:
             node = white.pop()
-            if not node.node in black:
-                black.add(node.node)
+            if not node._node in black:
+                black.add(node._node)
                 if isinstance(node, FundamentalTypeProxy):
                     continue
                 elif isinstance(node, EnumeratorProxy):
@@ -1493,13 +1455,13 @@ class AbstractSemanticGraph(object):
                 elif isinstance(node, ClassTemplatePartialSpecializationProxy):
                     # TODO templates !
                     pass
-                elif isinstance(node, VariableProxy):
-                    white.append(node.type.target)
+                elif isinstance(node, (VariableProxy, TypedefProxy)):
+                    white.append(node.qualified_type.unqualified_type)
                 elif isinstance(node, FunctionProxy):
-                    white.append(node.result_type.target)
-                    white.extend([prm.type.target for prm in node.parameters])
+                    white.append(node.return_type.unqualified_type)
+                    white.extend([prm.qualified_type.unqualified_type for prm in node.parameters])
                 elif isinstance(node, ConstructorProxy):
-                    white.extend([prm.type.target for prm in node.parameters])
+                    white.extend([prm.qualified_type.unqualified_type for prm in node.parameters])
                 elif isinstance(node, DestructorProxy):
                     pass
                 elif isinstance(node, ClassProxy):
@@ -1511,8 +1473,6 @@ class AbstractSemanticGraph(object):
                     pass
                 elif isinstance(node, NamespaceProxy):
                     white.extend(node.declarations())
-                elif isinstance(node, TypedefProxy):
-                    white.append(node.type.target)
                 else:
                     raise NotImplementedError(node.__class__.__name__)
                 header = node.header
@@ -1576,10 +1536,11 @@ class AbstractSemanticGraph(object):
             node = temp.pop()
             node.clean = False
             parent = node.parent
-            if parent.clean:
-                temp.append(parent)
-            else:
-                parent.clean = False
+            if not parent is None:
+                if parent.clean:
+                    temp.append(parent)
+                else:
+                    parent.clean = False
             if hasattr(node, 'header'):
                 header = node.header
                 if not header is None:
@@ -1595,7 +1556,7 @@ class AbstractSemanticGraph(object):
                     else:
                         include.clean = False
             elif isinstance(node, (TypedefProxy, VariableProxy)):
-                target = node.type.target
+                target = node.qualified_type.unqualified_type
                 if target.clean:
                     temp.append(target)
                 else:
@@ -1607,20 +1568,20 @@ class AbstractSemanticGraph(object):
                     else:
                         enumerator.clean = False
             elif isinstance(node, FunctionProxy):
-                result_type = node.result_type.target
+                result_type = node.return_type.unqualified_type
                 if result_type.clean:
                     temp.append(result_type)
                 else:
                     result_type.clean = False
                 for parameter in node.parameters:
-                    target = parameter.type.target
+                    target = parameter.qualified_type.unqualified_type
                     if target.clean:
                         temp.append(target)
                     else:
                         target.clean = False
             elif isinstance(node, ConstructorProxy):
                 for parameter in node.parameters:
-                    target = parameter.type.target
+                    target = parameter.qualified_type.unqualified_type
                     if target.clean:
                         temp.append(target)
                     else:
@@ -1643,7 +1604,7 @@ class AbstractSemanticGraph(object):
                     else:
                         specialize.clean = False
                     for template in node.templates:
-                        target = template.target
+                        target = template.desugared_type.unqualified_type
                         if target.clean:
                             temp.append(target)
                         else:
@@ -1651,7 +1612,7 @@ class AbstractSemanticGraph(object):
             elif isinstance(node, ClassTemplateProxy):
                 pass
         for tdf in self.typedefs():
-            if tdf.clean and not tdf.type.target.clean and not tdf.parent.clean:
+            if tdf.clean and not tdf.qualified_type.unqualified_type.clean and not tdf.parent.clean:
                 tdf.clean = False
                 include = tdf.header
                 while not include is None:
@@ -1659,25 +1620,25 @@ class AbstractSemanticGraph(object):
                     include = include.include
         nodes = [node for node in self.nodes() if node.clean]
         for node in nodes:
-            if not node.node in ['::', '/']:
-                self._syntax_edges[node.parent.node].remove(node.node)
+            if not node._node in ['::', '/']:
+                self._syntax_edges[node.parent._node].remove(node._node)
                 if isinstance(node, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy)):
-                    self._specialization_edges[node.specialize.node].remove(node.node)
+                    self._specialization_edges[node.specialize._node].remove(node._node)
         for node in nodes:
-            self._nodes.pop(node.node)
-            self._include_edges.pop(node.node, None)
-            self._syntax_edges.pop(node.node, None)
-            self._base_edges.pop(node.node, None)
-            self._type_edges.pop(node.node, None)
-            self._parameter_edges.pop(node.node, None)
-            self._specialization_edges.pop(node.node, None)
-        nodes = set([node.node for node in nodes])
+            self._nodes.pop(node._node)
+            self._include_edges.pop(node._node, None)
+            self._syntax_edges.pop(node._node, None)
+            self._base_edges.pop(node._node, None)
+            self._type_edges.pop(node._node, None)
+            self._parameter_edges.pop(node._node, None)
+            self._specialization_edges.pop(node._node, None)
+        nodes = set([node._node for node in nodes])
         for node in self.nodes():
             if isinstance(node, ClassProxy):
-                self._base_edges[node.node] = [base for base in self._base_edges[node.node] if not base['base'] in nodes]
+                self._base_edges[node._node] = [base for base in self._base_edges[node._node] if not base['base'] in nodes]
             del node.clean
         for node, clean in cleanbuffer:
-            if node.node in self:
+            if node._node in self:
                 node.clean = clean
 
 __all__ += [subclass.__name__.rsplit('.', 1).pop() for subclass in subclasses(NodeProxy)]

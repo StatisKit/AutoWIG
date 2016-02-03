@@ -1,13 +1,7 @@
-class BoostPythonCallPolicyPlugin(object):
-    """
-    """
-
-    modulename = 'vplants.autowig.boost_python_call_policy'
-
-
-class BoostPythonDefaultCallPolicyPlugin(BoostPythonCallPolicyPlugin):
-    """
+class BoostPythonDefaultCallPolicyPlugin(object):
     """
 
-    name = 'boost_python:default'
-    objectname = 'default_call_policy'
+    """
+    modulename = 'autowig.boost_python_default_call_policy'
+    name = 'default'
+    objectname = 'bost_python_default_call_policy'
