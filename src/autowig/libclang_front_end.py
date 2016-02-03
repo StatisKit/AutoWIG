@@ -1,3 +1,6 @@
+"""
+"""
+
 from path import path
 from ConfigParser import ConfigParser
 from clang.cindex import Config, conf, Cursor, Index, TranslationUnit, CursorKind, Type, TypeKind
@@ -9,8 +12,7 @@ import uuid
 
 from .ast import AbstractSyntaxTree
 from .asg import *
-from .tools import remove_regex, split_scopes, remove_templates
-from .custom_warnings import NotWrittenFileWarning, ErrorWarning, NoneTypeWarning,  UndeclaredParentWarning, MultipleDeclaredParentWarning, MultipleDefinitionWarning, NoDefinitionWarning, SideEffectWarning, ProtectedFileWarning, InfoWarning, TemplateParentWarning, TemplateParentWarning, AnonymousWarning, AnonymousFunctionWarning, AnonymousFieldWarning, AnonymousClassWarning, NotImplementedWarning, NotImplementedTypeWarning, NotImplementedDeclWarning, NotImplementedParentWarning, NotImplementedOperatorWarning, NotImplementedTemplateWarning
+from .tools import remove_templates
 from .front_end import preprocessing, postprocessing
 
 def is_virtual_method(self):

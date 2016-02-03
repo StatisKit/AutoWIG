@@ -1,17 +1,13 @@
 """
 """
 
-import time
-from openalea.core.plugin.functor import PluginFunctor
-import pickle
 import subprocess
 from path import path
 
-from autowig.ast import *
-from autowig.asg import *
-from autowig.tools import subclasses
+from .asg import *
+from .tools import subclasses
 
-__all__ = ['front_end']
+__all__ = ['preprocessing', 'postprocessing']
 
 def preprocessing(asg, headers, flags):
     """Pre-processing step of an AutoWIG front-end
@@ -66,7 +62,7 @@ def preprocessing(asg, headers, flags):
             flags.extend(['-I'+str(path(sysinclude.strip()).abspath()) for sysinclude in sysincludes])
 
     if not '::' in asg._nodes:
-        asg._nodes['::'] = dict(proxy = NamespaceProxy)
+        asg._nodes['::'] = dict(_proxy = NamespaceProxy)
     if not '::' in asg._syntax_edges:
         asg._syntax_edges['::'] = []
 
@@ -79,14 +75,14 @@ def preprocessing(asg, headers, flags):
             includedir.is_searchpath = True
 
     for fundamental in subclasses(FundamentalTypeProxy):
-        if isinstance(fundamental.node, basestring):
-            if not fundamental.node in asg._nodes:
-                asg._nodes[fundamental.node] = dict(proxy = fundamental)
-            if not fundamental.node in asg._syntax_edges['::']:
-                asg._syntax_edges['::'].append(fundamental.node)
+        if hasattr(fundamental, '_node'):
+            if not fundamental._node in asg._nodes:
+                asg._nodes[fundamental._node] = dict(_proxy = fundamental)
+            if not fundamental._node in asg._syntax_edges['::']:
+                asg._syntax_edges['::'].append(fundamental._node)
 
     headers = [path(header) if not isinstance(header, path) else header for header in headers]
-    return "\n".join('#include "' + header.abspath() + '"')
+    return "\n".join('#include "' + str(header.abspath()) + '"' for header in headers)
 
 def postprocessing(asg, headers, overload='all'):
     """Post-processing step of an AutoWIG front-end
@@ -113,10 +109,12 @@ def postprocessing(asg, headers, overload='all'):
         :func:`compute_overloads`, :func:`discard_forward_declarations` and :func:`resolve_templates` for a more detailed documentatin about AutoWIG front-end post-processing step.
     """
     for header in headers:
-        asg[header].is_standalone = True
+        header = asg[header]
+        header.is_standalone = True
+        header.clean = False
+    resolve_templates(asg)
     compute_overloads(asg, overload=overload)
     discard_forward_declarations(asg)
-    resolve_templates(asg)
 
 def compute_overloads(asg, overload):
     """
@@ -149,84 +147,55 @@ def compute_overloads(asg, overload):
 
 def discard_forward_declarations(asg):
     black = set()
+    def blacklist(cls, black):
+        black.add(cls._node)
+        if isinstance(cls, ClassProxy):
+            for enm in cls.enumerations():
+                black.add(enm._node)
+            for cls in cls.classes():
+                blacklist(cls, black)
     for cls in asg.classes(templated=False):
-        if not cls.node in black and not cls.node.startswith('union '):
+        if not cls._node in black and not cls._node.startswith('union '):
             if cls.is_complete:
                 complete = cls
-                if cls.node.startswith('class '):
+                if cls._node.startswith('class '):
                     try:
-                        duplicate = asg[cls.node.replace('class ', 'struct ', 1)]
+                        duplicate = asg[cls._node.replace('class ', 'struct ', 1)]
                     except:
                         duplicate = None
-                elif cls.node.startswith('struct '):
+                elif cls._node.startswith('struct '):
                     try:
-                        duplicate = asg[cls.node.replace('struct ', 'class ', 1)]
+                        duplicate = asg[cls._node.replace('struct ', 'class ', 1)]
                     except:
                         duplicate = None
                 else:
                     duplicate = None
             else:
                 duplicate = cls
-                if cls.node.startswith('class '):
+                if cls._node.startswith('class '):
                     try:
-                        complete = asg[cls.node.replace('class ', 'struct ', 1)]
+                        complete = asg[cls._node.replace('class ', 'struct ', 1)]
                     except:
                         complete = None
-                elif cls.node.startswith('struct '):
+                elif cls._node.startswith('struct '):
                     try:
-                        complete = asg[cls.node.replace('struct ', 'class ', 1)]
+                        complete = asg[cls._node.replace('struct ', 'class ', 1)]
                     except:
                         complete = None
                 else:
                     complete = None
             if not duplicate is None:
                 if isinstance(duplicate, ClassTemplateProxy) and not complete is None:
-                    black.add(complete.node)
-                    #if complete.is_complete: TODO
-                    if isinstance(complete, ClassProxy):
-                        for enm in complete.enums():
-                            black.add(enm.node)
-                        for ncls in complete.classes(recursive=True):
-                            black.add(ncls.node)
-                            if isinstance(ncls, ClassProxy):
-                                for enm in ncls.enums():
-                                    black.add(enm.node)
+                    blacklist(complete, black)
                 elif isinstance(complete, ClassTemplateProxy):
-                    black.add(duplicate.node)
-                    #if duplicate.is_complete:
-                    if isinstance(duplicate, ClassProxy):
-                        for enm in duplicate.enums():
-                            black.add(enm.node)
-                        for ncls in duplicate.classes(recursive=True):
-                            black.add(ncls.node)
-                            if isinstance(ncls, ClassProxy):
-                                for enm in ncls.enums():
-                                    black.add(enm.node)
+                    blacklist(duplicate, black)
                 elif complete is None or not complete.is_complete or duplicate.is_complete:
-                    black.add(duplicate.node)
-                    #if duplicate.is_complete:
-                    if isinstance(duplicate, ClassProxy):
-                        for enm in duplicate.enums():
-                            black.add(enm.node)
-                        for ncls in duplicate.classes(recursive=True):
-                            black.add(ncls.node)
-                            if isinstance(ncls, ClassProxy):
-                                for enm in ncls.enums():
-                                    black.add(enm.node)
+                    blacklist(duplicate, black)
                     if not complete is None:
-                        black.add(complete.node)
-                        #if complete.is_complete:
-                        if isinstance(complete, ClassProxy):
-                            for enm in complete.enums():
-                                black.add(enm.node)
-                            for ncls in complete.classes(recursive=True):
-                                black.add(ncls.node)
-                                if isinstance(ncls, ClassProxy):
-                                    for enm in ncls.enums():
-                                        black.add(enm.node)
+                        blacklist(complete, black)
                 else:
-                    complete = complete.node
-                    duplicate = duplicate.node
+                    complete = complete._node
+                    duplicate = duplicate._node
                     for node, edge in asg._type_edges.iteritems():
                         if edge['target'] == duplicate:
                             edge['target'] = complete
@@ -247,86 +216,79 @@ def discard_forward_declarations(asg):
         change = False
         for cls in asg.classes(specialized=True, templated=False):
             # TODO templated=None
-            if not cls.node in black:
-                templates = [tpl.target for tpl in cls.templates]
-                while not(len(templates) == 0 or any(tpl.node in black for tpl in templates)):
+            if not cls._node in black:
+                templates = [tpl.unqualified_type for tpl in cls.templates]
+                while not(len(templates) == 0 or any(tpl._node in black for tpl in templates)):
                     _templates = templates
                     templates = []
                     for _tpl in _templates:
                         if isinstance(_tpl, ClassTemplateSpecializationProxy):
-                            templates.extend([tpl.target for tpl in _tpl.templates])
+                            templates.extend([tpl.unqualified_type for tpl in _tpl.templates])
                 if not len(templates) == 0:
                     change = True
-                    black.add(cls.node)
-                    for enm in cls.enums():
-                        black.add(enm.node)
-                    for ncls in cls.classes(recursive=True):
-                        black.add(ncls.node)
-                        if isinstance(ncls, ClassProxy):
-                            for enm in ncls.enums():
-                                black.add(enm.node)
+                    blacklist(cls, black)
         nb += 1
     gray = set(black)
     for tdf in asg.typedefs():
-        if tdf.type.target.node in black:
-            gray.add(tdf.node)
-            asg._type_edges.pop(tdf.node)
-            asg._nodes.pop(tdf.node)
+        if tdf.qualified_type.unqualified_type._node in black:
+            gray.add(tdf._node)
+            asg._type_edges.pop(tdf._node)
+            asg._nodes.pop(tdf._node)
     for var in asg.variables():
-        if var.type.target.node in black:
-            gray.add(var.node)
-            asg._type_edges.pop(var.node)
-            asg._nodes.pop(var.node)
+        if var.qualified_type.unqualified_type._node in black:
+            gray.add(var._node)
+            asg._type_edges.pop(var._node)
+            asg._nodes.pop(var._node)
     for fct in asg.functions():
-        if fct.result_type.target.node in black or any(prm.type.target.node in black for prm in fct.parameters):
-            gray.add(fct.node)
-            asg._parameter_edges.pop(fct.node)
-            asg._type_edges.pop(fct.node)
-            asg._nodes.pop(fct.node)
+        if fct.return_type.unqualified_type._node in black or any(prm.qualified_type.unqualified_type._node in black for prm in fct.parameters):
+            gray.add(fct._node)
+            asg._parameter_edges.pop(fct._node)
+            asg._type_edges.pop(fct._node)
+            asg._nodes.pop(fct._node)
     for parent, children in asg._syntax_edges.items():
         asg._syntax_edges[parent] = [child for child in children if not child in gray]
     gray = set()
     for cls in asg.classes(templated=False):
-        if not cls.node in black:
+        if not cls._node in black:
             for ctr in cls.constructors:
-                if any(prm.type.target.node in black for prm in ctr.parameters):
-                    gray.add(ctr.node)
-                    asg._parameter_edges.pop(ctr.node)
-                    asg._nodes.pop(ctr.node)
-            asg._base_edges[cls.node] = [dict(base = base['base'], access = base['access'], is_virtual = base['is_virtual']) for base in asg._base_edges[cls.node] if not base['base'] in black]
+                if any(prm.qualified_type.unqualified_type._node in black for prm in ctr.parameters):
+                    gray.add(ctr._node)
+                    asg._parameter_edges.pop(ctr._node)
+                    asg._nodes.pop(ctr._node)
+            asg._base_edges[cls._node] = [dict(base = base['base'], _access = base['_access'], _is_virtual = base['_is_virtual']) for base in asg._base_edges[cls._node] if not base['base'] in black]
         else:
-            enum_constants = cls.enum_constants()
+            enumerators = cls.enumerators()
             dtr = cls.destructor
             constructors = cls.constructors
             typedefs = cls.typedefs()
             fields = cls.fields()
             methods = cls.methods()
-            for cst in enum_constants:
-                gray.add(cst.node)
-                asg._nodes.pop(cst.node)
+            for enm in enumerators:
+                gray.add(enm._node)
+                asg._nodes.pop(enm._node)
             if not dtr is None:
-                asg._nodes.pop(dtr.node)
+                asg._nodes.pop(dtr._node)
             for ctr in constructors:
-                gray.add(ctr.node)
-                asg._parameter_edges.pop(ctr.node)
-                asg._nodes.pop(ctr.node)
+                gray.add(ctr._node)
+                asg._parameter_edges.pop(ctr._node)
+                asg._nodes.pop(ctr._node)
             for tdf in typedefs:
-                gray.add(tdf.node)
-                asg._type_edges.pop(tdf.node)
-                asg._nodes.pop(tdf.node)
+                gray.add(tdf._node)
+                asg._type_edges.pop(tdf._node)
+                asg._nodes.pop(tdf._node)
             for fld in fields:
-                gray.add(fld.node)
-                asg._type_edges.pop(fld.node)
-                asg._nodes.pop(fld.node)
+                gray.add(fld._node)
+                asg._type_edges.pop(fld._node)
+                asg._nodes.pop(fld._node)
             for mtd in methods:
-                gray.add(mtd.node)
-                asg._parameter_edges.pop(mtd.node)
-                asg._type_edges.pop(mtd.node)
-                asg._nodes.pop(mtd.node)
+                gray.add(mtd._node)
+                asg._parameter_edges.pop(mtd._node)
+                asg._type_edges.pop(mtd._node)
+                asg._nodes.pop(mtd._node)
     for parent, children in asg._syntax_edges.items():
         asg._syntax_edges[parent] = [child for child in children if not child in gray]
     for cls in asg.classes(templated=True, specialized=False):
-        asg._specialization_edges[cls.node] = [spec for spec in asg._specialization_edges[cls.node] if not spec in black]
+        asg._specialization_edges[cls._node] = [spec for spec in asg._specialization_edges[cls._node] if not spec in black]
     for cls in black:
         asg._nodes.pop(cls)
         asg._syntax_edges.pop(cls, None)
@@ -336,17 +298,9 @@ def discard_forward_declarations(asg):
 
 def resolve_templates(asg):
     for cls in asg.classes(templated=True, specialized=False):
-        if hasattr(cls, 'access'):
+        if hasattr(cls, '_access'):
             for spc in cls.specializations(partial=False):
-                asg._nodes[spc.node]['access'] = cls.access
+                asg._nodes[spc._node]['_access'] = cls._access
     for cls in asg.classes(templated=None, specialized=True):
-        if hasattr(cls, 'access') and not hasattr(cls.specialize, 'access'):
-            asg._nodes[cls.specialize.node]['access'] = cls.access
-
-front_end = PluginFunctor.factory('autowig.front_end')
-
-#front_end.__class__.__doc__ = """AutoWIG front-ends functor
-#
-#.. seealso::
-#    :attr:`plugin` for run-time available plugins.
-#"""
+        if hasattr(cls, '_access') and not hasattr(cls.specialize, '_access'):
+            asg._nodes[cls.specialize._node]['_access'] = cls._access

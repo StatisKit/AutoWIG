@@ -2,7 +2,7 @@ class StdHeldTypePlugin(object):
     """
     """
 
-    modulename = 'vplants.autowig.std_held_type'
+    modulename = 'autowig.std_held_type'
 
 class NoneHeldTypePlugin(StdHeldTypePlugin):
     """

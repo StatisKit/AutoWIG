@@ -1,22 +1,15 @@
-import time
+"""
+"""
+
 from mako.template import Template
-import re
-from path import path
-import anydbm
-import warnings
 from operator import attrgetter
-from abc import ABCMeta
-from openalea.core.util import camel_case_to_lower, to_camel_case, camel_case_to_upper
 
 from .asg import *
-from .tools import subclasses, to_path, lower, remove_templates
-from .custom_warnings import NotImplementedOperatorWarning, InheritanceWarning, BackEndWarning
-from .held_type import held_type
-from .call_policy import call_policy
-from .node_path import node_path
-from .node_rename import node_rename, PYTHON_OPERATOR, CONST_PYTHON_OPERATOR, NON_CONST_PYTHON_OPERATOR
+from .plugin import node_path, node_rename
+from .node_rename import PYTHON_OPERATOR
+from .tools import Plugin, camel_case_to_lower, to_camel_case, camel_case_to_upper
 
-__all__ = []
+__all__ = ['boost_python_call_policy', 'boost_python_held_type', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
 
 def get_boost_python_call_policy(self):
     if hasattr(self, '_boost_python_call_policy'):
@@ -25,7 +18,7 @@ def get_boost_python_call_policy(self):
         return boost_python_call_policy(self)
 
 def set_boost_python_call_policy(self, call_policy):
-    self._asg._nodes[self._node].pop('_boost_python_call_policy', call_policy)
+    self._asg._nodes[self._node]['_boost_python_call_policy'] = call_policy
 
 def del_boost_python_call_policy(self):
     self._asg._nodes[self._node].pop('_boost_python_call_policy', None)
@@ -33,13 +26,86 @@ def del_boost_python_call_policy(self):
 FunctionProxy.boost_python_call_policy = property(get_boost_python_call_policy, set_boost_python_call_policy, del_boost_python_call_policy)
 del get_boost_python_call_policy, set_boost_python_call_policy, del_boost_python_call_policy
 
+boost_python_call_policy = Plugin('autowig.boost_python_call_policy', brief="AutoWIG Boost.Python call policy plugins",
+        detailed="")
+
+def boost_python_default_call_policy(self, node):
+    if isinstance(node, FunctionProxy):
+        return_type = node.return_type.desugared_type
+        if return_type.is_pointer:
+            return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
+        elif return_type.is_reference:
+            if return_type.is_const or isinstance(return_type.unqualified_type, (FundamentalTypeProxy, EnumerationProxy)):
+                return 'boost::python::return_value_policy< boost::python::return_by_value >()'
+            else:
+                return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
+    elif isinstance(node, MethodProxy):
+        return_type = node.return_type.desugared_type
+        if return_type.is_pointer:
+            return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
+        elif return_type.is_reference:
+            if return_type.is_const or isinstance(return_type.unqualified_type, (FundamentalTypeProxy, EnumerationProxy)):
+                return 'boost::python::return_value_policy< boost::python::return_by_value >()'
+            else:
+                return 'boost::python::return_internal_reference<>()'
+
+boost_python_call_policy['default'] = boost_python_default_call_policy
+del boost_python_default_call_policy
+boost_python_call_policy.plugin = 'default'
+
+boost_python_held_type = Plugin('autowig.boost_python_held_type', brief="AutoWIG Boost.Python policy plugins",
+        detailed="")
+
+def ptr_held_type(self, node):
+    if isinstance(node, ClassProxy):
+        return node.globalname + '*'
+    elif not isinstance(node, BoostPythonExportFileProxy):
+        raise TypeError('\'node\' parameter')
+
+boost_python_held_type['ptr'] = ptr_held_type
+del ptr_held_type
+
+def std_unique_ptr_held_type(self, node):
+    if isinstance(node, ClassProxy):
+        return 'std::unique_ptr< ' + node.globalname + ' >'
+    elif isinstance(node, BoostPythonExportFileProxy):
+        return '#include <memory>'
+    else:
+        raise TypeError('\'node\' parameter')
+
+boost_python_held_type['std::unique_ptr'] = std_unique_ptr_held_type
+del std_unique_ptr_held_type
+boost_python_held_type.plugin = 'std::unique_ptr'
+
+def std_shared_ptr_held_type(self, node):
+    if isinstance(node, ClassProxy):
+        return 'std::shared_ptr< ' + node.globalname + ' >'
+    elif isinstance(node, BoostPythonExportFileProxy):
+        return '#include <memory>'
+    else:
+        raise TypeError('\'node\' parameter')
+
+boost_python_held_type['std::shared_ptr'] = std_shared_ptr_held_type
+del std_shared_ptr_held_type
+
+def boost_shared_ptr_held_type(self, node):
+    if isinstance(node, ClassProxy):
+        return 'boost::shared_ptr< ' + node.globalname + ' >'
+    elif isinstance(node, BoostPythonExportFileProxy):
+        return '#include <boost/shared_ptr.hpp>'
+    else:
+        raise TypeError('\'node\' parameter')
+
+boost_python_held_type['boost::shared_ptr'] = boost_shared_ptr_held_type
+del boost_shared_ptr_held_type
+
 def get_boost_python_export(self):
     if hasattr(self, '_boost_python_export'):
         boost_python_export = self._boost_python_export
         if isinstance(boost_python_export, bool):
             return boost_python_export
         else:
-            return self.asg[boost_python_export]
+            return self._asg[boost_python_export]
     elif self.globalname == '::':
         return True
     elif self._valid_boost_python_export and getattr(self, 'access', 'public') == 'public':
@@ -50,7 +116,7 @@ def get_boost_python_export(self):
 def set_boost_python_export(self, boost_python_export):
     if boost_python_export and not self._valid_boost_python_export:
         raise ValueError('\'boost_python_export\' cannot be set to another value than \'False\'')
-    elif not boost_python_export and self.globalname == '::'
+    elif not boost_python_export and self.globalname == '::':
         raise ValueError('\'boost_python_export\' cannot be set to \'False\'')
     if isinstance(boost_python_export, basestring):
         boost_python_export = self._asg[boost_python_export]
@@ -58,21 +124,28 @@ def set_boost_python_export(self, boost_python_export):
         scope = boost_python_export.scope
         if scope is None or scope == self.parent:
             del self.boost_python_export
-            boost_python_export._wraps.add(self.node)
-            boost_python_export = boost_python_export.node
+            boost_python_export._declarations.add(self._node)
+            boost_python_export = boost_python_export._node
     elif not isinstance(boost_python_export, bool):
         raise TypeError('\'boost_python_export\' parameter must be boolean, a \'' + BoostPythonExportFileProxy.__class__.__name__ + '\' instance or identifer')
-    self.asg._nodes[self.node]['_boost_python_export'] = boost_python_export
+    self._asg._nodes[self._node]['_boost_python_export'] = boost_python_export
 
 def del_boost_python_export(self):
     boost_python_export = self.boost_python_export
     if isinstance(boost_python_export, BoostPythonExportFileProxy):
-        boost_python_export._wraps.remove(self.node)
-    self.asg._nodes[self.node].pop('_boost_python_export', boost_python_export)
+        boost_python_export._declarations.remove(self._node)
+    self._asg._nodes[self._node].pop('_boost_python_export', boost_python_export)
 
-CodeNodeProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-CodeNodeProxy._default_boost_python_export = False
-CodeNodeProxy._valid_boost_python_export = True
+DeclarationProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
+DeclarationProxy._default_boost_python_export = False
+DeclarationProxy._valid_boost_python_export = True
+
+def boost_python_export(self):
+    desugared_type = self.desugared_type
+    return not(desugared_type.is_pointer_chain or desugared_type.is_rvalue_reference)
+
+QualifiedTypeProxy.boost_python_export = property(boost_python_export)
+del boost_python_export
 
 def _default_boost_python_export(self):
     return not self.localname.startswith('_')
@@ -94,111 +167,50 @@ ClassTemplateSpecializationProxy._default_boost_python_export = property(_defaul
 del _default_boost_python_export
 
 def _default_boost_python_export(self):
-    edge = self.type
-    if edge.is_pointer:
-        if edge.nested.is_pointer or edge.target.is_fundamental_type:
-            return False
-        else:
-            return True
-    elif edge.is_reference:
-        return False
-    else:
-        return True
+    return self.qualified_type.boost_python_export
 
 VariableProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
 
-def is_invalid_pointer(edge):
-    return edge.nested.is_pointer or edge.is_pointer and not isinstance(edge.target, ClassProxy)
-
-def is_invalid_reference(edge):
-    return edge.is_rvalue_reference or edge.is_lvalue_reference and not isinstance(edge.target, ClassProxy) and not edge.is_const
-
-def get_boost_python_export(self):
-    if hasattr(self, '_boost_python_export'):
-        boost_python_export = self._boost_python_export
-        if isinstance(boost_python_export, bool):
-            return boost_python_export
-        else:
-            return self.asg[boost_python_export]
-    else:
-        parent = self.parent
-        if isinstance(parent, ClassProxy) and not(self.access == 'public' and parent.boost_python_export):
-            return False
-        else:
-            return not(is_invalid_pointer(self.type) or self.type.is_reference)
-
-VariableProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-
-def get_boost_python_export(self):
-    if hasattr(self, '_boost_python_export'):
-        boost_python_export = self._boost_python_export
-        if isinstance(boost_python_export, bool):
-            return boost_python_export
-        else:
-            return self.asg[boost_python_export]
-    else:
-        parent = self.parent
-        if isinstance(parent, ClassProxy) and not(self.access == 'public' and parent.boost_python_export):
-            return False
-        else:
-            return not(any(is_invalid_pointer(prm.type) or is_invalid_reference(prm.type) for prm in self.parameters))
+def _default_boost_python_export(self):
+    return all(parameter.qualified_type.boost_python_export for parameter in self.parameters)
 
 ConstructorProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
 del get_boost_python_export
 
-def is_valid_operator(node):
-    if node.localname.startswith('operator'):
-        operator = node.localname.strip('operator').strip()
-        if operator in ['++', '--']:
-            return len(node.parameters) == 1
-        else:
-            return operator in PYTHON_OPERATOR or node.is_const and operator in CONST_PYTHON_OPERATOR or not node.is_const and operator in NON_CONST_PYTHON_OPERATOR
+def _default_boost_python_export(self):
+    if self.return_type.boost_python_export and all(parameter.qualified_type.boost_python_export for parameter in self.parameters):
+        return not self.localname.startswith('operator')
     else:
-        return True
+        return False
 
-def get_boost_python_export(self):
-    if hasattr(self, '_boost_python_export'):
-        boost_python_export = self._boost_python_export
-        if isinstance(boost_python_export, bool):
-            return boost_python_export
-        else:
-            return self.asg[boost_python_export]
+FunctionProxy._default_boost_python_export = property(_default_boost_python_export)
+del _default_boost_python_export
+
+def _default_boost_python_export(self):
+    if self.return_type.boost_python_export and all(parameter.qualified_type.boost_python_export for parameter in self.parameters):
+        return not self.localname.startswith('operator') or self.localname.node.localname.strip('operator').strip() in PYTHON_OPERATOR
     else:
-        return not self.localname.startswith('operator') and not(is_invalid_pointer(self.result_type) or is_invalid_reference(self.result_type) or any(is_invalid_pointer(prm.type) or is_invalid_reference(prm.type) for prm in self.parameters))
+        return False
 
-FunctionProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-del get_boost_python_export
-
-def get_boost_python_export(self):
-    if hasattr(self, '_boost_python_export'):
-        boost_python_export = self._boost_python_export
-        if isinstance(boost_python_export, bool):
-            return boost_python_export
-        else:
-            return self.asg[boost_python_export]
-    else:
-        if not self.access == 'public' or self.is_virtual and not self.is_pure:
-            return False
-        else:
-            return is_valid_operator(self) and not(is_invalid_pointer(self.result_type) or is_invalid_reference(self.result_type) or any(is_invalid_pointer(prm.type) or is_invalid_reference(prm.type) for prm in self.parameters))
-
-MethodProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
-del get_boost_python_export, set_boost_python_export, del_boost_python_export
+MethodProxy._default_boost_python_export = property(_default_boost_python_export)
+del _default_boost_python_export
 
 class BoostPythonExportFileProxy(FileProxy):
 
-    language = 'c++'
+    @property
+    def _clean_default(self):
+        return len(self._declarations) == 0
 
     def __init__(self, asg, node):
         super(BoostPythonExportFileProxy, self).__init__(asg, node)
-        if not hasattr(self, '_wraps'):
-            self.asg._nodes[self.node]['_wraps'] = set()
+        if not hasattr(self, '_declarations'):
+            self._asg._nodes[self._node]['_declarations'] = set()
 
     @property
-    def wraps(self):
-        wraps = [self.asg[wrap] for wrap in self._wraps]
-        return [wrap for wrap in wraps if not isinstance(wrap, ClassProxy)] + sorted([wrap for wrap in wraps if isinstance(wrap, ClassProxy)], key = lambda cls: cls.depth)
+    def declarations(self):
+        declarations = [self._asg[declaration] for declaration in self._declarations]
+        return [declaration for declaration in declarations if not isinstance(declaration, ClassProxy)] + sorted([declaration for declaration in declarations if isinstance(declaration, ClassProxy)], key = lambda cls: cls.depth)
 
 def get_depth(self):
     if not hasattr(self, '_depth'):
@@ -207,10 +219,10 @@ def get_depth(self):
         return self._depth
 
 def set_depth(self, depth):
-    self.asg._nodes[self.node]['_depth'] = depth
+    self._asg._nodes[self._node]['_depth'] = depth
 
 def del_depth(self):
-    self.asg._nodes[self.node].pop('_depth')
+    self._asg._nodes[self._node].pop('_depth')
 
 BoostPythonExportFileProxy.depth = property(get_depth, set_depth, del_depth)
 del get_depth, set_depth, del_depth
@@ -220,37 +232,37 @@ def get_scope(self):
         return self._scope
 
 def set_scope(self, scope):
-    self.asg._nodes[self.node]['_scope'] = scope
+    self._asg._nodes[self._node]['_scope'] = scope
 
 def del_scope(self):
-    self.asg._nodes[self.node].pop('_scope')
+    self._asg._nodes[self._node].pop('_scope')
 
 BoostPythonExportFileProxy.scope = property(get_scope, set_scope, del_scope)
 del get_scope, set_scope, del_scope
 
-def get_boost_python_module(self):
-    if hasattr(self, '_boost_python_module'):
-        return self.asg[self._boost_python_module]
+def get_module(self):
+    if hasattr(self, '_module'):
+        return self._asg[self._module]
 
-def set_boost_python_module(self, boost_python_module):
-    _boost_python_module = self.boost_python_module
-    if _boost_python_module:
-        _boost_python_module._boost_python_exports.remove(self.node)
-    if isinstance(boost_python_module, BoostPythonModuleFileProxy):
-        boost_python_module = boost_python_module.node
-    self.asg._nodes[self.node]['_boost_python_module'] = boost_python_module
-    self.boost_python_module._boost_python_exports.add(self.node)
+def set_module(self, module):
+    _module = self.module
+    if _module:
+        _module._exports.remove(self._node)
+    if isinstance(module, BoostPythonModuleFileProxy):
+        module = module._node
+    self._asg._nodes[self._node]['_module'] = module
+    self.module._exports.add(self._node)
 
-def del_boost_python_module(self):
-    boost_python_module = self.boost_python_module
-    if boost_python_module:
-        boost_python_module._boost_python_exports.remove(self.node)
-    self.asg._nodes[self.node].pop('_boost_python_module', None)
+def del_module(self):
+    module = self.module
+    if module:
+        module._exports.remove(self._node)
+    self._asg._nodes[self._node].pop('_module', None)
 
-BoostPythonExportFileProxy.boost_python_module = property(get_boost_python_module, set_boost_python_module, del_boost_python_module)
-del get_boost_python_module, set_boost_python_module, del_boost_python_module
+BoostPythonExportFileProxy.module = property(get_module, set_module, del_module)
+del get_module, set_module, del_module
 
-class BoostPythonExportTemplateFileProxy(BoostPythonExportFileProxy):
+class BoostPythonExportBasicFileProxy(BoostPythonExportFileProxy):
 
     language = 'c++'
 
@@ -284,16 +296,16 @@ void translate_error_${error.hash}(${error.globalname} const & error)
         boost::python::scope ${node_rename(scope, scope=True) + '_' + scope.hash}_scope = ${node_rename(scope, scope=True) + '_' + scope.hash}_module;\
 % endfor""")
 
-    CONSTANT = Template(text="""\
-        boost::python::scope().attr("${node_rename(constant)}") = (int)(${constant.globalname});\
+    ENUMERATOR = Template(text="""\
+        boost::python::scope().attr("${node_rename(enumerator)}") = (int)(${enumerator.globalname});\
 """)
 
-    ENUM = Template(text=r"""\
-        boost::python::enum_< ${enum.globalname} >("${node_rename(enum)}")\
-    % for constant in enum.constants:
-        % if constant.boost_python_export:
+    ENUMERATION = Template(text=r"""\
+        boost::python::enum_< ${enumeration.globalname} >("${node_rename(enumation)}")\
+    % for enumerator in enumeration.enumerators():
+        % if enumerator.boost_python_export:
 
-            .value("${node_rename(constant)}", ${constant.globalname})\
+            .value("${node_rename(enumerator)}", ${enumerator.globalname})\
         % endif
     % endfor
 ;""")
@@ -304,7 +316,7 @@ void translate_error_${error.hash}(${error.globalname} const & error)
 
     FUNCTION = Template(text=r"""\
     % if function.is_overloaded:
-        ${function.result_type.globalname} (*function_pointer_${function.hash})(${", ".join(parameter.type.globalname for parameter in function.parameters)}) = ${function.globalname};
+        ${function.return_type.globalname} (*function_pointer_${function.hash})(${", ".join(parameter.qualified_type.globalname for parameter in function.parameters)}) = ${function.globalname};
     % endif
         boost::python::def("${node_rename(function)}", \
     % if function.is_overloaded:
@@ -320,11 +332,11 @@ ${function.globalname}\
     CLASS = Template(text=r"""\
     % for method in cls.methods():
         % if method.boost_python_export and method.access == 'public' and method.is_overloaded:
-        ${method.result_type.globalname} (\
+        ${method.return_type.globalname} (\
             % if not method.is_static:
 ${method.parent.globalname.replace('class ', '').replace('struct ', '').replace('union ', '')}::\
             % endif
-*method_pointer_${method.hash})(${", ".join(parameter.type.globalname for parameter in method.parameters)})\
+*method_pointer_${method.hash})(${", ".join(parameter.qualified_type.globalname for parameter in method.parameters)})\
             % if method.is_const:
  const\
             % endif
@@ -357,7 +369,7 @@ ${cls.globalname} *\
         % for constructor in cls.constructors:
             % if constructor.access == 'public' and constructor.boost_python_export:
 
-            .def(boost::python::init< ${", ".join(parameter.type.globalname for parameter in constructor.parameters)} >())\
+            .def(boost::python::init< ${", ".join(parameter.qualified_type.globalname for parameter in constructor.parameters)} >())\
             % endif
         % endfor
     % endif
@@ -382,12 +394,16 @@ method_pointer_${method.hash}\
     % endfor
     % for field in cls.fields():
         % if field.access == 'public' and field.boost_python_export:
-            % if field.type.is_const:
+            % if field.qualified_type.is_const:
 
             .def_readonly\
             % else:
 
-            .def_readwrite\
+            .def_readwrite\        //static PyObject* _type = class_${cls.hash}.ptr();
+        //struct Translator
+        //{ static void translate(${cls.globalname} const & error) { PyErr_SetObject(_type, boost::python::object(error).ptr()); } };
+        //Translator< ${cls.globalname} > translator = Translator< ${cls.globalname} >(class_${cls.hash}.ptr());
+        //boost::python::register_exception_translator< ${cls.globalname} >(&translator.translate);
             % endif
 ("${node_rename(field)}", \
             % if not field.is_static:
@@ -407,20 +423,14 @@ ${field.globalname})\
     % endif
     % if cls.is_error:
 
-        //static PyObject* _type = class_${cls.hash}.ptr();
-        //struct Translator
-        //{ static void translate(${cls.globalname} const & error) { PyErr_SetObject(_type, boost::python::object(error).ptr()); } };
-        //Translator< ${cls.globalname} > translator = Translator< ${cls.globalname} >(class_${cls.hash}.ptr());
-        //boost::python::register_exception_translator< ${cls.globalname} >(&translator.translate);
         error_type_${cls.hash} = class_${cls.hash}.ptr();
         boost::python::register_exception_translator< ${cls.globalname} >(&translate_error_${cls.hash});
-
     % endif
     """)
 
     @property
     def is_empty(self):
-        return len(self._wraps) == 0
+        return len(self._declarations) == 0
 
     @property
     def depth(self):
@@ -428,11 +438,11 @@ ${field.globalname})\
             return 0
         else:
             depth = 0
-            for wrap in self.wraps:
-                if isinstance(wrap, ClassProxy):
-                    depth = max(wrap.depth, depth)
-                elif isinstance(wrap, VariableProxy):
-                    target = wrap.type.target
+            for declaration in self.declarations:
+                if isinstance(declaration, ClassProxy):
+                    depth = max(declaration.depth, depth)
+                elif isinstance(declaration, VariableProxy):
+                    target = declaration.qualified_type.desugared_type.unqualified_type
                     if isinstance(target, ClassTemplateSpecializationProxy) and target.is_smart_pointer:
                         target = target.templates[0].target
                     if isinstance(target, ClassProxy):
@@ -442,546 +452,55 @@ ${field.globalname})\
     #@property
     #def headers(self):
     #    if self._held_type is None:
-    #        return self.asg.headers(*self.wraps)
+    #        return self._asg.headers(*self.declarations)
     #    else:
-    #        return self.asg.headers(self.asg[self._held_type], *self.wraps)
+    #        return self._asg.headers(self._asg[self._held_type], *self.declarations)
 
     @property
     def scope(self):
-        if len(self._wraps) > 0:
-            return self.asg[self.wraps[0].node].parent
+        if len(self._declarations) > 0:
+            return self._asg[self.declarations[0]._node].parent
 
     @property
     def scopes(self):
-        if len(self._wraps) > 0:
-            return self.wraps[0].ancestors[1:]
+        if len(self._declarations) > 0:
+            return self.declarations[0].ancestors[1:]
         else:
             return []
 
     @property
-    def content(self):
-        if not hasattr(self, '_content') or self._content == "":
-            content = self.HEADER.render(headers = self.asg.headers(*self.wraps), errors = [wrap for wrap in self.wraps if isinstance(wrap, ClassProxy) and wrap.is_error])
-            content += '\n\nvoid ' + self.prefix + '()\n{\n'
-            content += self.SCOPE.render(scopes = self.scopes,
-                    node_rename = node_rename)
-            for arg in self.wraps:
-                if isinstance(arg, EnumConstantProxy):
-                    content += '\n' + self.CONSTANT.render(constant = arg,
-                            node_rename = node_rename)
-                elif isinstance(arg, EnumProxy):
-                    content += '\n' + self.ENUM.render(enum = arg,
-                            node_rename = node_rename)
-                elif isinstance(arg, VariableProxy):
-                    content += '\n' + self.VARIABLE.render(variable = arg,
-                            node_rename = node_rename)
-                elif isinstance(arg, FunctionProxy):
-                    content += '\n' + self.FUNCTION.render(function = arg,
-                            node_rename = node_rename,
-                            call_policy = call_policy)
-                elif isinstance(arg, ClassProxy):
-                    content += '\n' + self.CLASS.render(cls = arg,
-                            node_rename = node_rename,
-                            held_type = held_type,
-                            call_policy = call_policy)
-                elif isinstance(arg, TypedefProxy):
-                    continue
-                else:
-                    raise NotImplementedError(arg.__class__.__name__)
-            content += '\n}'
-            self.content = content
-        return self._content
-
-    @content.setter
-    def content(self, content):
-        self.asg._nodes[self.node]['_content'] = content
-
-    @content.deleter
-    def del_content(self):
-        self.asg._nodes[self.node].pop('_content', False)
-
-def boost_python_exports(self, pattern=None):
-    class _MetaClass(object):
-        __metaclass__ = ABCMeta
-    _MetaClass.register(BoostPythonExportFileProxy)
-    metaclass = _MetaClass
-    return self.nodes(pattern=pattern, metaclass=metaclass)
-
-AbstractSemanticGraph.boost_python_exports = boost_python_exports
-del boost_python_exports
-
-def export_back_end(asg, directory, prefix='', suffix='.cpp', pattern='.*', proxy=BoostPythonExportTemplateFileProxy, **kwargs):
-    directory = asg.add_directory(directory)
-    nodes = set()
-    for node in asg.declarations(pattern=pattern):
-        if node.boost_python_export is True:
-            if isinstance(node, EnumConstantProxy) and isinstance(node.parent, EnumProxy) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
+    def _content(self):
+        content = self.HEADER.render(headers = self._asg.headers(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
+        content += '\n\nvoid ' + self.prefix + '()\n{\n'
+        content += self.SCOPE.render(scopes = self.scopes,
+                node_rename = node_rename)
+        for arg in self.declarations:
+            if isinstance(arg, EnumeratorProxy):
+                content += '\n' + self.ENUMERATOR.render(enumerator = arg,
+                        node_rename = node_rename)
+            elif isinstance(arg, EnumerationProxy):
+                content += '\n' + self.ENUMERATION.render(enumeration = arg,
+                        node_rename = node_rename)
+            elif isinstance(arg, VariableProxy):
+                content += '\n' + self.VARIABLE.render(variable = arg,
+                        node_rename = node_rename)
+            elif isinstance(arg, FunctionProxy):
+                content += '\n' + self.FUNCTION.render(function = arg,
+                        node_rename = node_rename,
+                        call_policy = boost_python_call_policy)
+            elif isinstance(arg, ClassProxy):
+                content += '\n' + self.CLASS.render(cls = arg,
+                        node_rename = node_rename,
+                        held_type = boost_python_held_type,
+                        call_policy = boost_python_call_policy)
+            elif isinstance(arg, TypedefProxy):
                 continue
             else:
-                node.boost_python_export = asg.add_file(directory.globalname + node_path(node, prefix=prefix, suffix=suffix), proxy=proxy)
-                nodes.add(node.boost_python_export.node)
+                raise NotImplementedError(arg.__class__.__name__)
+        content += '\n}'
+        return content
 
-class BoostPythonModuleFileProxy(FileProxy):
-
-    language = 'c++'
-
-    CONTENT = Template(text=r"""\
-#include <boost/python.hpp>
-
-% for export in boost_python_exports:
-    % if not export.is_empty:
-void ${export.prefix}();
-    % endif
-% endfor
-
-BOOST_PYTHON_MODULE(${modulename})
-{
-% for export in boost_python_exports:
-    % if not export.is_empty:
-    ${export.prefix}();
-    %endif
-% endfor
-}""")
-
-    COMPLEMENT = Template(text=r"""\
-#include <>
-
-namespace autowig
-{
-    template<class T> using held_type = \
-    % if held_type:
-${held_type}<T>\
-    % else:
-T*\
-    % endif
-;
-}
-""")
-
-    def __init__(self, asg, node):
-        super(BoostPythonModuleFileProxy, self).__init__(asg, node)
-        if not hasattr(self, '_boost_python_exports'):
-            self.asg._nodes[self.node]['_boost_python_exports'] = set()
-
-    @property
-    def boost_python_exports(self):
-        if not hasattr(self, '_boost_python_exports'):
-            return []
-        else:
-            return [export for export in sorted([self.asg[export] for export in self._boost_python_exports], key = attrgetter('depth'))]
-
-    @property
-    def modulename(self):
-        if not hasattr(self, '_modulename'):
-            return self.prefix
-        else:
-            return self._modulename
-
-    @modulename.setter
-    def modulename(self, modulename):
-        #if modulename == self.localname:
-        #    raise ValueError('\'modulename\' parameter')
-        self.asg._nodes[self.node]['_modulename'] = modulename
-
-    @modulename.deleter
-    def modulename(self):
-        self.asg._nodes[self.node].pop('_modulename', self.localname.prefix)
-
-    @property
-    def dependencies(self):
-        modules = set([self.globalname])
-        temp = [wrap for export in self.boost_python_exports for wrap in export.wraps]
-        while len(temp) > 0:
-            wrap = temp.pop()
-            if isinstance(wrap, FunctionProxy):
-                boost_python_export = wrap.result_type.target.boost_python_export
-                if boost_python_export and not boost_python_export is True:
-                    boost_python_module = boost_python_export.boost_python_module
-                    if not boost_python_module is None:
-                        modules.add(boost_python_module.globalname)
-                for prm in wrap.parameters:
-                    boost_python_export = prm.type.target.boost_python_export
-                    if boost_python_export and not boost_python_export is True:
-                        boost_python_module = boost_python_export.boost_python_module
-                        if not boost_python_module is None:
-                            modules.add(boost_python_module.globalname)
-            elif isinstance(wrap, (VariableProxy, TypedefProxy)):
-                boost_python_export = wrap.type.target.boost_python_export
-                if boost_python_export and not boost_python_export is True:
-                    boost_python_module = boost_python_export.boost_python_module
-                    if not boost_python_module is None:
-                        modules.add(boost_python_module.globalname)
-            elif isinstance(wrap, ClassProxy):
-                boost_python_export = wrap.boost_python_export
-                if boost_python_export and not boost_python_export is True:
-                    boost_python_module = boost_python_export.boost_python_module
-                    if boost_python_export and not boost_python_export is True:
-                        modules.add(boost_python_module.globalname)
-                temp.extend([bse for bse in wrap.bases() if bse.access == 'public'])
-                temp.extend([dcl for dcl in wrap.declarations() if dcl.access == 'public'])
-            elif isinstance(wrap, ClassTemplateProxy):
-                boost_python_export = wrap.boost_python_export
-                if boost_python_export and not boost_python_export is True:
-                    boost_python_module = boost_python_export.boost_python_module
-                    if boost_python_export and not boost_python_export is True:
-                        modules.add(boost_python_module.globalname)
-        modules.remove(self.globalname)
-        return [self.asg[module] for module in modules]
-
-    @property
-    def depth(self):
-        dependencies = self.dependencies
-        if len(dependencies) == 0:
-            return 0
-        else:
-            return max(dependency.depth for dependency in dependencies) + 1
-
-    @property
-    def content(self):
-        if not hasattr(self, '_content') or self._content == "":
-            self.content = self.CONTENT.render(boost_python_exports = self.boost_python_exports,
-                    modulename = self.modulename)
-        return self._content
-
-    @content.setter
-    def content(self, content):
-        self.asg._nodes[self.node]['_content'] = content
-
-    @content.deleter
-    def content(self):
-        self.asg._nodes[self.node].pop('_content', '')
-
-def boost_python_modules(self, pattern=None):
-    class _MetaClass(object):
-        __metaclass__ = ABCMeta
-    _MetaClass.register(BoostPythonModuleFileProxy)
-    metaclass = _MetaClass
-    return self.nodes(pattern=pattern, metaclass=metaclass)
-
-AbstractSemanticGraph.boost_python_modules = boost_python_modules
-del boost_python_modules
-
-def module_back_end(asg, filename, **kwargs):
-    if isinstance(filename, BoostPythonModuleFileProxy):
-        filename = filename.gobalname
-    if filename in asg:
-        boost_python_module = asg[filename]
-    else:
-        boost_python_module = asg.add_file(filename,
-                proxy = kwargs.pop('proxy', BoostPythonModuleFileProxy),
-                package = kwargs.pop('package', None))
-    pattern = kwargs.pop('pattern', boost_python_module.parent.globalname + '.*')
-    for export in asg.boost_python_exports(pattern):
-        export.boost_python_module = boost_python_module
-
-def closure_back_end(asg):
-    nodes = []
-    forbidden = set()
-    for node in asg.nodes():
-        if hasattr(node, 'boost_python_export'):
-            if node.boost_python_export and not node.boost_python_export is True:
-                if node.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
-                    import pdb
-                    pdb.set_trace()
-                nodes.append(node)
-            elif not node.boost_python_export:
-                target = node
-                while isinstance(target, ClassTemplateSpecializationProxy) and target.is_smart_pointer:
-                    target = target.templates[0].target
-                if not target.boost_python_export:
-                    if not isinstance(target, FundamentalTypeProxy):
-                        forbidden.add(node.node)
-            elif not isinstance(node, (NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
-                if not isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy)):
-                    if isinstance(node, EnumConstantProxy):
-                        if not isinstance(node.parent, EnumProxy):
-                            node.boost_python_export = False
-                    else:
-                        node.boost_python_export = False
-                elif not node.access == 'public':
-                    node.boost_python_export = False
-    while len(nodes) > 0:
-        node = nodes.pop()
-        if not node.node in forbidden and not isinstance(node, FundamentalTypeProxy):
-            if not node.boost_python_export:
-                node.boost_python_export = True
-            if isinstance(node, (TypedefProxy, VariableProxy)):
-                target = node.type.target
-                while isinstance(target, ClassTemplateSpecializationProxy) and target.is_smart_pointer:
-                    target = target.templates[0].target
-                if not target.node in forbidden:
-                    if not target.boost_python_export:
-                        if target.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
-                            import pdb
-                            pdb.set_trace()
-                        nodes.append(target)
-                else:
-                    node.boost_python_export = False
-            elif isinstance(node, FunctionProxy):
-                result_type = node.result_type.target
-                while isinstance(result_type, ClassTemplateSpecializationProxy) and result_type.is_smart_pointer:
-                    result_type = result_type.templates[0].target
-                parameters = [parameter.type.target for parameter in node.parameters]
-                for index in range(len(parameters)):
-                    while isinstance(parameters[index], ClassTemplateSpecializationProxy) and parameters[index].is_smart_pointer:
-                        parameters[index] = parameters[index].templates[0].target
-                if not result_type.node in forbidden and not any([parameter.node in forbidden for parameter in parameters]):
-                    if not result_type.boost_python_export:
-                        if result_type.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
-                            import pdb
-                            pdb.set_trace()
-                        nodes.append(result_type)
-                    for parameter in parameters:
-                        if not parameter.boost_python_export:
-                            if parameter.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
-                                import pdb
-                                pdb.set_trace()
-                            nodes.append(parameter)
-                else:
-                    node.boost_python_export = False
-            elif isinstance(node, ConstructorProxy):
-                parameters = [parameter.type.target for parameter in node.parameters]
-                for index in range(len(parameters)):
-                    while isinstance(parameters[index], ClassTemplateSpecializationProxy) and parameters[index].is_smart_pointer:
-                        parameters[index] = parameters[index].templates[0].target
-                if not any([parameter.node in forbidden for parameter in parameters]):
-                    for parameter in parameters:
-                        if not parameter.boost_python_export:
-                            if parameter.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
-                                import pdb
-                                pdb.set_trace()
-                            nodes.append(parameter)
-                else:
-                    node.boost_python_export = False
-                #if not any([parameter.type.target.node in forbidden for parameter in node.parameters]):
-                #    for parameter in node.parameters:
-                #        target = parameter.type.target
-                #        if not target.boost_python_export:
-                #            nodes.append(target)
-                #else:
-                #    node.boost_python_export = False
-            elif isinstance(node, ClassProxy):
-                for base in node.bases():
-                    if not base.boost_python_export and base.access == 'public':
-                        if base.node == 'class ::std::shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator>':
-                            import pdb
-                            pdb.set_trace()
-                        nodes.append(base)
-                for dcl in node.declarations():
-                    if dcl.boost_python_export is True and dcl.access == 'public':
-                        nodes.append(dcl)
-    for tdf in asg.typedefs():
-        if isinstance(tdf.boost_python_export, bool) and not tdf.boost_python_export:
-            if not tdf.node in forbidden and tdf.type.target.boost_python_export:
-                tdf.boost_python_export = True
-                parent = tdf.parent
-                while not parent.boost_python_export:
-                    parent.boost_python_export = True
-                    parent = parent.parent
-            else:
-                tdf.boost_python_export = False
-
-# class ::std::__shared_ptr<statiskit::UnivariateDistributionEstimation::Estimator, __gnu_cxx::_Lock_policy::_S_atomic>
-
-class BoostPythonImportFileProxy(FileProxy):
-
-    language = 'py'
-
-    IMPORTS = Template(text=r"""\
-__all__ = []\
-
-% for module in modules:
-
-import ${module.package}.${module.modulename}\
-% endfor
-""")
-
-    SCOPES = Template(text=r"""\
-% for scope in scopes:
-
-${module.package}.${module.modulename}.${".".join(node_rename(ancestor) for ancestor in scope.ancestors[1:])}.${node_rename(scope)} = ${module.package}.${module.modulename}.${".".join(node_rename(ancestor, scope=True) for ancestor in scope.ancestors[1:])}.${node_rename(scope)}\
-% endfor
-""")
-
-    TEMPLATES = Template(text=r"""\
-% for tpl, spcs in templates:
-
-${module.package}.${module.modulename}.\
-    % if len(tpl.ancestors) > 1:
-${".".join(node_rename(ancestor) for ancestor in tpl.ancestors[1:])}.${node_rename(tpl)} = [${", ".join([module.package + "." + module.modulename + "." + ".".join(node_rename(ancestor) for ancestor in spc.ancestors[1:]) + "." + node_rename(spc) for spc in spcs])}]\
-    % else:
-${node_rename(tpl)} = [${", ".join([module.package + "." + module.modulename + "." + node_rename(spc) for spc in spcs])}]\
-    % endif
-% endfor""")
-
-    TYPEDEFS = Template(text=r"""\
-% for tdf in typedefs:
-
-${module.package}.${module.modulename}.\
-    % if len(tdf.ancestors) > 1:
-${".".join(node_rename(ancestor) for ancestor in tdf.ancestors[1:])}.\
-    % endif
-${node_rename(tdf)} = ${tdf.type.target.boost_python_export.boost_python_module.package}.${tdf.type.target.boost_python_export.boost_python_module.modulename}.\
-    % if len(tdf.type.target.ancestors) > 1:
-${".".join(node_rename(ancestor) for ancestor in tdf.type.target.ancestors[1:])}.\
-    % endif
-${node_rename(tdf.type.target)}\
-% endfor""")
-
-    @property
-    def content(self):
-        if not hasattr(self, '_content') or self._content == "":
-            dependencies = self.module.dependencies + [self.module]
-            content = [self.IMPORTS.render(modules = sorted(dependencies, key = lambda dependency: dependency.depth))]
-            scopes = []
-            for export in self.module.boost_python_exports:
-                for wrap in export.wraps:
-                    if isinstance(wrap.parent, ClassProxy):
-                        scopes.append(wrap)
-            content.append(self.SCOPES.render(scopes = scopes,
-                    module = self.module,
-                    node_rename = node_rename))
-            templates = dict()
-            for export in self.module.boost_python_exports:
-                for wrap in export.wraps:
-                    if isinstance(wrap, ClassTemplateSpecializationProxy):
-                        spc = wrap.specialize.node
-                        if spc in templates:
-                            templates[spc].append(wrap)
-                        else:
-                            templates[spc] = [wrap]
-            content.append(self.TEMPLATES.render(templates = [(self.asg[tpl], spcs) for tpl, spcs in templates.iteritems()],
-                    module = self.module,
-                    node_rename = node_rename))
-            typedefs = []
-            for export in self.module.boost_python_exports:
-                for wrap in export.wraps:
-                    if isinstance(wrap, TypedefProxy) and wrap.type.target.boost_python_export and not wrap.type.target.boost_python_export is True:
-                        typedefs.append(wrap)
-                    elif isinstance(wrap, ClassProxy):
-                        typedefs.extend([tdf for tdf in wrap.typedefs() if tdf.boost_python_export and tdf.type.target.boost_python_export and not tdf.type.target.boost_python_export is True])
-            content.append(self.TYPEDEFS.render(typedefs = typedefs, module = self.module, node_rename=node_rename))
-            self.content = "\n".join(content)
-        return self._content
-
-    @content.setter
-    def content(self, content):
-        self.asg._nodes[self.node]['_content'] = content
-
-    @content.deleter
-    def del_content(self):
-        self.asg._nodes[self.node].pop('_content', False)
-
-    @property
-    def module(self):
-        return self.asg[self._module]
-
-    def char_ptr_to_string_methods(self):
-        pass
-
-def import_back_end(asg, filename, module, proxy=BoostPythonImportFileProxy):
-    if not isinstance(module, BoostPythonModuleFileProxy):
-        module = asg[module]
-    if isinstance(module, BoostPythonModuleFileProxy):
-        module = module.globalname
-    else:
-        raise ValueError('\'module\' parameter')
-    asg.add_file(filename, proxy=proxy, _module=module)
-    #for bpm in asg.boost_python_modules(pattern=pattern):
-    #    importscript = asg.add_file(bpm.target.globalname + '_' + self.prefix + '.py', proxy=proxy)
-    #    importscript.language = 'py'
-    #    modules = set()
-    #    temp = [wrap for export in bmp.boost_python_exports for wrap in export.wraps]
-    #    while len(temp) > 0:
-    #        wrap = temp.pop()
-    #        if isinstance(wrap, FunctionProxy):
-    #            boost_python_export = wrap.result_type.target.boost_python_export
-    #            if boost_python_export and not boost_python_export is True:
-    #                boost_python_module = boost_python_export.boost_python_module
-    #                if not boost_python_module is None:
-    #                    modules.add(boost_python_module.globalname)
-    #            for prm in wrap.parameters:
-    #                boost_python_export = prm.type.target.boost_python_export
-    #                if boost_python_export and not boost_python_export is True:
-    #                    boost_python_module = boost_python_export.boost_python_module
-    #                    if not boost_python_module is None:
-    #                        modules.add(boost_python_module.globalname)
-    #        elif isinstance(wrap, (VariableProxy, TypedefProxy)):
-    #            boost_python_export = wrap.type.target.boost_python_export
-    #            if boost_python_export and not boost_python_export is True:
-    #                boost_python_module = boost_python_export.boost_python_module
-    #                if not boost_python_module is None:
-    #                    modules.add(boost_python_module.globalname)
-    #        elif isinstance(wrap, ClassProxy):
-    #            boost_python_export = wrap.boost_python_export
-    #            if boost_python_export and not boost_python_export is True:
-    #                boost_python_module = boost_python_export.boost_python_module
-    #                if boost_python_export and not boost_python_export is True:
-    #                    modules.add(boost_python_module.globalname)
-    #            temp.extend([bse for bse in wrap.bases() if bse.access == 'public'])
-    #            temp.extend([dcl for dcl in wrap.declarations() if dcl.access == 'public'])
-    #        elif isinstance(wrap, ClassTemplateProxy):
-    #            boost_python_export = wrap.boost_python_export
-    #            if boost_python_export and not boost_python_export is True:
-    #                boost_python_module = boost_python_export.boost_python_module
-    #                if boost_python_export and not boost_python_export is True:
-    #                    modules.add(boost_python_module.globalname)
-    #    if bpm.globalname in modules:
-    #        modules.remove(bmp.globalname)
-    #    # TODO
-    #    templates = set()
-    #    for export in bpm.boost_python_exports:
-    #        for wrap in export.wraps:
-    #            if isinstance(wrap, TemplateClassSpecialization):
-    #                templates.add(wrap.specialize.node)
-    #    templates = [asg[template] for template in templates]
-    #    # TODO
-    #    #content = [IMPORTS.render(obj = self).strip()]
-    #    #    if content[-1] == '':
-    #    #        content = content[:-1]
-    #    #    else:
-    #    #        content[-1] = '# Import C++ dependencies\n' + content[-1]
-    #    #    #content.append(self.render_functions())
-    #    #    content.append(self.render_templates())
-    #    #    #self.TEMPLATES.render(obj = self, node_rename = node_rename,
-    #    #    #    camel_case_to_lower = camel_case_to_lower).strip())
-    #    #    if content[-1] == '':
-    #    #        content = content[:-1]
-    #    #    #else:
-    #    #    #    content[-1] = '# Import decorators for template instanciations\n' + content[-1]
-    #    #    #contents.append(self.SCOPES.render(obj = self).strip())
-    #    #    #contents.append(self.TYPEDEFS.render(obj = self).strip())
-    #    #    #contents.append(self.SPECIALIZATIONS.render(obj = self).strip())
-    #    #    importscript.cont
-
-def std_filter_back_end(asg, memory=True, __gnu_cxx=True):
-    if memory:
-        if 'class ::std::unique_ptr' in asg:
-            asg['class ::std::unique_ptr'].is_smart_pointer = True
-        if 'class ::std::shared_ptr' in asg:
-            asg['class ::std::shared_ptr'].is_smart_pointer = True
-        #if 'class ::std::__shared_ptr' in asg:
-        #    asg['class ::std::__shared_ptr'].boost_python_export = False
-        if 'class ::std::weak_ptr' in asg:
-            asg['class ::std::weak_ptr'].is_smart_pointer = True
-        if 'class ::std::auto_ptr' in asg:
-            asg['class ::std::auto_ptr'].is_smart_pointer = True
-    #for node in asg.functions('^::std::.*::swap::.*'):
-    #    node.boost_python_export = False
-    #if 'class ::std::less' in asg:
-    #    asg['class ::std::less'].boost_python_export = False
-    #if 'class ::std::allocator' in asg:
-    #    asg['class ::std::allocator'].boost_python_export = False
-    #if 'class ::std::initializer_list' in asg:
-    #    asg['class ::std::initializer_list'].boost_python_export = False
-    #if 'class ::std::reverse_iterator' in asg:
-    #    asg['class ::std::reverse_iterator'].boost_python_export = False
-    #if 'class ::std::_Rb_tree_node' in asg:
-    #    asg['class ::std::_Rb_tree_node'].boost_python_export = False
-    #if __gnu_cxx and '::__gnu_cxx' in asg:
-    #    asg['::__gnu_cxx'].boost_python_export = False
-
-class BoostPythonExportMappingFileProxy(BoostPythonExportTemplateFileProxy):
+class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
 
     MAPPING = {"class ::std::vector" : Template(r"""\
     struct vector_${cls.hash}_from_python
@@ -1059,57 +578,403 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportTemplateFileProxy):
     set_${cls.hash}_from_python();""")}
 
     @property
-    def content(self):
-        if not hasattr(self, '_content') or self._content == "":
-            content = self.HEADER.render(headers = self.asg.headers(*self.wraps), errors = [wrap for wrap in self.wraps if isinstance(wrap, ClassProxy) and wrap.is_error])
-            content += '\n\nvoid ' + self.prefix + '()\n{\n'
-            content += self.SCOPE.render(scopes = self.scopes,
-                    node_rename = node_rename)
-            for arg in self.wraps:
-                if isinstance(arg, EnumConstantProxy):
-                    content += '\n' + self.CONSTANT.render(constant = arg,
-                            node_rename = node_rename)
-                elif isinstance(arg, EnumProxy):
-                    content += '\n' + self.ENUM.render(enum = arg,
-                            node_rename = node_rename)
-                elif isinstance(arg, VariableProxy):
-                    content += '\n' + self.VARIABLE.render(variable = arg,
-                            node_rename = node_rename)
-                elif isinstance(arg, FunctionProxy):
-                    content += '\n' + self.FUNCTION.render(function = arg,
-                            node_rename = node_rename,
-                            call_policy = call_policy)
-                elif isinstance(arg, ClassProxy):
-                    content += '\n' + self.CLASS.render(cls = arg,
-                            node_rename = node_rename,
-                            held_type = held_type,
-                            call_policy = call_policy)
-                    if arg.globalname in self.MAPPING:
-                        content += '\n' + self.MAPPING[arg.globalname].render(cls = arg)
-                    elif isinstance(arg, ClassTemplateSpecializationProxy) and arg.specialize.globalname in self.MAPPING:
-                        content += '\n' + self.MAPPING[arg.specialize.globalname].render(cls = arg)
+    def _content(self):
+        content = self.HEADER.render(headers = self._asg.headers(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
+        content += '\n\nvoid ' + self.prefix + '()\n{\n'
+        content += self.SCOPE.render(scopes = self.scopes,
+                node_rename = node_rename)
+        for arg in self.declarations:
+            if isinstance(arg, EnumeratorProxy):
+                content += '\n' + self.ENUMERATOR.render(constant = arg,
+                        node_rename = node_rename)
+            elif isinstance(arg, EnumerationProxy):
+                content += '\n' + self.ENUMERATION.render(enum = arg,
+                        node_rename = node_rename)
+            elif isinstance(arg, VariableProxy):
+                content += '\n' + self.VARIABLE.render(variable = arg,
+                        node_rename = node_rename)
+            elif isinstance(arg, FunctionProxy):
+                content += '\n' + self.FUNCTION.render(function = arg,
+                        node_rename = node_rename,
+                        call_policy = boost_python_call_policy)
+            elif isinstance(arg, ClassProxy):
+                content += '\n' + self.CLASS.render(cls = arg,
+                        node_rename = node_rename,
+                        held_type = boost_python_held_type,
+                        call_policy = boost_python_call_policy)
+                if arg.globalname in self.MAPPING:
+                    content += '\n' + self.MAPPING[arg.globalname].render(cls = arg)
+                elif isinstance(arg, ClassTemplateSpecializationProxy) and arg.specialize.globalname in self.MAPPING:
+                    content += '\n' + self.MAPPING[arg.specialize.globalname].render(cls = arg)
                 elif isinstance(arg, TypedefProxy):
                     continue
                 else:
                     raise NotImplementedError(arg.__class__.__name__)
-            content += '\n}'
-            self.content = content
+        content += '\n}'
+        return content
+
+def boost_python_exports(self, *args, **kwargs):
+    return [export for export in self.files(*args, **kwargs) if isinstance(export, BoostPythonExportFileProxy)]
+
+AbstractSemanticGraph.boost_python_exports = boost_python_exports
+del boost_python_exports
+
+boost_python_export = Plugin('autowig.boost_python_export', brief="",
+        detailed="")
+
+class BoostPythonExportPlugin(object):
+    """Plugin for Boost.Python export creation"""
+
+    def __init__(self, proxy):
+        if not issubclass(proxy, BoostPythonExportFileProxy):
+            raise TypeError('\'proxy\' parameter')
+        self._proxy = proxy
+
+    def __call__(self, asg, export):
+        if module in asg:
+            return asg[module]
+        else:
+            return asg.add_file(export, proxy=self._proxy)
+
+boost_python_export['basic'] = BoostPythonExportPlugin(BoostPythonExportBasicFileProxy)
+boost_python_export['mapping'] = BoostPythonExportPlugin(BoostPythonExportMappingFileProxy)
+boost_python_export.plugin = 'mapping'
+
+class BoostPythonModuleFileProxy(FileProxy):
+
+    @property
+    def _clean_default(self):
+        return len(self._exports) == 0
+
+    CONTENT = Template(text=r"""\
+#include <boost/python.hpp>
+
+% for export in module.exports:
+    % if not export.is_empty:
+void ${export.prefix}();
+    % endif
+% endfor
+
+BOOST_PYTHON_MODULE(${module.prefix})
+{
+% for export in module.exports:
+    % if not export.is_empty:
+    ${export.prefix}();
+    %endif
+% endfor
+}""")
+
+    def __init__(self, asg, node):
+        super(BoostPythonModuleFileProxy, self).__init__(asg, node)
+        if not hasattr(self, '_exports'):
+            self._asg._nodes[self._node]['_exports'] = set()
+
+    @property
+    def exports(self):
+        if not hasattr(self, '_exports'):
+            return []
+        else:
+            return [export for export in sorted([self._asg[export] for export in self._exports], key = attrgetter('depth'))]
+
+    @property
+    def dependencies(self):
+        modules = set([self.globalname])
+        temp = [declaration for export in self.exports for declaration in export.declarations]
+        while len(temp) > 0:
+            declaration = temp.pop()
+            if isinstance(declaration, FunctionProxy):
+                export = declaration.return_type.target.boost_python_export
+                if export and not export is True:
+                    module = export.module
+                    if not module is None:
+                        modules.add(module.globalname)
+                for prm in declaration.parameters:
+                    export = prm.qualified_type.desugared_type.unqualified_type.boost_python_export
+                    if export and not export is True:
+                        module = export.module
+                        if not module is None:
+                            modules.add(module.globalname)
+            elif isinstance(declaration, (VariableProxy, TypedefProxy)):
+                export = declaration.qualified_type.desugared_type.unqualified_type.boost_python_export
+                if export and not export is True:
+                    module = export.module
+                    if not module is None:
+                        modules.add(module.globalname)
+            elif isinstance(declaration, ClassProxy):
+                export = declaration.boost_python_export
+                if export and not export is True:
+                    module = export.module
+                    if not module is None:
+                        modules.add(module.globalname)
+                temp.extend([bse for bse in declaration.bases() if bse.access == 'public'])
+                temp.extend([dcl for dcl in declaration.declarations() if dcl.access == 'public'])
+            elif isinstance(declaration, ClassTemplateProxy):
+                export = declaration.boost_python_export
+                if export and not export is True:
+                    module = export.module
+                    if module is None:
+                        modules.add(module.globalname)
+        modules.remove(self.globalname)
+        return [self._asg[module] for module in modules]
+
+    @property
+    def depth(self):
+        dependencies = self.dependencies
+        if len(dependencies) == 0:
+            return 0
+        else:
+            return max(dependency.depth for dependency in dependencies) + 1
+
+    @property
+    def _content(self):
+        return self.CONTENT.render(module = self)
+
+def boost_python_modules(self, **kwargs):
+    return [module for module in self.files(**kwargs) is isinstance(module, BoostPythonModuleFileProxy)]
+
+AbstractSemanticGraph.boost_python_modules = boost_python_modules
+del boost_python_modules
+
+boost_python_module = Plugin('autowig.boost_python_module', brief="",
+        detailed="")
+
+class BoostPythonModulePlugin(object):
+    """Plugin for Boost.Python module creation"""
+
+    def __init__(self, proxy):
+        if not issubclass(proxy, BoostPythonModuleFileProxy):
+            raise TypeError('\'proxy\' parameter')
+        self._proxy = proxy
+
+    def __call__(self, asg, module):
+        if module in asg:
+            return asg[module]
+        else:
+            return asg.add_file(module, proxy=self._proxy)
+
+boost_python_module['default'] = BoostPythonModulePlugin(BoostPythonModuleFileProxy)
+boost_python_module.plugin = 'default'
+
+class BoostPythonDecoratorFileProxy(FileProxy):
+
+    @property
+    def _clean_default(self):
+        return not hasattr(self, '_module')
+
+    @property
+    def module(self):
+        if hasattr(self, '_module'):
+            return self._asg[self._module]
+
+    @module.setter
+    def module(self, module):
+        if isinstance(module, basestring):
+            module = self._asg[module]
+        if not isinstance(module, BoostPythonModuleFileProxy):
+            raise TypeError('\'module\' parameter')
+        self._asg._nodes[self._node]['_module'] = module._node
+
+class BoostPythonDecoratorDefaultFileProxy(BoostPythonDecoratorFileProxy):
+
+    IMPORTS = Template(text=r"""\
+__all__ = []\
+
+% for module in modules:
+
+import ${module.package}.${module.modulename}\
+% endfor
+""")
+
+    SCOPES = Template(text=r"""\
+% for scope in scopes:
+
+${module.package}.${module.modulename}.${".".join(node_rename(ancestor) for ancestor in scope.ancestors[1:])}.${node_rename(scope)} = ${module.package}.${module.modulename}.${".".join(node_rename(ancestor, scope=True) for ancestor in scope.ancestors[1:])}.${node_rename(scope)}\
+% endfor
+""")
+
+    TEMPLATES = Template(text=r"""\
+% for tpl, spcs in templates:
+
+${module.package}.${module.modulename}.\
+    % if len(tpl.ancestors) > 1:
+${".".join(node_rename(ancestor) for ancestor in tpl.ancestors[1:])}.${node_rename(tpl)} = [${", ".join([module.package + "." + module.modulename + "." + ".".join(node_rename(ancestor) for ancestor in spc.ancestors[1:]) + "." + node_rename(spc) for spc in spcs])}]\
+    % else:
+${node_rename(tpl)} = [${", ".join([module.package + "." + module.modulename + "." + node_rename(spc) for spc in spcs])}]\
+    % endif
+% endfor""")
+
+    TYPEDEFS = Template(text=r"""\
+% for tdf in typedefs:
+
+${module.package}.${module.modulename}.\
+    % if len(tdf.ancestors) > 1:
+${".".join(node_rename(ancestor) for ancestor in tdf.ancestors[1:])}.\
+    % endif
+${node_rename(tdf)} = ${tdf.qualified_type.desugared_type.unqualified_type.boost_python_export.module.package}.${tdf.qualified_type.desugared_type.unqualified_type.boost_python_export.module.modulename}.\
+    % if len(tdf.qualified_type.desugared_type.unqualified_type.ancestors) > 1:
+${".".join(node_rename(ancestor) for ancestor in tdf.qualified_type.desugared_type.unqualified_type.ancestors[1:])}.\
+    % endif
+${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}\
+% endfor""")
+
+    @property
+    def _content(self):
+        dependencies = self.module.dependencies + [self.module]
+        content = [self.IMPORTS.render(modules = sorted(dependencies, key = lambda dependency: dependency.depth))]
+        scopes = []
+        for export in self.module.exports:
+            for declaration in export.declarations:
+                if isinstance(declaration.parent, ClassProxy):
+                    scopes.append(declaration)
+        content.append(self.SCOPES.render(scopes = scopes,
+                module = self.module,
+                node_rename = node_rename))
+        templates = dict()
+        for export in self.module.exports:
+            for declaration in export.declarations:
+                if isinstance(declaration, ClassTemplateSpecializationProxy):
+                    spc = declaration.specialize._node
+                    if spc in templates:
+                        templates[spc].append(declaration)
+                    else:
+                        templates[spc] = [declaration]
+        content.append(self.TEMPLATES.render(templates = [(self._asg[tpl], spcs) for tpl, spcs in templates.iteritems()],
+                module = self.module,
+                node_rename = node_rename))
+        typedefs = []
+        for export in self.module.exports:
+            for declaration in export.declarations:
+                if isinstance(declaration, TypedefProxy) and declaration.qualified_type.desugared_type.unqualified_type.boost_python_export and not declaration.qualified_type.desugared_type.unqualified_type.boost_python_export is True:
+                    typedefs.append(declaration)
+                elif isinstance(declaration, ClassProxy):
+                    typedefs.extend([tdf for tdf in declaration.typedefs() if tdf.boost_python_export and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export and not tdf.qualified_type.desugared_type.unqualified_type.boost_python_export is True])
+        content.append(self.TYPEDEFS.render(typedefs = typedefs, module = self.module, node_rename=node_rename))
+        self.content = "\n".join(content)
         return self._content
 
-    @content.setter
-    def content(self, content):
-        self.asg._nodes[self.node]['_content'] = content
+boost_python_decorator = Plugin('autowig.boost_python', brief="",
+        detailed="")
 
-    @content.deleter
-    def del_content(self):
-        self.asg._nodes[self.node].pop('_content', False)
+class BoostPythonDecoratorPlugin(object):
+    """Plugin for Boost.Python module decoration"""
 
+    def __init__(self, proxy):
+        if not issubclass(proxy, BoostPythonDecoratorFileProxy):
+            raise TypeError('\'proxy\' parameter')
+        self._proxy = proxy
 
-#def std_mapping_back_end(asg, vector=True, suffix='_mapping'):
-#    if vector and 'class ::std::vector' in asg:
-#        vectors = asg['class ::std::vector'].specializations(partial=False)
-#        for vector in vectors:
-#            export = vector.boost_python_export
-#            if export and not export is True:
-#                mapping = asg.add_file(export.parent + export.prefix + suffix + export.suffix, proxy=BoostPythonVectorMappingFileProxy, maps=vector.globalname)
-#                mapping.boost_python_module = vector.boost_python_export.boost_python_module
+    def __call__(self, asg, decorator, module):
+        if decorator in asg:
+            decorator = asg[decorator]
+        else:
+            decorator = asg.add_file(decorator, proxy=self._proxy)
+        decorator.module = module
+        return decorator
+
+boost_python_decorator['default'] = BoostPythonDecoratorPlugin(BoostPythonDecoratorDefaultFileProxy)
+boost_python_decorator.plugin = 'default'
+
+def back_end(asg, module, decorator=None, pattern='.*', prefix='_'):
+    """
+    """
+    module = boost_python_module(asg, module)
+    directory = module.parent
+    suffix = module.suffix
+    nodes = set()
+    for node in asg.declarations(pattern=pattern):
+        if node.boost_python_export is True:
+            print node.gloablname
+            if isinstance(node, EnumeratorProxy) and isinstance(node.parent, EnumerationProxy) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
+                continue
+            else:
+                node.boost_python_export = boost_python_export(asg, directory.globalname + node_path(node, prefix=prefix, suffix=suffix))
+                nodes.add(node.boost_python_export._node)
+    for export in asg.boost_python_exports(directory.globalname + '.*' + suffix):
+        export.module = module
+    if decorator is not None:
+        boost_python_decorator(asg, decorator, module.globalname)
+
+def boost_python_closure(self):
+    nodes = []
+    forbidden = set()
+    for node in self.nodes():
+        if hasattr(node, 'boost_python_export'):
+            if node.boost_python_export and not node.boost_python_export is True:
+                nodes.append(node)
+            elif not node.boost_python_export:
+                target = node
+                while isinstance(target, ClassTemplateSpecializationProxy) and target.is_smart_pointer:
+                    target = target.templates[0].target
+                if not target.boost_python_export:
+                    if not isinstance(target, FundamentalTypeProxy):
+                        forbidden.add(node._node)
+            elif not isinstance(node, (NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
+                if not isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy)):
+                    if isinstance(node, EnumConstantProxy):
+                        if not isinstance(node.parent, EnumProxy):
+                            node.boost_python_export = False
+                    else:
+                        node.boost_python_export = False
+                elif not node.access == 'public':
+                    node.boost_python_export = False
+    while len(nodes) > 0:
+        node = nodes.pop()
+        if not node._node in forbidden and not isinstance(node, FundamentalTypeProxy):
+            if not node.boost_python_export:
+                node.boost_python_export = True
+            if isinstance(node, (TypedefProxy, VariableProxy)):
+                target = node.qualified_type.desugared_type.unqualified_type
+                while isinstance(target, ClassTemplateSpecializationProxy) and target.is_smart_pointer:
+                    target = target.templates[0].target
+                if not target._node in forbidden:
+                    if not target.boost_python_export:
+                        nodes.append(target)
+                else:
+                    node.boost_python_export = False
+            elif isinstance(node, FunctionProxy):
+                return_type = node.return_type.desugared_type.unqualified_type
+                while isinstance(return_type, ClassTemplateSpecializationProxy) and return_type.is_smart_pointer:
+                    return_type = return_type.templates[0].target
+                parameters = [parameter.qualified_type.desugared_type.unqualified_type for parameter in node.parameters]
+                for index in range(len(parameters)):
+                    while isinstance(parameters[index], ClassTemplateSpecializationProxy) and parameters[index].is_smart_pointer:
+                        parameters[index] = parameters[index].templates[0].target
+                if not return_type._node in forbidden and not any([parameter._node in forbidden for parameter in parameters]):
+                    if not return_type.boost_python_export:
+                        nodes.append(return_type)
+                    for parameter in parameters:
+                        if not parameter.boost_python_export:
+                            nodes.append(parameter)
+                else:
+                    node.boost_python_export = False
+            elif isinstance(node, ConstructorProxy):
+                parameters = [parameter.qualified_type.desugared_type.unqualified_type for parameter in node.parameters]
+                for index in range(len(parameters)):
+                    while isinstance(parameters[index], ClassTemplateSpecializationProxy) and parameters[index].is_smart_pointer:
+                        parameters[index] = parameters[index].templates[0].target
+                if not any([parameter._node in forbidden for parameter in parameters]):
+                    for parameter in parameters:
+                        if not parameter.boost_python_export:
+                            nodes.append(parameter)
+                else:
+                    node.boost_python_export = False
+            elif isinstance(node, ClassProxy):
+                for base in node.bases():
+                    if not base.boost_python_export and base.access == 'public':
+                        nodes.append(base)
+                for dcl in node.declarations():
+                    if dcl.boost_python_export is True and dcl.access == 'public':
+                        nodes.append(dcl)
+    for tdf in self.typedefs():
+        if isinstance(tdf.boost_python_export, bool) and not tdf.boost_python_export:
+            if not tdf._node in forbidden and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export:
+                tdf.boost_python_export = True
+                parent = tdf.parent
+                while not parent.boost_python_export:
+                    parent.boost_python_export = True
+                    parent = parent.parent
+            else:
+                tdf.boost_python_export = False
+
+AbstractSemanticGraph.boost_python_closure = boost_python_closure
+del boost_python_closure

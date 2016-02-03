@@ -1,16 +1,7 @@
-from openalea.core.plugin.functor import PluginFunctor
-from openalea.core.util import camel_case_to_lower, to_camel_case, camel_case_to_upper
+from .tools import camel_case_to_lower, to_camel_case, camel_case_to_upper
+from .asg import *
 
-from .tools import remove_templates
-
-__all__ = ['node_rename']
-
-node_rename = PluginFunctor.factory('autowig', implements='name')
-#node_rename.__class__.__doc__ = """Node python name functor
-#
-#.. seealso::
-#    :attr:`plugin` for run-time available plugins.
-#"""
+__all__ = []
 
 PYTHON_OPERATOR = dict()
 PYTHON_OPERATOR['+'] = '__add__'
@@ -45,59 +36,37 @@ PYTHON_OPERATOR['^='] = '__ixor__'
 PYTHON_OPERATOR['<<='] = '__ilshift__'
 PYTHON_OPERATOR['>>='] = '__irshift__'
 PYTHON_OPERATOR['()'] = '__call__'
+PYTHON_OPERATOR['[]'] = '__getitem__'
 
-CONST_PYTHON_OPERATOR = dict()
-CONST_PYTHON_OPERATOR['[]'] = '__getitem__'
-
-NON_CONST_PYTHON_OPERATOR = dict()
-NON_CONST_PYTHON_OPERATOR['[]'] = '__setitem__'
-
-class PEP8NodeNamePlugin(object):
-    """PEP8 plugin for the python name computation of a node"""
-
-    implements = 'name'
-
-
-    def implementation(self, node, scope=False):
-        from autowig.asg import VariableProxy, FunctionProxy, MethodProxy, ClassProxy, ClassTemplateSpecializationProxy, ClassTemplateProxy, TypedefProxy, EnumProxy, EnumConstantProxy, NamespaceProxy
-        if isinstance(node, MethodProxy) and node.localname.startswith('operator'):
-            operator = node.localname.strip('operator').strip()
-            if operator in PYTHON_OPERATOR:
-                return PYTHON_OPERATOR[operator]
-            else:
-                if node.is_const:
-                    return CONST_PYTHON_OPERATOR[operator]
-                else:
-                    return NON_CONST_PYTHON_OPERATOR[operator]
-        elif isinstance(node, FunctionProxy):
-            return camel_case_to_lower(node.localname)
-        elif isinstance(node, EnumProxy):
-            return camel_case_to_lower(node.localname)
-        elif isinstance(node, VariableProxy):
-            if node.type.is_const:
-                return camel_case_to_upper(node.localname)
-            else:
-                return camel_case_to_lower(node.localname)
-        elif isinstance(node, EnumConstantProxy):
-            return camel_case_to_upper(node.localname)
-        elif isinstance(node, ClassTemplateSpecializationProxy):
-            if not scope:
-                return '_' + to_camel_case(remove_templates(node.localname)).strip('_') + '_' + node.hash
-            else:
-                return '__' + camel_case_to_lower(remove_templates(node.localname)).strip('_') + '_' + node.hash
-        elif isinstance(node, TypedefProxy):
-            return to_camel_case(node.localname)
-        elif isinstance(node, (ClassTemplateProxy, ClassProxy)):
-            if scope:
-                return '_' + camel_case_to_lower(node.localname).strip('_')
-            elif isinstance(node, ClassProxy):
-                return to_camel_case(node.localname)
-            else:
-                return '_' + to_camel_case(node.localname)
-        elif isinstance(node, NamespaceProxy):
-                return camel_case_to_lower(node.localname)
+def pep8_node_rename(self, node, scope=False):
+    if isinstance(node, MethodProxy) and node.localname.startswith('operator'):
+        return PYTHON_OPERATOR[node.localname.strip('operator').strip()]
+    elif isinstance(node, FunctionProxy):
+        return camel_case_to_lower(node.localname)
+    elif isinstance(node, EnumProxy):
+        return camel_case_to_lower(node.localname)
+    elif isinstance(node, VariableProxy):
+        #if node.type.is_const:
+        #    return camel_case_to_upper(node.localname)
+        #else:
+        return camel_case_to_lower(node.localname)
+    elif isinstance(node, EnumConstantProxy):
+        return camel_case_to_upper(node.localname)
+    elif isinstance(node, ClassTemplateSpecializationProxy):
+        if not scope:
+            return '_' + to_camel_case(node.specialize.localname).strip('_') + '_' + node.hash
         else:
-            return NotImplementedError(node.__class__)
-
-node_rename['PEP8'] = PEP8NodeNamePlugin
-node_rename.plugin = 'PEP8'
+            return '__' + camel_case_to_lower(node.specialize.localname).strip('_') + '_' + node.hash
+    elif isinstance(node, TypedefProxy):
+        return to_camel_case(node.localname)
+    elif isinstance(node, (ClassTemplateProxy, ClassProxy)):
+        if scope:
+            return '_' + camel_case_to_lower(node.localname).strip('_')
+        elif isinstance(node, ClassProxy):
+            return to_camel_case(node.localname)
+        else:
+            return '_' + to_camel_case(node.localname)
+    elif isinstance(node, NamespaceProxy):
+            return camel_case_to_lower(node.localname)
+    else:
+        return NotImplementedError(node.__class__)
