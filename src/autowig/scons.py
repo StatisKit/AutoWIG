@@ -44,3 +44,9 @@ def scons(directory, *args, **kwargs):
     out, err = s.communicate()
     session = ShellSession(out, err, **kwargs)
     return session
+
+def boost_python_emitter(*args, **kwargs):
+    pass
+
+def boost_python_builder(*args, **kwargs):
+    pass

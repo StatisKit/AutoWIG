@@ -1480,7 +1480,10 @@ class AbstractSemanticGraph(object):
             if isinstance(node, DeclarationProxy):
                 white.append(node)
             elif isinstance(node, HeaderProxy):
-                headers.append(node)
+                while not node is None and not node.is_self_contained:
+                    node = node.include
+                if not node is None:
+                    headers.append(node)
         black = set()
         while len(white) > 0:
             node = white.pop()
@@ -1523,15 +1526,14 @@ class AbstractSemanticGraph(object):
                 if not header is None:
                     headers.append(header)
         headers = sorted(headers, key = lambda header: header.depth)
-        _headers = set([header._node for header in headers])
-        for header in headers:
+        _headers = set([header.globalname for header in headers if header.depth == 0])
+        for header in set([header for header in headers if header.depth > 0]):
             include = header.include
             while not include is None and not include.globalname in _headers:
                 include = include.include
             if include is None:
                 _headers.add(header.globalname)
-        headers = [self[header] for header in _headers]
-        return sorted(headers, key = lambda header: header.depth)
+        return sorted([self[header] for header in _headers], key = lambda header: header.depth)
 
     def __contains__(self, node):
         return node in self._nodes
