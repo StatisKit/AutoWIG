@@ -82,6 +82,12 @@ def preprocessing(asg, headers, flags):
                 asg._syntax_edges['::'].append(fundamental._node)
 
     headers = [path(header) if not isinstance(header, path) else header for header in headers]
+
+    for header in headers:
+        header = asg.add_file(header, proxy=HeaderProxy)
+        header.is_self_contained = True
+        header.clean = False
+
     return "\n".join('#include "' + str(header.abspath()) + '"' for header in headers)
 
 def postprocessing(asg, headers, overload='all'):
@@ -108,10 +114,6 @@ def postprocessing(asg, headers, overload='all'):
         :func:`autowig.libclang_front_end.front_end` for an example.
         :func:`compute_overloads`, :func:`discard_forward_declarations` and :func:`resolve_templates` for a more detailed documentatin about AutoWIG front-end post-processing step.
     """
-    for header in headers:
-        header = asg[header]
-        header.is_standalone = True
-        header.clean = False
     resolve_templates(asg)
     compute_overloads(asg, overload=overload)
     discard_forward_declarations(asg)

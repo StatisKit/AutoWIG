@@ -13,6 +13,9 @@ middle_end = Plugin('autowig.middle_end', brief="AutoWIG middle-end plugins",
 
 .. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
 
+middle_end['default'] = lambda asg: None
+middle_end.plugin = 'default'
+
 back_end = Plugin('autowig.back_end', brief="AutoWIG back-end plugins",
         detailed="""AutoWIG back-end plugins are responsible for C/C++ code generation from an Abstract Semantic Graph (ASG) interpretation.
 

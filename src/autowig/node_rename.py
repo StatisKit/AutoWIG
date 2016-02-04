@@ -38,19 +38,19 @@ PYTHON_OPERATOR['>>='] = '__irshift__'
 PYTHON_OPERATOR['()'] = '__call__'
 PYTHON_OPERATOR['[]'] = '__getitem__'
 
-def pep8_node_rename(self, node, scope=False):
+def pep8_node_rename(node, scope=False):
     if isinstance(node, MethodProxy) and node.localname.startswith('operator'):
         return PYTHON_OPERATOR[node.localname.strip('operator').strip()]
     elif isinstance(node, FunctionProxy):
         return camel_case_to_lower(node.localname)
-    elif isinstance(node, EnumProxy):
+    elif isinstance(node, EnumerationProxy):
         return camel_case_to_lower(node.localname)
     elif isinstance(node, VariableProxy):
         #if node.type.is_const:
         #    return camel_case_to_upper(node.localname)
         #else:
         return camel_case_to_lower(node.localname)
-    elif isinstance(node, EnumConstantProxy):
+    elif isinstance(node, EnumeratorProxy):
         return camel_case_to_upper(node.localname)
     elif isinstance(node, ClassTemplateSpecializationProxy):
         if not scope:

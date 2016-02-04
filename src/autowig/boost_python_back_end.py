@@ -29,7 +29,7 @@ del get_boost_python_call_policy, set_boost_python_call_policy, del_boost_python
 boost_python_call_policy = Plugin('autowig.boost_python_call_policy', brief="AutoWIG Boost.Python call policy plugins",
         detailed="")
 
-def boost_python_default_call_policy(self, node):
+def boost_python_default_call_policy(node):
     if isinstance(node, FunctionProxy):
         return_type = node.return_type.desugared_type
         if return_type.is_pointer:
@@ -56,7 +56,7 @@ boost_python_call_policy.plugin = 'default'
 boost_python_held_type = Plugin('autowig.boost_python_held_type', brief="AutoWIG Boost.Python policy plugins",
         detailed="")
 
-def ptr_held_type(self, node):
+def ptr_held_type(node):
     if isinstance(node, ClassProxy):
         return node.globalname + '*'
     elif not isinstance(node, BoostPythonExportFileProxy):
@@ -65,7 +65,7 @@ def ptr_held_type(self, node):
 boost_python_held_type['ptr'] = ptr_held_type
 del ptr_held_type
 
-def std_unique_ptr_held_type(self, node):
+def std_unique_ptr_held_type(node):
     if isinstance(node, ClassProxy):
         return 'std::unique_ptr< ' + node.globalname + ' >'
     elif isinstance(node, BoostPythonExportFileProxy):
@@ -75,9 +75,8 @@ def std_unique_ptr_held_type(self, node):
 
 boost_python_held_type['std::unique_ptr'] = std_unique_ptr_held_type
 del std_unique_ptr_held_type
-boost_python_held_type.plugin = 'std::unique_ptr'
 
-def std_shared_ptr_held_type(self, node):
+def std_shared_ptr_held_type(node):
     if isinstance(node, ClassProxy):
         return 'std::shared_ptr< ' + node.globalname + ' >'
     elif isinstance(node, BoostPythonExportFileProxy):
@@ -87,8 +86,9 @@ def std_shared_ptr_held_type(self, node):
 
 boost_python_held_type['std::shared_ptr'] = std_shared_ptr_held_type
 del std_shared_ptr_held_type
+boost_python_held_type.plugin = 'std::shared_ptr'
 
-def boost_shared_ptr_held_type(self, node):
+def boost_shared_ptr_held_type(node):
     if isinstance(node, ClassProxy):
         return 'boost::shared_ptr< ' + node.globalname + ' >'
     elif isinstance(node, BoostPythonExportFileProxy):
@@ -98,6 +98,24 @@ def boost_shared_ptr_held_type(self, node):
 
 boost_python_held_type['boost::shared_ptr'] = boost_shared_ptr_held_type
 del boost_shared_ptr_held_type
+
+def boost_python_export(self):
+    desugared_type = self.desugared_type
+    if desugared_type.is_pointer_chain or desugared_type.is_rvalue_reference:
+        return False
+    elif desugared_type.is_fundamental_type:
+        return not desugared_type.is_pointer
+    else:
+        return desugared_type.unqualified_type.boost_python_export
+
+QualifiedTypeProxy.boost_python_export = property(boost_python_export)
+del boost_python_export
+
+def boost_python_export(self):
+    return self.qualified_type.boost_python_export
+
+ParameterProxy.boost_python_export = property(boost_python_export)
+del boost_python_export
 
 def get_boost_python_export(self):
     if hasattr(self, '_boost_python_export'):
@@ -140,15 +158,16 @@ DeclarationProxy.boost_python_export = property(get_boost_python_export, set_boo
 DeclarationProxy._default_boost_python_export = False
 DeclarationProxy._valid_boost_python_export = True
 
-def boost_python_export(self):
-    desugared_type = self.desugared_type
-    return not(desugared_type.is_pointer_chain or desugared_type.is_rvalue_reference)
+EnumeratorProxy._default_boost_python_export = True
 
-QualifiedTypeProxy.boost_python_export = property(boost_python_export)
-del boost_python_export
 
 def _default_boost_python_export(self):
-    return not self.localname.startswith('_')
+    return  not self.localname.startswith('_') and len(self.enumerators) > 0
+
+EnumerationProxy._default_boost_python_export = property(_default_boost_python_export)
+
+def _default_boost_python_export(self):
+    return not self.localname.startswith('_') and len(self.declarations()) > 0
 
 NamespaceProxy._default_boost_python_export = property(_default_boost_python_export)
 ClassProxy._default_boost_python_export = property(_default_boost_python_export)
@@ -170,6 +189,7 @@ def _default_boost_python_export(self):
     return self.qualified_type.boost_python_export
 
 VariableProxy._default_boost_python_export = property(_default_boost_python_export)
+TypedefProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
 
 def _default_boost_python_export(self):
@@ -179,7 +199,7 @@ ConstructorProxy.boost_python_export = property(get_boost_python_export, set_boo
 del get_boost_python_export
 
 def _default_boost_python_export(self):
-    if self.return_type.boost_python_export and all(parameter.qualified_type.boost_python_export for parameter in self.parameters):
+    if self.return_type.boost_python_export and all(parameter.boost_python_export for parameter in self.parameters):
         return not self.localname.startswith('operator')
     else:
         return False
@@ -188,8 +208,13 @@ FunctionProxy._default_boost_python_export = property(_default_boost_python_expo
 del _default_boost_python_export
 
 def _default_boost_python_export(self):
-    if self.return_type.boost_python_export and all(parameter.qualified_type.boost_python_export for parameter in self.parameters):
-        return not self.localname.startswith('operator') or self.localname.node.localname.strip('operator').strip() in PYTHON_OPERATOR
+    if self.return_type.boost_python_export and all(parameter.boost_python_export for parameter in self.parameters):
+        if not self.localname.startswith('operator') or self.localname.strip('operator').strip() in PYTHON_OPERATOR:
+            if self.is_virtual:
+                signature = self.signature
+                return any(mtd.signature == signature and mtd.boost_python_export for mtd in self.parent.methods(inherited=True, access='public'))
+            else:
+                return True
     else:
         return False
 
@@ -212,55 +237,55 @@ class BoostPythonExportFileProxy(FileProxy):
         declarations = [self._asg[declaration] for declaration in self._declarations]
         return [declaration for declaration in declarations if not isinstance(declaration, ClassProxy)] + sorted([declaration for declaration in declarations if isinstance(declaration, ClassProxy)], key = lambda cls: cls.depth)
 
-def get_depth(self):
-    if not hasattr(self, '_depth'):
-        return 0
-    else:
-        return self._depth
+    @property
+    def depth(self):
+        if not hasattr(self, '_depth'):
+            return 0
+        else:
+            return self._depth
 
-def set_depth(self, depth):
-    self._asg._nodes[self._node]['_depth'] = depth
+    @depth.setter
+    def depth(self, depth):
+        self._asg._nodes[self._node]['_depth'] = depth
 
-def del_depth(self):
-    self._asg._nodes[self._node].pop('_depth')
+    @depth.deleter
+    def del_depth(self):
+        self._asg._nodes[self._node].pop('_depth')
 
-BoostPythonExportFileProxy.depth = property(get_depth, set_depth, del_depth)
-del get_depth, set_depth, del_depth
+    @property
+    def scope(self):
+        if hasattr(self, '_scope'):
+            return self._scope
 
-def get_scope(self):
-    if hasattr(self, '_scope'):
-        return self._scope
+    @scope.setter
+    def scope(self, scope):
+        self._asg._nodes[self._node]['_scope'] = scope
 
-def set_scope(self, scope):
-    self._asg._nodes[self._node]['_scope'] = scope
+    @scope.deleter
+    def del_scope(self):
+        self._asg._nodes[self._node].pop('_scope')
 
-def del_scope(self):
-    self._asg._nodes[self._node].pop('_scope')
+    @property
+    def module(self):
+        if hasattr(self, '_module'):
+            return self._asg[self._module]
 
-BoostPythonExportFileProxy.scope = property(get_scope, set_scope, del_scope)
-del get_scope, set_scope, del_scope
+    @module.setter
+    def module(self, module):
+        _module = self.module
+        if _module:
+            _module._exports.remove(self._node)
+        if isinstance(module, BoostPythonModuleFileProxy):
+            module = module._node
+        self._asg._nodes[self._node]['_module'] = module
+        self.module._exports.add(self._node)
 
-def get_module(self):
-    if hasattr(self, '_module'):
-        return self._asg[self._module]
-
-def set_module(self, module):
-    _module = self.module
-    if _module:
-        _module._exports.remove(self._node)
-    if isinstance(module, BoostPythonModuleFileProxy):
-        module = module._node
-    self._asg._nodes[self._node]['_module'] = module
-    self.module._exports.add(self._node)
-
-def del_module(self):
-    module = self.module
-    if module:
-        module._exports.remove(self._node)
-    self._asg._nodes[self._node].pop('_module', None)
-
-BoostPythonExportFileProxy.module = property(get_module, set_module, del_module)
-del get_module, set_module, del_module
+    @module.deleter
+    def module(self):
+        module = self.module
+        if module:
+            module._exports.remove(self._node)
+        self._asg._nodes[self._node].pop('_module', None)
 
 class BoostPythonExportBasicFileProxy(BoostPythonExportFileProxy):
 
@@ -301,8 +326,8 @@ void translate_error_${error.hash}(${error.globalname} const & error)
 """)
 
     ENUMERATION = Template(text=r"""\
-        boost::python::enum_< ${enumeration.globalname} >("${node_rename(enumation)}")\
-    % for enumerator in enumeration.enumerators():
+        boost::python::enum_< ${enumeration.globalname} >("${node_rename(enumeration)}")\
+    % for enumerator in enumeration.enumerators:
         % if enumerator.boost_python_export:
 
             .value("${node_rename(enumerator)}", ${enumerator.globalname})\
@@ -449,13 +474,6 @@ ${field.globalname})\
                         depth = max(target.depth+1, depth)
             return depth
 
-    #@property
-    #def headers(self):
-    #    if self._held_type is None:
-    #        return self._asg.headers(*self.declarations)
-    #    else:
-    #        return self._asg.headers(self._asg[self._held_type], *self.declarations)
-
     @property
     def scope(self):
         if len(self._declarations) > 0:
@@ -584,10 +602,10 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                 node_rename = node_rename)
         for arg in self.declarations:
             if isinstance(arg, EnumeratorProxy):
-                content += '\n' + self.ENUMERATOR.render(constant = arg,
+                content += '\n' + self.ENUMERATOR.render(enumerator = arg,
                         node_rename = node_rename)
             elif isinstance(arg, EnumerationProxy):
-                content += '\n' + self.ENUMERATION.render(enum = arg,
+                content += '\n' + self.ENUMERATION.render(enumeration = arg,
                         node_rename = node_rename)
             elif isinstance(arg, VariableProxy):
                 content += '\n' + self.VARIABLE.render(variable = arg,
@@ -605,10 +623,10 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                     content += '\n' + self.MAPPING[arg.globalname].render(cls = arg)
                 elif isinstance(arg, ClassTemplateSpecializationProxy) and arg.specialize.globalname in self.MAPPING:
                     content += '\n' + self.MAPPING[arg.specialize.globalname].render(cls = arg)
-                elif isinstance(arg, TypedefProxy):
-                    continue
-                else:
-                    raise NotImplementedError(arg.__class__.__name__)
+            elif isinstance(arg, TypedefProxy):
+                continue
+            else:
+                raise NotImplementedError(arg.__class__.__name__)
         content += '\n}'
         return content
 
@@ -637,6 +655,7 @@ class BoostPythonExportPlugin(object):
         else:
             return asg.add_file(export, proxy=self._proxy)
 
+boost_python_export['custom'] = BoostPythonExportPlugin(BoostPythonExportFileProxy)
 boost_python_export['basic'] = BoostPythonExportPlugin(BoostPythonExportBasicFileProxy)
 boost_python_export['mapping'] = BoostPythonExportPlugin(BoostPythonExportMappingFileProxy)
 boost_python_export.plugin = 'mapping'
@@ -887,9 +906,7 @@ def back_end(asg, module, decorator=None, pattern='.*', prefix='_'):
             if isinstance(node, EnumeratorProxy) and isinstance(node.parent, EnumerationProxy) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
                 continue
             else:
-		print node
                 node.boost_python_export = boost_python_export(asg, directory.globalname + node_path(node, prefix=prefix, suffix=suffix))
-                print node.boost_python_export
                 nodes.add(node.boost_python_export._node)
     for export in asg.boost_python_exports(directory.globalname + '.*' + suffix):
         export.module = module

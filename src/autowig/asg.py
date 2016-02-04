@@ -369,25 +369,25 @@ Possible languages for a header file is either `c` or `c++`
 """)
 del get_language, set_language
 
-def get_is_standalone(self):
-    if hasattr(self, '_is_standalone'):
-        return self._is_standalone
+def get_is_self_contained(self):
+    if hasattr(self, '_is_self_contained'):
+        return self._is_self_contained
     else:
         return False
 
-def set_is_standalone(self, is_standalone):
-    self._asg._nodes[self._node]['_is_standalone'] = is_standalone
+def set_is_self_contained(self, is_self_contained):
+    self._asg._nodes[self._node]['_is_self_contained'] = is_self_contained
 
-def del_is_standalone(self):
-    self._asg._nodes[self._node].pop('_is_standalone', None)
+def del_is_self_contained(self):
+    self._asg._nodes[self._node].pop('_is_self_contained', None)
 
-HeaderProxy.is_standalone = property(get_is_standalone, set_is_standalone, del_is_standalone, doc="""Is this a stand-alone header
+HeaderProxy.is_self_contained = property(get_is_self_contained, set_is_self_contained, del_is_self_contained, doc="""Is this a stand-alone header
 
 A header is considered as stand-alone if it can be included in a source file without producing any errors.
 By default, only header given as input of an AutoWIG front-end are considered as stand-alone.
 
 .. seealso:: :func:`autowig.front_end.postprocessing`""")
-del get_is_standalone, set_is_standalone, del_is_standalone
+del get_is_self_contained, set_is_self_contained, del_is_self_contained
 
 class DeclarationProxy(NodeProxy):
     """Abstract semantic graph node proxy for a declaration
@@ -689,6 +689,9 @@ class QualifiedTypeProxy(EdgeProxy):
         self._target = target
         self._qualifiers = qualifiers
 
+    def __repr__(self):
+        return self.globalname
+
     @property
     def unqualified_type(self):
         """Unqualified type
@@ -729,29 +732,36 @@ class QualifiedTypeProxy(EdgeProxy):
         """Type qualifiers"""
         return self._qualifiers
 
+    @property
     def is_fundamental_type(self):
         """Is the unqualified type a fundamental type"""
         return isinstance(self.unqualified_type, FundamentalTypeProxy)
 
+    @property
     def is_enumeration(self):
         """Is the unqualified type an enumeration type"""
         return isinstance(self.unqualified_type, EnumerationProxy)
 
+    @property
     def is_class(self):
         """Is the unqualified type an enumeration type"""
         return isinstance(self.unqualified_type, ClassProxy)
 
+    @property
     def is_pointer(self):
         """Is the qualified type a pointer"""
         return '*' in self.qualifiers
 
+    @property
     def is_pointer_chain(self):
         """Is the qualified type a chain of pointers"""
         return self.qualifiers.count('*') > 1
 
+    @property
     def is_reference(self):
         """Is the qualified type a reference"""
         return self.qualifiers.endswith('&') or self.qualifiers.endswith('& const')
+
     @property
     def is_rvalue_reference(self):
         """Is the qualified type a r-value reference"""
@@ -762,6 +772,7 @@ class QualifiedTypeProxy(EdgeProxy):
         """Is the qualified type an l-value reference"""
         return self.is_reference and not self.is_rvalue_reference
 
+    @property
     def is_const(self):
         """Is the qualified type const qualified"""
         if self.qualifiers.endswith('&&'):
@@ -771,6 +782,7 @@ class QualifiedTypeProxy(EdgeProxy):
         else:
             return self.qualifiers.endswith('const') or self.qualifiers.endswith('const volatile')
 
+    @property
     def is_volatile(self):
         """Is the qualified type volatile qualified"""
         if self.qualifiers.endswith('&&'):
@@ -886,6 +898,21 @@ class FunctionProxy(DeclarationProxy):
         return [ParameterProxy(self._asg, self._node, index) for index in range(self.nb_parameters)]
 
     @property
+    def is_overloaded(self):
+        if not hasattr(self, '_is_overloaded'):
+            return not len(self.overloads) == 1
+        else:
+            return self._is_overloaded
+
+    @is_overloaded.setter
+    def is_overloaded(self, is_overloaded):
+        self._asg._nodes[self._node]["_is_overloaded"] = is_overloaded
+
+    @is_overloaded.deleter
+    def is_overloaded(self):
+        self._asg._nodes[self._node].pop("_is_overloaded", False)
+
+    @property
     def overloads(self):
         parent = self.parent
         if isinstance(parent, NamespaceProxy):
@@ -895,33 +922,9 @@ class FunctionProxy(DeclarationProxy):
         else:
             raise NotImplementedError('For parent class \'' + parent.__class__.__name__ + '\'')
 
-    def signature(self, scoped=False, desugared=True):
-        if scoped:
-            signature = self.globalname
-        else:
-            signature = self.localname
-        if desugared:
-            return self.return_type.desugared_type.globalname + ' ' + signature + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
-        else:
-            return self.return_type.globalname + ' ' + signature + '(' + ', '.join(parameter.qualified_type.globalname for parameter in self.parameters) + ')'
-
-def get_is_overloaded(self):
-    if not hasattr(self, '_is_overloaded'):
-        if len(self.overloads) == 1:
-            return False
-        else:
-            return True
-    else:
-        return self._is_overloaded
-
-def set_is_overloaded(self, is_overloaded):
-    self._asg._nodes[self._node]["_is_overloaded"] = is_overloaded
-
-def del_is_overloaded(self):
-    self._asg._nodes[self._node].pop("_is_overloaded", False)
-
-FunctionProxy.is_overloaded = property(get_is_overloaded, set_is_overloaded, del_is_overloaded)
-del get_is_overloaded, set_is_overloaded
+    @property
+    def signature(self):
+        return self.return_type.desugared_type.globalname + ' ' + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ');'
 
 class MethodProxy(FunctionProxy):
     """
@@ -946,6 +949,10 @@ class MethodProxy(FunctionProxy):
     @property
     def is_pure(self):
         return self._is_pure
+
+    @property
+    def signature(self):
+        return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ';'
 
 class ConstructorProxy(DeclarationProxy):
     """
@@ -1025,7 +1032,7 @@ class ClassProxy(DeclarationProxy):
                     for basebase in basebases:
                         basebase.access = 'private'
                 inheritedbases += basebases
-            return bases+inheritedbases
+            return bases + inheritedbases
 
     def inheritors(self, recursive=False):
         return [cls for cls in self._asg.classes() if any(base._node == self._node for base in cls.bases(inherited=recursive))]
@@ -1040,18 +1047,15 @@ class ClassProxy(DeclarationProxy):
             return self._depth
 
     def declarations(self, pattern=None, inherited=False, access='all'):
-        if pattern is None:
-            declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node]]
-        else:
-            declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node] if re.match(pattern, node)]
-        for declaration in declarations:
-            declaration.access = self._asg._nodes[declaration._node]['_access']
-        if inherited:
+        if inherited is None:
+            declarations = self.declarations(pattern=pattern, inherited=False, access=access) + self.declarations(pattern=pattern, inherited=True, access=access)
+        elif inherited:
+            declarations = []
             for base in self.bases(True):
                 if isinstance(base, TypedefProxy):
-                    basedeclarations = [basedeclaration for basedeclaration in base.type.target.declarations(pattern=pattern, metaclass=metaclass, inherited=False) if not basedeclaration.access == 'private']
+                    basedeclarations = [basedeclaration for basedeclaration in base.qualified_type.desugared_type.unqualified_type.declarations(pattern=pattern, inherited=False) if not basedeclaration.access == 'private']
                 else:
-                    basedeclarations = [basedeclaration for basedeclaration in base.declarations(pattern=pattern, metaclass=metaclass, inherited=False) if not basedeclaration.access == 'private']
+                    basedeclarations = [basedeclaration for basedeclaration in base.declarations(pattern=pattern, inherited=False) if not basedeclaration.access == 'private']
                 if base.access == 'protected':
                     for basedeclaration in basedeclarations:
                         if basedeclaration.access == 'public':
@@ -1060,6 +1064,13 @@ class ClassProxy(DeclarationProxy):
                    for basedeclaration in basedeclarations:
                         basedeclaration.access = 'private'
                 declarations += basedeclarations
+        else:
+            if pattern is None:
+                declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node]]
+            else:
+                declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node] if re.match(pattern, node)]
+            for declaration in declarations:
+                declaration.access = self._asg._nodes[declaration._node]['_access']
         if access == 'public':
             return [declaration for declaration in declarations if declaration.access == 'public']
         elif access == 'protected':
@@ -1133,11 +1144,11 @@ class ClassProxy(DeclarationProxy):
     @is_error.deleter
     def is_error(self):
         self._asg._nodes[self._node].pop('_is_error', None)
- 
+
     @property
     def is_copyable(self):
         return self._is_copyable
-    
+
     @is_copyable.setter
     def is_copyable(self, copyable):
         self._asg._nodes[self._node]['_is_copyable'] = copyable
@@ -1233,9 +1244,11 @@ class ClassTemplateProxy(DeclarationProxy):
     def del_is_smart_pointer(self):
         self._asg._nodes[self._node].pop('_is_smart_pointer', False)
 
-class ClassTemplatePartialSpecializationProxy(ClassTemplateProxy, TemplateSpecializationProxy):
+class ClassTemplatePartialSpecializationProxy(DeclarationProxy, TemplateSpecializationProxy):
     """
     """
+
+    _pakwargs = ['', 'class ', 'struct ', 'union ']
 
 class NamespaceProxy(DeclarationProxy):
     """
@@ -1438,7 +1451,7 @@ class AbstractSemanticGraph(object):
         return [node for node in self.declarations(**kwargs) if isinstance(node, NamespaceProxy)]
 
     #def include_path(self, header, absolute=False):
-    #    if not header.is_standalone:
+    #    if not header.is_self_contained:
     #        include = header.include
     #        while include is not None and not include.is_indepentent:
     #            include = include.include
@@ -1460,12 +1473,14 @@ class AbstractSemanticGraph(object):
 
     def headers(self, *nodes):
         white = []
+        headers = []
         for node in nodes:
             if isinstance(node, basestring):
-                white.extend(self.nodes(node))
-            else:
+                node = self[node]
+            if isinstance(node, DeclarationProxy):
                 white.append(node)
-        headers = []
+            elif isinstance(node, HeaderProxy):
+                headers.append(node)
         black = set()
         while len(white) > 0:
             node = white.pop()
@@ -1478,6 +1493,7 @@ class AbstractSemanticGraph(object):
                 elif isinstance(node, EnumerationProxy):
                     pass
                 elif isinstance(node, ClassTemplatePartialSpecializationProxy):
+                    white.append(node.specialize)
                     # TODO templates !
                     pass
                 elif isinstance(node, (VariableProxy, TypedefProxy)):
@@ -1493,7 +1509,8 @@ class AbstractSemanticGraph(object):
                     white.extend(node.bases())
                     white.extend(node.declarations())
                     if isinstance(node, ClassTemplateSpecializationProxy):
-                        white.extend([tpl.target for tpl in node.templates])
+                        white.append(node.specialize)
+                        white.extend([tpl.unqualified_type for tpl in node.templates])
                 elif isinstance(node, ClassTemplateProxy):
                     pass
                 elif isinstance(node, NamespaceProxy):
@@ -1501,12 +1518,12 @@ class AbstractSemanticGraph(object):
                 else:
                     raise NotImplementedError(node.__class__.__name__)
                 header = node.header
-                while not header is None and not header.is_standalone:
+                while not header is None and not header.is_self_contained:
                     header = header.include
                 if not header is None:
                     headers.append(header)
         headers = sorted(headers, key = lambda header: header.depth)
-        _headers = set()
+        _headers = set([header._node for header in headers])
         for header in headers:
             include = header.include
             while not include is None and not include.globalname in _headers:
