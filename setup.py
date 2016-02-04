@@ -111,7 +111,7 @@ setup(
         'autowig.middle_end': [],
         'autowig.back_end': ['boost_python = autowig.boost_python_back_end:back_end', 'on_disk = autowig.on_disk_back_end:back_end'],
         'autowig.node_rename' : ['PEP8 = autowig.node_rename:pep8_node_rename'],
-        'autowig.node_path' : ['flat = autowig.node_rename:flat_node_path', 'nested = autowig.node_rename:nested_node_path'],
+        'autowig.node_path' : ['flat = autowig.node_path:flat_node_path', 'nested = autowig.node_path:nested_node_path'],
 
         'console_scripts': [
                'alea_headache = autowig.headache:alea_headache', ],

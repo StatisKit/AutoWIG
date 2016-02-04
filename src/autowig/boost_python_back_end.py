@@ -273,7 +273,7 @@ class BoostPythonExportBasicFileProxy(BoostPythonExportFileProxy):
     % if header.language == 'c':
 extern "C" {
     % endif
-#include <${header.path}>\
+#include <${header.searchpath}>\
     % if header.language == 'c':
 
 }\
@@ -577,8 +577,7 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
 
     set_${cls.hash}_from_python();""")}
 
-    @property
-    def _content(self):
+    def get_content(self):
         content = self.HEADER.render(headers = self._asg.headers(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
         content += '\n\nvoid ' + self.prefix + '()\n{\n'
         content += self.SCOPE.render(scopes = self.scopes,
@@ -613,6 +612,8 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
         content += '\n}'
         return content
 
+BoostPythonExportMappingFileProxy._content = property(BoostPythonExportMappingFileProxy.get_content)
+
 def boost_python_exports(self, *args, **kwargs):
     return [export for export in self.files(*args, **kwargs) if isinstance(export, BoostPythonExportFileProxy)]
 
@@ -631,8 +632,8 @@ class BoostPythonExportPlugin(object):
         self._proxy = proxy
 
     def __call__(self, asg, export):
-        if module in asg:
-            return asg[module]
+        if export in asg:
+            return asg[export]
         else:
             return asg.add_file(export, proxy=self._proxy)
 
@@ -883,11 +884,12 @@ def back_end(asg, module, decorator=None, pattern='.*', prefix='_'):
     nodes = set()
     for node in asg.declarations(pattern=pattern):
         if node.boost_python_export is True:
-            print node.gloablname
             if isinstance(node, EnumeratorProxy) and isinstance(node.parent, EnumerationProxy) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
                 continue
             else:
+		print node
                 node.boost_python_export = boost_python_export(asg, directory.globalname + node_path(node, prefix=prefix, suffix=suffix))
+                print node.boost_python_export
                 nodes.add(node.boost_python_export._node)
     for export in asg.boost_python_exports(directory.globalname + '.*' + suffix):
         export.module = module

@@ -113,11 +113,6 @@ class EdgeProxy(object):
         self._source = source
         self._target = target
 
-    @property
-    def asg(self):
-        """Edge abstract semantic graph"""
-        return self._asg
-
 class FilesystemProxy(NodeProxy):
     """Abstract semantic graph node proxy for a filesystem component
     """
@@ -454,30 +449,31 @@ class DeclarationProxy(NodeProxy):
             return localname[localname.rindex(':')+1:]
 
     def get_parent(self):
-        parentname = self.globalname[:-len(self.localname)-2]
-        if isinstance(self, EnumerationProxy):
-            if parentname.startswith('enum '):
-                parentname = parentname[len('enum '):]
-        elif isinstance(self, (ClassProxy, ClassTemplatePartialSpecializationProxy)):
-            if parentname.startswith('class '):
-                parentname = parentname[len('class '):]
-            elif parentname.startswith('struct '):
-                parentname = parentname[len('struct '):]
-            elif parentname.startswith('union '):
-                parentname = parentname[len('union '):]
-        elif isinstance(self, ClassTemplateProxy):
-            parentname = parentname[len('class '):]
-        if parentname == '':
-            return self._asg['::']
-        else:
-            for keyword in self._pakwargs:
-                if keyword + parentname in self._asg:
-                    parent = self._asg[keyword + parentname]
-                    break
-            if isinstance(parent, TypedefProxy):
-                return parent.qualified_type.desugared_type.unqualified_type
+        if not self._node == '::':
+	    parentname = self.globalname[:-len(self.localname)-2]
+	    if isinstance(self, EnumerationProxy):
+                if parentname.startswith('enum '):
+		    parentname = parentname[len('enum '):]
+	    elif isinstance(self, (ClassProxy, ClassTemplatePartialSpecializationProxy)):
+	        if parentname.startswith('class '):
+		    parentname = parentname[len('class '):]
+		elif parentname.startswith('struct '):
+		    parentname = parentname[len('struct '):]
+		elif parentname.startswith('union '):
+		    parentname = parentname[len('union '):]
+	    elif isinstance(self, ClassTemplateProxy):
+	        parentname = parentname[len('class '):]
+            if parentname == '':
+                return self._asg['::']
             else:
-                return parent
+	        for keyword in self._pakwargs:
+	            if keyword + parentname in self._asg:
+	                parent = self._asg[keyword + parentname]
+	                break
+                if isinstance(parent, TypedefProxy):
+	            return parent.qualified_type.desugared_type.unqualified_type
+                else:
+	            return parent
 
 DeclarationProxy.parent = property(DeclarationProxy.get_parent)
 
@@ -1124,14 +1120,27 @@ class ClassProxy(DeclarationProxy):
         except:
             return None
 
-def get_is_copyable(self):
-    return self._is_copyable
+    @property
+    def is_error(self):
+        if not hasattr(self, '_is_error'):
+            self.is_error = self._node == 'class ::std::exception' or any(base.is_error for base in self.bases())
+        return self._is_error
 
-def set_is_copyable(self, copyable):
-    self._asg._nodes[self._node]['_is_copyable'] = copyable
+    @is_error.setter
+    def is_error(self, is_error):
+        self._asg._nodes[self._node]['_is_error'] = is_error
 
-ClassProxy.is_copyable = property(get_is_copyable, set_is_copyable)
-del get_is_copyable, set_is_copyable
+    @is_error.deleter
+    def is_error(self):
+        self._asg._nodes[self._node].pop('_is_error', None)
+ 
+    @property
+    def is_copyable(self):
+        return self._is_copyable
+    
+    @is_copyable.setter
+    def is_copyable(self, copyable):
+        self._asg._nodes[self._node]['_is_copyable'] = copyable
 
 #class TemplateTypeSpecifiersProxy(TypeSpecifiersProxy):
 #
@@ -1174,6 +1183,10 @@ class TemplateSpecializationProxy(object):
             specialize = 'class ' + specialize
         return self._asg[specialize]
 
+    @property
+    def is_smart_pointer(self):
+        return self.specialize.is_smart_pointer
+
 class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
     """
     """
@@ -1207,6 +1220,18 @@ class ClassTemplateProxy(DeclarationProxy):
             return [spec for spec in self.specializations(None) if isinstance(spec, ClassTemplatePartialSpecializationProxy)]
         else:
             return [spec for spec in self.specializations(None) if isinstance(spec, ClassTemplateSpecializationProxy)]
+
+    @property
+    def is_smart_pointer(self):
+        return getattr(self, '_is_smart_pointer', False)
+
+    @is_smart_pointer.setter
+    def is_smart_pointer(self, is_smart_pointer):
+        self._asg._nodes[self._node]['_is_smart_pointer'] = is_smart_pointer
+
+    @is_smart_pointer.deleter
+    def del_is_smart_pointer(self):
+        self._asg._nodes[self._node].pop('_is_smart_pointer', False)
 
 class ClassTemplatePartialSpecializationProxy(ClassTemplateProxy, TemplateSpecializationProxy):
     """
