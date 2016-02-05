@@ -138,7 +138,7 @@ def compute_overloads(asg, overload):
         raise ValueError('\'overload\' parameter')
     if overload == 'none':
         for fct in asg.functions(free=None):
-            fct.is_overload = True
+            fct.is_overloaded = True
     else:
         for fct in asg.functions(free=free):
             if not fct.is_overloaded:

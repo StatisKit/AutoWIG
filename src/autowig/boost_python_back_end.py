@@ -186,9 +186,16 @@ ClassTemplateSpecializationProxy._default_boost_python_export = property(_defaul
 del _default_boost_python_export
 
 def _default_boost_python_export(self):
-    return self.qualified_type.boost_python_export
+    qualified_type = self.qualified_type
+    return not qualified_type.is_reference and qualified_type.boost_python_export
 
 VariableProxy._default_boost_python_export = property(_default_boost_python_export)
+del _default_boost_python_export
+
+def _default_boost_python_export(self):
+    qualified_type = self.qualified_type
+    return not qualified_type.is_reference and not qualified_type.is_pointer and qualified_type.boost_python_export
+
 TypedefProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
 
@@ -424,11 +431,7 @@ method_pointer_${method.hash}\
             .def_readonly\
             % else:
 
-            .def_readwrite\        //static PyObject* _type = class_${cls.hash}.ptr();
-        //struct Translator
-        //{ static void translate(${cls.globalname} const & error) { PyErr_SetObject(_type, boost::python::object(error).ptr()); } };
-        //Translator< ${cls.globalname} > translator = Translator< ${cls.globalname} >(class_${cls.hash}.ptr());
-        //boost::python::register_exception_translator< ${cls.globalname} >(&translator.translate);
+            .def_readwrite\
             % endif
 ("${node_rename(field)}", \
             % if not field.is_static:
@@ -894,24 +897,29 @@ class BoostPythonDecoratorPlugin(object):
 boost_python_decorator['default'] = BoostPythonDecoratorPlugin(BoostPythonDecoratorDefaultFileProxy)
 boost_python_decorator.plugin = 'default'
 
-def back_end(asg, module, decorator=None, pattern='.*', prefix='_'):
+def back_end(asg, module, decorator=None, pattern='.*', closure=False, prefix='_'):
     """
     """
-    module = boost_python_module(asg, module)
-    directory = module.parent
-    suffix = module.suffix
-    nodes = set()
-    for node in asg.declarations(pattern=pattern):
-        if node.boost_python_export is True:
-            if isinstance(node, EnumeratorProxy) and isinstance(node.parent, EnumerationProxy) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
-                continue
-            else:
-                node.boost_python_export = boost_python_export(asg, directory.globalname + node_path(node, prefix=prefix, suffix=suffix))
-                nodes.add(node.boost_python_export._node)
-    for export in asg.boost_python_exports(directory.globalname + '.*' + suffix):
-        export.module = module
-    if decorator is not None:
-        boost_python_decorator(asg, decorator, module.globalname)
+    if closure:
+        back_end(asg, module, decorator=None, pattern=pattern, closure=False, prefix=prefix)
+        asg.boot_python_closure()
+        back_end(asg, module, decorator=decorator, pattern='.*', closure=False, prefix=prefix)
+    else:
+        module = boost_python_module(asg, module)
+        directory = module.parent
+        suffix = module.suffix
+        nodes = set()
+        for node in asg.declarations(pattern=pattern):
+            if node.boost_python_export is True:
+                if isinstance(node, EnumeratorProxy) and isinstance(node.parent, EnumerationProxy) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
+                    continue
+                else:
+                    node.boost_python_export = boost_python_export(asg, directory.globalname + node_path(node, prefix=prefix, suffix=suffix))
+                    nodes.add(node.boost_python_export._node)
+        for export in asg.boost_python_exports(directory.globalname + '.*' + suffix):
+            export.module = module
+        if decorator is not None:
+            boost_python_decorator(asg, decorator, module.globalname)
 
 def boost_python_closure(self):
     nodes = []

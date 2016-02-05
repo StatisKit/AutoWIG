@@ -1070,7 +1070,7 @@ class ClassProxy(DeclarationProxy):
             else:
                 declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node] if re.match(pattern, node)]
             for declaration in declarations:
-                declaration.access = self._asg._nodes[declaration._node]['_access']
+                declaration.access = declaration._access
         if access == 'public':
             return [declaration for declaration in declarations if declaration.access == 'public']
         elif access == 'protected':
@@ -1197,6 +1197,10 @@ class TemplateSpecializationProxy(object):
     @property
     def is_smart_pointer(self):
         return self.specialize.is_smart_pointer
+
+    @property
+    def _access(self):
+        return self._asg._nodes[self._node].get('_access', getattr(self.specialize, 'access', None))
 
 class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
     """
@@ -1525,9 +1529,10 @@ class AbstractSemanticGraph(object):
                     header = header.include
                 if not header is None:
                     headers.append(header)
-        headers = sorted(headers, key = lambda header: header.depth)
-        _headers = set([header.globalname for header in headers if header.depth == 0])
-        for header in set([header for header in headers if header.depth > 0]):
+        headers = {header.globalname for header in headers}
+        headers = sorted([self[header] for header in headers], key = lambda header: header.depth)
+        _headers = {header.globalname for header in headers if header.depth == 0}
+        for header in [header for header in headers if header.depth > 0]:
             include = header.include
             while not include is None and not include.globalname in _headers:
                 include = include.include
