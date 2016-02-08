@@ -16,6 +16,14 @@ middle_end = Plugin('autowig.middle_end', brief="AutoWIG middle-end plugins",
 middle_end['default'] = lambda asg: None
 middle_end.plugin = 'default'
 
+def debug_middle_end(asg):
+    import pdb
+    pdb.set_trace()
+
+middle_end['debug'] = debug_middle_end
+del debug_middle_end
+
+
 back_end = Plugin('autowig.back_end', brief="AutoWIG back-end plugins",
         detailed="""AutoWIG back-end plugins are responsible for C/C++ code generation from an Abstract Semantic Graph (ASG) interpretation.
 

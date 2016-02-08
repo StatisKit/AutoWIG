@@ -67,7 +67,10 @@ def preprocessing(asg, headers, flags):
         asg._syntax_edges['::'] = []
 
     for directory in asg.directories():
-        directory.is_searchpath = False
+        del directory.is_searchpath
+
+    for header in asg.files(header=True):
+        del header.is_external_dependency
 
     for flag in flags:
         if flag.startswith('-I'):
@@ -86,7 +89,7 @@ def preprocessing(asg, headers, flags):
     for header in headers:
         header = asg.add_file(header, proxy=HeaderProxy)
         header.is_self_contained = True
-        header.clean = False
+        header.is_external_dependency = False
 
     return "\n".join('#include "' + str(header.abspath()) + '"' for header in headers)
 
@@ -115,7 +118,7 @@ def postprocessing(asg, headers, overload='all'):
         :func:`compute_overloads`, :func:`discard_forward_declarations` and :func:`resolve_templates` for a more detailed documentatin about AutoWIG front-end post-processing step.
     """
     resolve_templates(asg)
-    compute_overloads(asg, overload=overload)
+    compute_overloads(asg, overload=overload), is_external_dependency
     discard_forward_declarations(asg)
 
 def compute_overloads(asg, overload):

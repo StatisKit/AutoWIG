@@ -897,7 +897,7 @@ class BoostPythonDecoratorPlugin(object):
 boost_python_decorator['default'] = BoostPythonDecoratorPlugin(BoostPythonDecoratorDefaultFileProxy)
 boost_python_decorator.plugin = 'default'
 
-def back_end(asg, module, decorator=None, pattern='.*', closure=False, prefix='_'):
+def back_end(asg, module, decorator=None, pattern=None, closure=True, prefix='_'):
     """
     """
     if closure:
@@ -908,16 +908,24 @@ def back_end(asg, module, decorator=None, pattern='.*', closure=False, prefix='_
         module = boost_python_module(asg, module)
         directory = module.parent
         suffix = module.suffix
-        nodes = set()
-        for node in asg.declarations(pattern=pattern):
+        if pattern is None:
+            nodes = []
+            for node in asg.declarations(pattern=None):
+                header = node.header
+                if header is not None and not header.is_external_dependency:
+                    nodes.append(node)
+        else:
+            nodes = asg.declarations(pattern=pattern)
+        exports = set()
+        for node in nodes:
             if node.boost_python_export is True:
                 if isinstance(node, EnumeratorProxy) and isinstance(node.parent, EnumerationProxy) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
                     continue
                 else:
                     node.boost_python_export = boost_python_export(asg, directory.globalname + node_path(node, prefix=prefix, suffix=suffix))
-                    nodes.add(node.boost_python_export._node)
-        for export in asg.boost_python_exports(directory.globalname + '.*' + suffix):
-            export.module = module
+                    exports.add(node.boost_python_export._node)
+        for export in exports:
+            asg[export].module = module
         if decorator is not None:
             boost_python_decorator(asg, decorator, module.globalname)
 

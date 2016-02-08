@@ -176,27 +176,28 @@ class DirectoryProxy(FilesystemProxy):
         if not self.on_disk:
             os.makedirs(self.globalname)
 
-def get_is_searchpath(self):
-    if hasattr(self, '_is_searchpath'):
-        return self._is_searchpath
-    else:
-        return False
+    @property
+    def is_searchpath(self):
+        """Is this directory a search path
 
-def set_is_searchpath(self, is_searchpath):
-    self._asg._nodes[self._node]['_is_searchpath'] = is_searchpath
+        .. note:: A compilation dependent property
 
-def del_is_searchpath(self):
-    self._asg._nodes[self._node].pop('_is_searchpath', False)
+        This property is setted at each front-end execution.
+        Any application of a front-end reset this property since search paths can differ from one compilation to another.
+        .. seealso:: :func:`autowig.front_end.preprocessing`
+        """
+        if hasattr(self, '_is_searchpath'):
+            return self._is_searchpath
+        else:
+            return False
 
-DirectoryProxy.is_searchpath = property(get_is_searchpath, set_is_searchpath, del_is_searchpath, doc = """Is this directory a search path
+    @is_searchpath.setter
+    def is_searchpath(self, is_searchpath):
+        self._asg._nodes[self._node]['_is_searchpath'] = is_searchpath
 
-.. note:: A compilation dependent property
-
-    This property is setted at each front-end execution.
-    Any application of a front-end reset this property since search paths can differ from one compilation to another.
-
-.. seealso:: :func:`autowig.front_end.preprocessing`""")
-del get_is_searchpath, set_is_searchpath, del_is_searchpath
+    @is_searchpath.deleter
+    def is_searchpath(self):
+        self._asg._nodes[self._node].pop('_is_searchpath', False)
 
 class FileProxy(FilesystemProxy):
     """Abstract semantic graph node proxy for a filename
@@ -315,6 +316,10 @@ class HeaderProxy(FileProxy):
     """Abstract semantic graph node proxy for a header file"""
 
     @property
+    def _clean_default(self):
+        return self.is_external_dependency
+
+    @property
     def include(self):
         """Header including this header
 
@@ -351,6 +356,21 @@ class HeaderProxy(FileProxy):
             return '/' + incpath
         else:
             return incpath
+
+    @property
+    def is_external_dependency(self):
+        if hasattr(self, '_is_external_dependency'):
+            return self._is_external_dependency
+        else:
+            return True
+
+    @is_external_dependency.setter
+    def is_external_dependency(self, is_external_dependency):
+        self._asg._nodes[self._node]['_is_external_dependency'] = is_external_dependency
+
+    @is_external_dependency.deleter
+    def is_external_dependency(self):
+        self._asg._nodes[self._node].pop('_is_external_dependency', True)
 
 def get_language(self):
     return self._language
