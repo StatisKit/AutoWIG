@@ -113,8 +113,7 @@ setup(
         'autowig.node_rename' : ['PEP8 = autowig.node_rename:pep8_node_rename'],
         'autowig.node_path' : ['flat = autowig.node_path:flat_node_path', 'nested = autowig.node_path:nested_node_path'],
 
-        'console_scripts': [
-               'alea_headache = autowig.headache:alea_headache', ],
+        'console_scripts': [],
         # 'gui_scripts': [
         #      'fake_gui = openalea.fakepackage.amodule:gui_script',],
         #	'wralea': wralea_entry_points
