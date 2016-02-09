@@ -46,37 +46,43 @@ def scons(directory, *args, **kwargs):
 def boost_python_emitter(target, source, env):
     if True:#'srcnode' in env:
         target = [target.srcnode() for target in target]
-    return [env.File(target[0].abspath + '/_' + env['library'] + '.py'), env.File(target[1].abspath + '/__' + env['library'] + '.cpp')], source
+    env.SetDefaut('autowig_decorator_prefix' = '_')
+    env.SetDefaut('autowig_export_prefix' = '_')
+    env.SetDefaut('autowig_module_prefix' = '__')
+    return [env.File(target[0].abspath + '/' + env['autowig_decorator_prefix'] + env['autowig_libname'] + '.py'), env.File(target[1].abspath + '/' +env['autowig_module_prefix'] + env['autowig_libname'] + '.cpp')], source
 
 def boost_python_action(target, source, env):
 
-    from .autowig import  AbstractSemanticGraph, front_end, middle_end, back_end, boost_python_call_policy, boost_python_held_type, boost_python_export, boost_python_module, boost_python_decorator
+    from .autowig import  AbstractSemanticGraph, parser, controller, generator, boost_python_call_policy, boost_python_held_type, boost_python_export, boost_python_module, boost_python_decorator
 
-    if 'middle_end' in env:
-        middle_end.plugin = env['middle_end']
-    if 'boost_python_call_policy' in env:
-        boost_python_call_policy.plugin = env['boost_python_call_policy']
-    if 'boost_python_held_type' in env:
-        boost_python_held_type.plugin = env['boost_python_held_type']
-    if 'boost_python_export' in env:
-        boost_python_export.plugin = env['boost_python_export']
-    if 'boost_python_module' in env:
-        boost_python_module.plugin = env['boost_python_module']
-    if 'boost_python_decorator' in env:
-        boost_python_decorator.plugin = env['boost_python_decorator']
+    if 'autowig_controller' in env:
+        controller.plugin = env['autowig_controller']
+    if 'autowig_bp_call_policy' in env:
+        boost_python_call_policy.plugin = env['autowig_bp_call_policy']
+    if 'autowig_bp_held_type' in env:
+        boost_python_held_type.plugin = env['autowig_bp_held_type']
+    if 'autowig_bp_export' in env:
+        boost_python_export.plugin = env['autowig_bp_export']
+    if 'autowig_bp_module' in env:
+        boost_python_module.plugin = env['autowig_bp_module']
+    if 'autowig_bp_decorator' in env:
+        boost_python_decorator.plugin = env['autowig_bp_decorator']
 
-    back_end.plugin = 'boost_python'
+    generator.plugin = 'boost_python'
 
     asg = AbstractSemanticGraph()
 
     kwargs = dict() # TODO
 
-    front_end(asg,
+    print env['_CCCOMCOM']
+    print env.subst('$CPPFLAGS $CFLAGS $CCFLAGS $CXXFLAGS')
+
+    parser(asg,
             [str(src) for src in source[1:]],
-            flags=env.subst('$CXXFLAGS $CCFLAGS $_CCCOMCOM').split(),
+            flags=env.subst('$CPPFLAGS $CFLAGS $CCFLAGS $CXXFLAGS').split(),
             **kwargs) # KWARGS
-    middle_end(asg)
-    back_end(asg,
+    controller(asg)
+    generator(asg,
             target[1],
             target[0],
             **kwargs) # PATTERN, CLOSURE, PREFIX

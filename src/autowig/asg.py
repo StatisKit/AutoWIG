@@ -184,7 +184,7 @@ class DirectoryProxy(FilesystemProxy):
 
         This property is setted at each front-end execution.
         Any application of a front-end reset this property since search paths can differ from one compilation to another.
-        .. seealso:: :func:`autowig.front_end.preprocessing`
+        .. seealso:: :func:`autowig.parser.preprocessing`
         """
         if hasattr(self, '_is_searchpath'):
             return self._is_searchpath
@@ -406,7 +406,7 @@ HeaderProxy.is_self_contained = property(get_is_self_contained, set_is_self_cont
 A header is considered as stand-alone if it can be included in a source file without producing any errors.
 By default, only header given as input of an AutoWIG front-end are considered as stand-alone.
 
-.. seealso:: :func:`autowig.front_end.postprocessing`""")
+.. seealso:: :func:`autowig.parser.postprocessing`""")
 del get_is_self_contained, set_is_self_contained, del_is_self_contained
 
 class DeclarationProxy(NodeProxy):
@@ -693,7 +693,7 @@ class QualifiedTypeProxy(EdgeProxy):
     This greatly reduces the number of nodes we need to allocate for types (for example we only need one for 'int', 'const int', 'volatile int', 'const volatile int', etc).
 
     As an added efficiency bonus, instead of making this a pair, we just store the two bits we care about in the low bits of the pointer.
-    To handle the packing/unpacking, we make QualType be a simple wrapper class that acts like a smart pointer.
+    To handle the packing/unpacking, we make QualType be a simple generatorer class that acts like a smart pointer.
     A third bit indicates whether there are extended qualifiers present, in which case the pointer points to a special structure.
 
     .. seealso::

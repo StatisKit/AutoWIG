@@ -107,9 +107,9 @@ setup(
 
     # Declare scripts and wralea as entry_points (extensions) of your package
     entry_points = {
-        'autowig.front_end': ['libclang = autowig.libclang_front_end:front_end'],
-        'autowig.middle_end': [],
-        'autowig.back_end': ['boost_python = autowig.boost_python_back_end:back_end', 'on_disk = autowig.on_disk_back_end:back_end'],
+        'autowig.parser': ['libclang = autowig.libclang_parser:parser'],
+        'autowig.controller': [],
+        'autowig.generatorer': ['boost_python = autowig.boost_python_generatorer:generatorer', 'on_disk = autowig.on_disk_generatorer:generatorer'],
         'autowig.node_rename' : ['PEP8 = autowig.node_rename:pep8_node_rename'],
         'autowig.node_path' : ['flat = autowig.node_path:flat_node_path', 'nested = autowig.node_path:nested_node_path'],
 

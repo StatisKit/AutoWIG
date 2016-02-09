@@ -13,7 +13,7 @@ import uuid
 from .ast import AbstractSyntaxTree
 from .asg import *
 from .tools import remove_templates
-from .front_end import preprocessing, postprocessing
+from .parser import preprocessing, postprocessing
 
 def is_virtual_method(self):
     """Returns True if the cursor refers to a C++ member function that
@@ -51,7 +51,7 @@ def is_copyable_record(self):
 Cursor.is_copyable_record = is_copyable_record
 del is_copyable_record
 
-def front_end(asg, filepaths, flags, libpath=None, silent=False, cache=None, force=False, **kwargs):
+def parser(asg, filepaths, flags, libpath=None, silent=False, cache=None, force=False, **kwargs):
     content = preprocessing(asg, filepaths, flags, cache, force)
     if content:
         step = []

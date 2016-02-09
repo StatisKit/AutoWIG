@@ -13,7 +13,7 @@ def preprocessing(asg, headers, flags):
     """Pre-processing step of an AutoWIG front-end
 
     During this step, files are added into the Abstract Semantic Graph (ASG) and a string corresponding to the content of a temporary header including all these files is returned.
-    The attribute :attr:`is_primary` of nodes corresponding to these files is set to `True` (see :func:`autowig.middle_end.clean` for a detailed explanation of this operation).
+    The attribute :attr:`is_primary` of nodes corresponding to these files is set to `True` (see :func:`autowig.controller.clean` for a detailed explanation of this operation).
     Nodes corresponding to the C++ global scope and C/C++ fundamental types (:class:`autowig.asg.FundamentalTypeProxy`) are also added to the ASG if not present.
 
     :Parameters:
@@ -37,7 +37,7 @@ def preprocessing(asg, headers, flags):
 
     .. seealso::
         :class:`FrontEndFunctor` for a detailed documentation about AutoWIG front-end step.
-        :func:`autowig.libclang_front_end.front_end` for an example.
+        :func:`autowig.libclang_parser.parser` for an example.
     """
     cmd = ' '.join(flag.strip() for flag in flags)
     if '-x c' in cmd:
@@ -114,7 +114,7 @@ def postprocessing(asg, headers, overload='all'):
         `None`
 
     .. seealso::
-        :func:`autowig.libclang_front_end.front_end` for an example.
+        :func:`autowig.libclang_parser.parser` for an example.
         :func:`compute_overloads`, :func:`discard_forward_declarations` and :func:`resolve_templates` for a more detailed documentatin about AutoWIG front-end post-processing step.
     """
     resolve_templates(asg)

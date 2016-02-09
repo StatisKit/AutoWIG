@@ -26,6 +26,8 @@ Module description
 Documentation
 =============
 
+Let $\alpha = .5$
+
 .. toctree::
     :maxdepth: 2
 
