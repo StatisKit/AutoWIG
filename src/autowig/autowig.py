@@ -9,5 +9,5 @@ else:
     parser.plugin = 'libclang'
 node_rename.plugin = 'PEP8'
 node_path.plugin = 'flat'
-from .boost_python_generatorer import *
+from .boost_python_generator import *
 from .scons import *

@@ -103,7 +103,7 @@ controller = PluginManager('autowig.controller', brief="AutoWIG middle-end plugi
 controller['default'] = lambda asg: None
 controller.plugin = 'default'
 
-generatorer = PluginManager('autowig.generatorer', brief="AutoWIG back-end plugins",
+generator = PluginManager('autowig.generator', brief="AutoWIG back-end plugins",
         detailed="""AutoWIG back-end plugins are responsible for C/C++ code generation from an Abstract Semantic Graph (ASG) interpretation.
 
 .. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")

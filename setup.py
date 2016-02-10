@@ -109,7 +109,7 @@ setup(
     entry_points = {
         'autowig.parser': ['libclang = autowig.libclang_parser:parser'],
         'autowig.controller': [],
-        'autowig.generatorer': ['boost_python = autowig.boost_python_generatorer:generatorer', 'on_disk = autowig.on_disk_generatorer:generatorer'],
+        'autowig.generator': ['boost_python = autowig.boost_python_generator:generator', 'on_disk = autowig.on_disk_generator:generator'],
         'autowig.node_rename' : ['PEP8 = autowig.node_rename:pep8_node_rename'],
         'autowig.node_path' : ['flat = autowig.node_path:flat_node_path', 'nested = autowig.node_path:nested_node_path'],
 

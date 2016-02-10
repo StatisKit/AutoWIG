@@ -16,22 +16,22 @@ diagram vision {
 
         DWC [label = "Write libary"];
         DEA [label = "Edit library\nabstraction"];
-        DWW [label = "Write additional\ngeneratorers"];
+        DWW [label = "Write additional\ngenerators"];
     }
 
     lane autowig {
         label = "AutoWIG";
 
         AGA [label = "Generate library\nabstraction"];
-        AGW [label = "Generate generatorers"];
-        AGS [label = "Generate generatorers\nSConscript"];
+        AGW [label = "Generate generators"];
+        AGS [label = "Generate generators\nSConscript"];
     }
 
     lane scons {
         label = "SCons";
 
         SCC [label = "Compile library"];
-        SWC [label = "Compile generatorers"];
+        SWC [label = "Compile generators"];
     }
 
     lane user {

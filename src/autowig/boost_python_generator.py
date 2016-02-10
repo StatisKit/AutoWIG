@@ -897,13 +897,13 @@ class BoostPythonDecoratorPluginManager(object):
 boost_python_decorator['default'] = BoostPythonDecoratorPluginManager(BoostPythonDecoratorDefaultFileProxy)
 boost_python_decorator.plugin = 'default'
 
-def generatorer(asg, module, decorator=None, pattern=None, closure=True, prefix='_'):
+def generator(asg, module, decorator=None, pattern=None, closure=True, prefix='_'):
     """
     """
     if closure:
-        generatorer(asg, module, decorator=None, pattern=pattern, closure=False, prefix=prefix)
+        generator(asg, module, decorator=None, pattern=pattern, closure=False, prefix=prefix)
         asg.boot_python_closure()
-        generatorer(asg, module, decorator=decorator, pattern='.*', closure=False, prefix=prefix)
+        generator(asg, module, decorator=decorator, pattern='.*', closure=False, prefix=prefix)
     else:
         module = boost_python_module(asg, module)
         directory = module.parent

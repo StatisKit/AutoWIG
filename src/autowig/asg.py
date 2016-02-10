@@ -693,7 +693,7 @@ class QualifiedTypeProxy(EdgeProxy):
     This greatly reduces the number of nodes we need to allocate for types (for example we only need one for 'int', 'const int', 'volatile int', 'const volatile int', etc).
 
     As an added efficiency bonus, instead of making this a pair, we just store the two bits we care about in the low bits of the pointer.
-    To handle the packing/unpacking, we make QualType be a simple generatorer class that acts like a smart pointer.
+    To handle the packing/unpacking, we make QualType be a simple generator class that acts like a smart pointer.
     A third bit indicates whether there are extended qualifiers present, in which case the pointer points to a special structure.
 
     .. seealso::
