@@ -7,7 +7,8 @@ from operator import attrgetter
 from .asg import *
 from .plugin import node_path, node_rename
 from .node_rename import PYTHON_OPERATOR
-from .tools import PluginManager, camel_case_to_lower, to_camel_case, camel_case_to_upper
+from .plugin import PluginManager
+from .tools import camel_case_to_lower, to_camel_case, camel_case_to_upper
 
 __all__ = ['boost_python_call_policy', 'boost_python_held_type', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
 
@@ -644,25 +645,6 @@ del boost_python_exports
 boost_python_export = PluginManager('autowig.boost_python_export', brief="",
         detailed="")
 
-class BoostPythonExportPluginManager(object):
-    """PluginManager for Boost.Python export creation"""
-
-    def __init__(self, proxy):
-        if not issubclass(proxy, BoostPythonExportFileProxy):
-            raise TypeError('\'proxy\' parameter')
-        self._proxy = proxy
-
-    def __call__(self, asg, export):
-        if export in asg:
-            return asg[export]
-        else:
-            return asg.add_file(export, proxy=self._proxy)
-
-boost_python_export['custom'] = BoostPythonExportPluginManager(BoostPythonExportFileProxy)
-boost_python_export['basic'] = BoostPythonExportPluginManager(BoostPythonExportBasicFileProxy)
-boost_python_export['mapping'] = BoostPythonExportPluginManager(BoostPythonExportMappingFileProxy)
-boost_python_export.plugin = 'mapping'
-
 class BoostPythonModuleFileProxy(FileProxy):
 
     @property
@@ -761,23 +743,6 @@ del boost_python_modules
 boost_python_module = PluginManager('autowig.boost_python_module', brief="",
         detailed="")
 
-class BoostPythonModulePluginManager(object):
-    """PluginManager for Boost.Python module creation"""
-
-    def __init__(self, proxy):
-        if not issubclass(proxy, BoostPythonModuleFileProxy):
-            raise TypeError('\'proxy\' parameter')
-        self._proxy = proxy
-
-    def __call__(self, asg, module):
-        if module in asg:
-            return asg[module]
-        else:
-            return asg.add_file(module, proxy=self._proxy)
-
-boost_python_module['default'] = BoostPythonModulePluginManager(BoostPythonModuleFileProxy)
-boost_python_module.plugin = 'default'
-
 class BoostPythonDecoratorFileProxy(FileProxy):
 
     @property
@@ -875,37 +840,21 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}\
         self.content = "\n".join(content)
         return self._content
 
-boost_python_decorator = PluginManager('autowig.boost_python', brief="",
+boost_python_decorator = PluginManager('autowig.boost_python_decorator', brief="",
         detailed="")
-
-class BoostPythonDecoratorPluginManager(object):
-    """PluginManager for Boost.Python module decoration"""
-
-    def __init__(self, proxy):
-        if not issubclass(proxy, BoostPythonDecoratorFileProxy):
-            raise TypeError('\'proxy\' parameter')
-        self._proxy = proxy
-
-    def __call__(self, asg, decorator, module):
-        if decorator in asg:
-            decorator = asg[decorator]
-        else:
-            decorator = asg.add_file(decorator, proxy=self._proxy)
-        decorator.module = module
-        return decorator
-
-boost_python_decorator['default'] = BoostPythonDecoratorPluginManager(BoostPythonDecoratorDefaultFileProxy)
-boost_python_decorator.plugin = 'default'
 
 def generator(asg, module, decorator=None, pattern=None, closure=True, prefix='_'):
     """
     """
     if closure:
         generator(asg, module, decorator=None, pattern=pattern, closure=False, prefix=prefix)
-        asg.boot_python_closure()
+        boost_python_closure(asg)
         generator(asg, module, decorator=decorator, pattern='.*', closure=False, prefix=prefix)
     else:
-        module = boost_python_module(asg, module)
+        if module in asg:
+            module = asg[module]
+        else:
+            module = asg.add_file(module, proxy=boost_python_module.__call__)
         directory = module.parent
         suffix = module.suffix
         if pattern is None:
@@ -922,17 +871,25 @@ def generator(asg, module, decorator=None, pattern=None, closure=True, prefix='_
                 if isinstance(node, EnumeratorProxy) and isinstance(node.parent, EnumerationProxy) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
                     continue
                 else:
-                    node.boost_python_export = boost_python_export(asg, directory.globalname + node_path(node, prefix=prefix, suffix=suffix))
-                    exports.add(node.boost_python_export._node)
+                    export = directory.globalname + node_path(node, prefix=prefix, suffix=suffix).strip('./')
+                    if export in asg:
+                        export = asg[export]
+                    else:
+                        exports.add(export)
+                        asg.add_file(export, proxy=boost_python_export.__call__)
+                        node.boost_python_export = export
         for export in exports:
             asg[export].module = module
         if decorator is not None:
-            boost_python_decorator(asg, decorator, module.globalname)
+            if decorator in asg:
+                decorator = asg[decorator]
+            else:
+                decorator = asg.add_file(decorator, proxy=boost_python_decorator.__call__)
 
-def boost_python_closure(self):
+def boost_python_closure(asg):
     nodes = []
     forbidden = set()
-    for node in self.nodes():
+    for node in asg.nodes():
         if hasattr(node, 'boost_python_export'):
             if node.boost_python_export and not node.boost_python_export is True:
                 nodes.append(node)
@@ -945,8 +902,8 @@ def boost_python_closure(self):
                         forbidden.add(node._node)
             elif not isinstance(node, (NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
                 if not isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy)):
-                    if isinstance(node, EnumConstantProxy):
-                        if not isinstance(node.parent, EnumProxy):
+                    if isinstance(node, EnumeratorProxy):
+                        if not isinstance(node.parent, EnumerationProxy):
                             node.boost_python_export = False
                     else:
                         node.boost_python_export = False
@@ -1000,7 +957,7 @@ def boost_python_closure(self):
                 for dcl in node.declarations():
                     if dcl.boost_python_export is True and dcl.access == 'public':
                         nodes.append(dcl)
-    for tdf in self.typedefs():
+    for tdf in asg.typedefs():
         if isinstance(tdf.boost_python_export, bool) and not tdf.boost_python_export:
             if not tdf._node in forbidden and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export:
                 tdf.boost_python_export = True
@@ -1010,6 +967,3 @@ def boost_python_closure(self):
                     parent = parent.parent
             else:
                 tdf.boost_python_export = False
-
-AbstractSemanticGraph.boost_python_closure = boost_python_closure
-del boost_python_closure

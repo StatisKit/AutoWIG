@@ -118,7 +118,7 @@ def postprocessing(asg, headers, overload='all'):
         :func:`compute_overloads`, :func:`discard_forward_declarations` and :func:`resolve_templates` for a more detailed documentatin about AutoWIG front-end post-processing step.
     """
     resolve_templates(asg)
-    compute_overloads(asg, overload=overload), is_external_dependency
+    compute_overloads(asg, overload=overload)
     discard_forward_declarations(asg)
 
 def compute_overloads(asg, overload):

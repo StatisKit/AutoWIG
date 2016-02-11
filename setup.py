@@ -109,9 +109,17 @@ setup(
     entry_points = {
         'autowig.parser': ['libclang = autowig.libclang_parser:parser'],
         'autowig.controller': [],
-        'autowig.generator': ['boost_python = autowig.boost_python_generator:generator', 'on_disk = autowig.on_disk_generator:generator'],
-        'autowig.node_rename' : ['PEP8 = autowig.node_rename:pep8_node_rename'],
-        'autowig.node_path' : ['flat = autowig.node_path:flat_node_path', 'nested = autowig.node_path:nested_node_path'],
+        'autowig.generator': ['boost_python = autowig.boost_python_generator:generator',
+            'on_disk = autowig.on_disk_generator:generator'],
+        'autowig.boost_python_export': ['custom = autowig.boost_python_generator:BoostPythonExportFileProxy',
+            'basic = autowig.boost_python_generator:BoostPythonExportBasicFileProxy',
+            'mapping = autowig.boost_python_generator:BoostPythonExportMappingFileProxy'],
+        'autowig.boost_python_module': ['default = autowig.boost_python_generator:BoostPythonModuleFileProxy'],
+        'autowig.boost_python_decorator': ['default = autowig.boost_python_generator:BoostPythonDecoratorFileProxy'],
+        'autowig.node_rename': ['PEP8 = autowig.node_rename:pep8_node_rename'],
+        'autowig.node_path' : ['flat = autowig.node_path:flat_node_path',
+            'nested = autowig.node_path:nested_node_path'],
+        'autowig.test' : ['default = autowig.boost_python_generator:BoostPythonExportFileProxy'],
 
         'console_scripts': [],
         # 'gui_scripts': [

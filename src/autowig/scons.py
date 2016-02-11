@@ -46,9 +46,9 @@ def scons(directory, *args, **kwargs):
 def boost_python_emitter(target, source, env):
     if True:#'srcnode' in env:
         target = [target.srcnode() for target in target]
-    env.SetDefaut('autowig_decorator_prefix' = '_')
-    env.SetDefaut('autowig_export_prefix' = '_')
-    env.SetDefaut('autowig_module_prefix' = '__')
+    env.SetDefaut('autowig_decorator_prefix', '_')
+    env.SetDefaut('autowig_export_prefix', '_')
+    env.SetDefaut('autowig_module_prefix', '__')
     return [env.File(target[0].abspath + '/' + env['autowig_decorator_prefix'] + env['autowig_libname'] + '.py'), env.File(target[1].abspath + '/' +env['autowig_module_prefix'] + env['autowig_libname'] + '.cpp')], source
 
 def boost_python_action(target, source, env):
