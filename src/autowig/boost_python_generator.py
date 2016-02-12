@@ -3,11 +3,13 @@
 
 from mako.template import Template
 from operator import attrgetter
+import os
 
 from .asg import *
-from .plugin import node_path, node_rename
+from .plugin_manager import node_path, node_rename
+from .proxy_manager import ProxyManager
 from .node_rename import PYTHON_OPERATOR
-from .plugin import PluginManager
+from .plugin_manager import PluginManager
 from .tools import camel_case_to_lower, to_camel_case, camel_case_to_upper
 
 __all__ = ['boost_python_call_policy', 'boost_python_held_type', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
@@ -27,7 +29,7 @@ def del_boost_python_call_policy(self):
 FunctionProxy.boost_python_call_policy = property(get_boost_python_call_policy, set_boost_python_call_policy, del_boost_python_call_policy)
 del get_boost_python_call_policy, set_boost_python_call_policy, del_boost_python_call_policy
 
-boost_python_call_policy = PluginManager('autowig.boost_python_call_policy', brief="AutoWIG Boost.Python call policy plugins",
+boost_python_call_policy = PluginManager('autowig.boost_python_call_policy', brief="AutoWIG Boost.Python call policy plugin_managers",
         detailed="")
 
 def boost_python_default_call_policy(node):
@@ -50,11 +52,7 @@ def boost_python_default_call_policy(node):
             else:
                 return 'boost::python::return_internal_reference<>()'
 
-boost_python_call_policy['default'] = boost_python_default_call_policy
-del boost_python_default_call_policy
-boost_python_call_policy.plugin = 'default'
-
-boost_python_held_type = PluginManager('autowig.boost_python_held_type', brief="AutoWIG Boost.Python policy plugins",
+boost_python_held_type = PluginManager('autowig.boost_python_held_type', brief="AutoWIG Boost.Python policy plugin_managers",
         detailed="")
 
 def ptr_held_type(node):
@@ -62,9 +60,6 @@ def ptr_held_type(node):
         return node.globalname + '*'
     elif not isinstance(node, BoostPythonExportFileProxy):
         raise TypeError('\'node\' parameter')
-
-boost_python_held_type['ptr'] = ptr_held_type
-del ptr_held_type
 
 def std_unique_ptr_held_type(node):
     if isinstance(node, ClassProxy):
@@ -74,9 +69,6 @@ def std_unique_ptr_held_type(node):
     else:
         raise TypeError('\'node\' parameter')
 
-boost_python_held_type['std::unique_ptr'] = std_unique_ptr_held_type
-del std_unique_ptr_held_type
-
 def std_shared_ptr_held_type(node):
     if isinstance(node, ClassProxy):
         return 'std::shared_ptr< ' + node.globalname + ' >'
@@ -85,10 +77,6 @@ def std_shared_ptr_held_type(node):
     else:
         raise TypeError('\'node\' parameter')
 
-boost_python_held_type['std::shared_ptr'] = std_shared_ptr_held_type
-del std_shared_ptr_held_type
-boost_python_held_type.plugin = 'std::shared_ptr'
-
 def boost_shared_ptr_held_type(node):
     if isinstance(node, ClassProxy):
         return 'boost::shared_ptr< ' + node.globalname + ' >'
@@ -96,9 +84,6 @@ def boost_shared_ptr_held_type(node):
         return '#include <boost/shared_ptr.hpp>'
     else:
         raise TypeError('\'node\' parameter')
-
-boost_python_held_type['boost::shared_ptr'] = boost_shared_ptr_held_type
-del boost_shared_ptr_held_type
 
 def boost_python_export(self):
     desugared_type = self.desugared_type
@@ -160,7 +145,6 @@ DeclarationProxy._default_boost_python_export = False
 DeclarationProxy._valid_boost_python_export = True
 
 EnumeratorProxy._default_boost_python_export = True
-
 
 def _default_boost_python_export(self):
     return  not self.localname.startswith('_') and len(self.enumerators) > 0
@@ -600,33 +584,33 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
     set_${cls.hash}_from_python();""")}
 
     def get_content(self):
-        content = self.HEADER.generator(headers = self._asg.headers(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
+        content = self.HEADER.render(headers = self._asg.headers(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
         content += '\n\nvoid ' + self.prefix + '()\n{\n'
-        content += self.SCOPE.generator(scopes = self.scopes,
+        content += self.SCOPE.render(scopes = self.scopes,
                 node_rename = node_rename)
         for arg in self.declarations:
             if isinstance(arg, EnumeratorProxy):
-                content += '\n' + self.ENUMERATOR.generator(enumerator = arg,
+                content += '\n' + self.ENUMERATOR.render(enumerator = arg,
                         node_rename = node_rename)
             elif isinstance(arg, EnumerationProxy):
-                content += '\n' + self.ENUMERATION.generator(enumeration = arg,
+                content += '\n' + self.ENUMERATION.render(enumeration = arg,
                         node_rename = node_rename)
             elif isinstance(arg, VariableProxy):
-                content += '\n' + self.VARIABLE.generator(variable = arg,
+                content += '\n' + self.VARIABLE.render(variable = arg,
                         node_rename = node_rename)
             elif isinstance(arg, FunctionProxy):
-                content += '\n' + self.FUNCTION.generator(function = arg,
+                content += '\n' + self.FUNCTION.render(function = arg,
                         node_rename = node_rename,
                         call_policy = boost_python_call_policy)
             elif isinstance(arg, ClassProxy):
-                content += '\n' + self.CLASS.generator(cls = arg,
+                content += '\n' + self.CLASS.render(cls = arg,
                         node_rename = node_rename,
                         held_type = boost_python_held_type,
                         call_policy = boost_python_call_policy)
                 if arg.globalname in self.MAPPING:
-                    content += '\n' + self.MAPPING[arg.globalname].generator(cls = arg)
+                    content += '\n' + self.MAPPING[arg.globalname].render(cls = arg)
                 elif isinstance(arg, ClassTemplateSpecializationProxy) and arg.specialize.globalname in self.MAPPING:
-                    content += '\n' + self.MAPPING[arg.specialize.globalname].generator(cls = arg)
+                    content += '\n' + self.MAPPING[arg.specialize.globalname].render(cls = arg)
             elif isinstance(arg, TypedefProxy):
                 continue
             else:
@@ -642,7 +626,7 @@ def boost_python_exports(self, *args, **kwargs):
 AbstractSemanticGraph.boost_python_exports = boost_python_exports
 del boost_python_exports
 
-boost_python_export = PluginManager('autowig.boost_python_export', brief="",
+boost_python_export = ProxyManager('autowig.boost_python_export', BoostPythonExportFileProxy, brief="",
         detailed="")
 
 class BoostPythonModuleFileProxy(FileProxy):
@@ -681,14 +665,14 @@ BOOST_PYTHON_MODULE(${module.prefix})
         else:
             return [export for export in sorted([self._asg[export] for export in self._exports], key = attrgetter('depth'))]
 
-    @property
-    def dependencies(self):
+    #@property
+    def get_dependencies(self):
         modules = set([self.globalname])
         temp = [declaration for export in self.exports for declaration in export.declarations]
         while len(temp) > 0:
             declaration = temp.pop()
             if isinstance(declaration, FunctionProxy):
-                export = declaration.return_type.target.boost_python_export
+                export = declaration.return_type.desugared_type.unqualified_type.boost_python_export
                 if export and not export is True:
                     module = export.module
                     if not module is None:
@@ -730,9 +714,20 @@ BOOST_PYTHON_MODULE(${module.prefix})
         else:
             return max(dependency.depth for dependency in dependencies) + 1
 
+    def get_content(self):
+        return self.CONTENT.render(module = self)
+
     @property
-    def _content(self):
-        return self.CONTENT.generator(module = self)
+    def package(self):
+        modules = []
+        parent = self.parent
+        while not parent is None and os.path.exists(parent.globalname + '__init__.py'):
+            modules.append(parent.localname)
+            parent = parent.parent
+        return '.'.join(reversed(modules))
+BoostPythonModuleFileProxy.dependencies = property(BoostPythonModuleFileProxy.get_dependencies)
+
+BoostPythonModuleFileProxy._content = property(BoostPythonModuleFileProxy.get_content)
 
 def boost_python_modules(self, **kwargs):
     return [module for module in self.files(**kwargs) is isinstance(module, BoostPythonModuleFileProxy)]
@@ -740,7 +735,7 @@ def boost_python_modules(self, **kwargs):
 AbstractSemanticGraph.boost_python_modules = boost_python_modules
 del boost_python_modules
 
-boost_python_module = PluginManager('autowig.boost_python_module', brief="",
+boost_python_module = ProxyManager('autowig.boost_python_module', BoostPythonModuleFileProxy, brief="",
         detailed="")
 
 class BoostPythonDecoratorFileProxy(FileProxy):
@@ -769,7 +764,7 @@ __all__ = []\
 
 % for module in modules:
 
-import ${module.package}.${module.modulename}\
+import ${module.package}.${module.prefix}\
 % endfor
 """)
 
@@ -805,16 +800,15 @@ ${".".join(node_rename(ancestor) for ancestor in tdf.qualified_type.desugared_ty
 ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}\
 % endfor""")
 
-    @property
-    def _content(self):
-        dependencies = self.module.dependencies + [self.module]
-        content = [self.IMPORTS.generator(modules = sorted(dependencies, key = lambda dependency: dependency.depth))]
+    def get_content(self):
+        dependencies = self.module.get_dependencies() + [self.module]
+        content = [self.IMPORTS.render(modules = sorted(dependencies, key = lambda dependency: dependency.depth))]
         scopes = []
         for export in self.module.exports:
             for declaration in export.declarations:
                 if isinstance(declaration.parent, ClassProxy):
                     scopes.append(declaration)
-        content.append(self.SCOPES.generator(scopes = scopes,
+        content.append(self.SCOPES.render(scopes = scopes,
                 module = self.module,
                 node_rename = node_rename))
         templates = dict()
@@ -826,7 +820,7 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}\
                         templates[spc].append(declaration)
                     else:
                         templates[spc] = [declaration]
-        content.append(self.TEMPLATES.generator(templates = [(self._asg[tpl], spcs) for tpl, spcs in templates.iteritems()],
+        content.append(self.TEMPLATES.render(templates = [(self._asg[tpl], spcs) for tpl, spcs in templates.iteritems()],
                 module = self.module,
                 node_rename = node_rename))
         typedefs = []
@@ -836,25 +830,30 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}\
                     typedefs.append(declaration)
                 elif isinstance(declaration, ClassProxy):
                     typedefs.extend([tdf for tdf in declaration.typedefs() if tdf.boost_python_export and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export and not tdf.qualified_type.desugared_type.unqualified_type.boost_python_export is True])
-        content.append(self.TYPEDEFS.generator(typedefs = typedefs, module = self.module, node_rename=node_rename))
+        content.append(self.TYPEDEFS.render(typedefs = typedefs, module = self.module, node_rename=node_rename))
         self.content = "\n".join(content)
         return self._content
 
-boost_python_decorator = PluginManager('autowig.boost_python_decorator', brief="",
+BoostPythonDecoratorDefaultFileProxy._content = property(BoostPythonDecoratorDefaultFileProxy.get_content)
+
+boost_python_decorator = ProxyManager('autowig.boost_python_decorator', BoostPythonDecoratorFileProxy, brief="",
         detailed="")
 
-def generator(asg, module, decorator=None, pattern=None, closure=True, prefix='_'):
+def boost_python_generator(asg, module, decorator=None, pattern=None, closure=True, prefix='_'):
     """
     """
     if closure:
-        generator(asg, module, decorator=None, pattern=pattern, closure=False, prefix=prefix)
+        for node in boost_python_generator(asg, module, decorator=None, pattern=pattern, closure=False, prefix=prefix):
+            yield node
         boost_python_closure(asg)
-        generator(asg, module, decorator=decorator, pattern='.*', closure=False, prefix=prefix)
+        for node in boost_python_generator(asg, module, decorator=decorator, pattern='.*', closure=False, prefix=prefix):
+            yield node
     else:
         if module in asg:
             module = asg[module]
         else:
-            module = asg.add_file(module, proxy=boost_python_module.__call__)
+            module = asg.add_file(module, proxy=boost_python_module())
+        yield module
         directory = module.parent
         suffix = module.suffix
         if pattern is None:
@@ -875,16 +874,20 @@ def generator(asg, module, decorator=None, pattern=None, closure=True, prefix='_
                     if export in asg:
                         export = asg[export]
                     else:
-                        exports.add(export)
-                        asg.add_file(export, proxy=boost_python_export.__call__)
-                        node.boost_python_export = export
+                        export = asg.add_file(export, proxy=boost_python_export())
+                    node.boost_python_export = export
+                    exports.add(export._node)
         for export in exports:
-            asg[export].module = module
+            export = asg[export]
+            export.module = module
+            yield export
         if decorator is not None:
             if decorator in asg:
                 decorator = asg[decorator]
             else:
-                decorator = asg.add_file(decorator, proxy=boost_python_decorator.__call__)
+                decorator = asg.add_file(decorator, proxy=boost_python_decorator())
+            decorator.module = module
+            yield decorator
 
 def boost_python_closure(asg):
     nodes = []

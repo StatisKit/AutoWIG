@@ -3,7 +3,7 @@
 
 import pkg_resources
 
-def build_plugin_doc(self):
+def build_plugin_manager_doc(self):
     self.__doc__ = []
     if self._brief:
         self.__doc__.append(self._brief)
@@ -11,13 +11,13 @@ def build_plugin_doc(self):
     if self._detailed:
         self.__doc__.append(self._detailed)
         self.__doc__.append('')
-    self.__doc__.append(":Available PluginManagers:")
+    self.__doc__.append(":Available Implementations:")
     self.__doc__.extend(" - \'" + plugin.name + '\'' for plugin in pkg_resources.iter_entry_points(self._group))
     self.__doc__.extend(" - \'" + plugin + '\'' for plugin in self._cache)
     self.__doc__ = '\n'.join(self.__doc__)
 
 class PluginManagerImplementationDescriptor(object):
-    """A plugin descriptor that returns and sets plugin implementations
+    """A plugin plugin manager descriptor that returns and sets plugin_manager implementations
     """
 
     def __get__(self, obj, objtype):
@@ -30,9 +30,9 @@ class PluginManagerImplementationDescriptor(object):
             else:
                 return pkg_resources.iter_entry_points(obj._group, plugin).next().load()
         else:
-            def __call__(*args, **kwargs):
-                """No plugin implementation selected"""
-                raise NotImplementedError("A plugin implementation must be selected using \'plugin\' field")
+            def __call__(self, *args, **kwargs):
+                """No plugin selected"""
+                raise NotImplementedError("An plugin must be selected using \'plugin\' field")
             return __call__
 
 class PluginManagerIdentificationDescriptor(object):
@@ -46,7 +46,7 @@ class PluginManagerIdentificationDescriptor(object):
 
     def __set__(self, obj, plugin):
         obj._plugin = plugin
-        build_plugin_doc(obj)
+        build_plugin_manager_doc(obj)
 
 
 class PluginManager(object):
@@ -56,12 +56,12 @@ class PluginManager(object):
     plugin = PluginManagerIdentificationDescriptor()
 
     def __init__(self, group, brief="", detailed=""):
-        """Create a plugin"""
+        """Create a plugin manager"""
         self._group = group
         self._brief = brief
         self._detailed = detailed
         self._cache = dict()
-        build_plugin_doc(self)
+        build_plugin_manager_doc(self)
 
     def __contains__(self, plugin):
         """
@@ -88,23 +88,20 @@ class PluginManager(object):
             self._cache[plugin] = implementation
         else:
             raise TypeError('must be callable or a basestring instance')
-        build_plugin_doc(self)
+        build_plugin_manager_doc(self)
 
-parser = PluginManager('autowig.parser', brief="AutoWIG front-end plugins",
-        detailed="""AutoWIG front-end plugins are responsible for Abstract Semantic Graph (ASG) completion from C/C++ parsing.
-
-.. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
-
-controller = PluginManager('autowig.controller', brief="AutoWIG middle-end plugins",
-        detailed="""AutoWIG middle-end plugins are responsible for Abstract Semantic Graph (ASG) modification from Python semantic queries.
+parser = PluginManager('autowig.parser', brief="AutoWIG front-end plugin_managers",
+        detailed="""AutoWIG front-end plugin_managers are responsible for Abstract Semantic Graph (ASG) completion from C/C++ parsing.
 
 .. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
 
-controller['default'] = lambda asg: None
-controller.plugin = 'default'
+controller = PluginManager('autowig.controller', brief="AutoWIG middle-end plugin_managers",
+        detailed="""AutoWIG middle-end plugin_managers are responsible for Abstract Semantic Graph (ASG) modification from Python semantic queries.
 
-generator = PluginManager('autowig.generator', brief="AutoWIG back-end plugins",
-        detailed="""AutoWIG back-end plugins are responsible for C/C++ code generation from an Abstract Semantic Graph (ASG) interpretation.
+.. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
+
+generator = PluginManager('autowig.generator', brief="AutoWIG back-end plugin_managers",
+        detailed="""AutoWIG back-end plugin_managers are responsible for C/C++ code generation from an Abstract Semantic Graph (ASG) interpretation.
 
 .. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
 

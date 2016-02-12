@@ -51,7 +51,7 @@ def is_copyable_record(self):
 Cursor.is_copyable_record = is_copyable_record
 del is_copyable_record
 
-def parser(asg, filepaths, flags, libpath=None, silent=False, cache=None, force=False, **kwargs):
+def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, cache=None, force=False, **kwargs):
     content = preprocessing(asg, filepaths, flags, cache, force)
     if content:
         step = []
@@ -84,7 +84,7 @@ def parser(asg, filepaths, flags, libpath=None, silent=False, cache=None, force=
             else:
                 warnings.simplefilter('always')
             read_translation_unit(asg, tu)
-    postprocessing(asg, filepaths, cache=cache, **kwargs)
+    #postprocessing(asg, filepaths, cache=cache, **kwargs)
 
 def read_translation_unit(asg, tu):
     for child in tu.cursor.get_children():

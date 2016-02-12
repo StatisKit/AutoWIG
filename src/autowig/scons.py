@@ -56,19 +56,19 @@ def boost_python_action(target, source, env):
     from .autowig import  AbstractSemanticGraph, parser, controller, generator, boost_python_call_policy, boost_python_held_type, boost_python_export, boost_python_module, boost_python_decorator
 
     if 'autowig_controller' in env:
-        controller.plugin = env['autowig_controller']
+        controller.plugin_manager = env['autowig_controller']
     if 'autowig_bp_call_policy' in env:
-        boost_python_call_policy.plugin = env['autowig_bp_call_policy']
+        boost_python_call_policy.plugin_manager = env['autowig_bp_call_policy']
     if 'autowig_bp_held_type' in env:
-        boost_python_held_type.plugin = env['autowig_bp_held_type']
+        boost_python_held_type.plugin_manager = env['autowig_bp_held_type']
     if 'autowig_bp_export' in env:
-        boost_python_export.plugin = env['autowig_bp_export']
+        boost_python_export.plugin_manager = env['autowig_bp_export']
     if 'autowig_bp_module' in env:
-        boost_python_module.plugin = env['autowig_bp_module']
+        boost_python_module.plugin_manager = env['autowig_bp_module']
     if 'autowig_bp_decorator' in env:
-        boost_python_decorator.plugin = env['autowig_bp_decorator']
+        boost_python_decorator.plugin_manager = env['autowig_bp_decorator']
 
-    generator.plugin = 'boost_python'
+    generator.plugin_manager = 'boost_python'
 
     asg = AbstractSemanticGraph()
 
