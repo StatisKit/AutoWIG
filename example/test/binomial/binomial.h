@@ -1,7 +1,10 @@
 #include <exception>
 
-class ProbabilityError : public std::exception
-{ virtual const char* what() const noexcept; };
+struct ProbabilityError : std::exception
+{ 
+    ProbabilityError();
+    virtual const char* what() const noexcept; 
+};
 
 class BinomialDistribution
 {

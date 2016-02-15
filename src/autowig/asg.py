@@ -468,6 +468,14 @@ class DeclarationProxy(NodeProxy):
         else:
             return localname[localname.rindex(':')+1:]
 
+    @property
+    def access(self):
+        return getattr(self, '_access', "none")
+
+    @access.setter
+    def access(self, access):
+        self._access = access
+
     def get_parent(self):
         if not self._node == '::':
 	    parentname = self.globalname[:-len(self.localname)-2]
@@ -1219,8 +1227,8 @@ class TemplateSpecializationProxy(object):
         return self.specialize.is_smart_pointer
 
     @property
-    def _access(self):
-        return self._asg._nodes[self._node].get('_access', getattr(self.specialize, 'access', None))
+    def access(self):
+        return self._asg._nodes[self._node].get('_access', self.specialize.access)
 
 class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
     """

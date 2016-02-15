@@ -1,0 +1,31 @@
+# -*-python-*-
+from distutils import sysconfig
+import os
+
+
+Import( "env" )
+
+lib_env = env.Clone()
+
+includes= lib_env.Glob('*.h*')
+sources = lib_env.Glob('[a-zA-Z]*.cpp')
+
+target = 'binomial'
+if lib_env.get("static"):
+    lib = lib_env.StaticLibrary(target, sources)
+else:
+    lib = lib_env.SharedLibrary(target, sources)
+Alias("build", lib)
+
+wrap_env = env.Clone()
+sources = wrap_env.Glob('_[a-zA-Z]*.cpp')
+if len(sources) > 0:
+    wrap = wrap_env.LoadableModule('_' + target, sources,
+                                   CPPPATH = [sysconfig.get_python_inc()] + wrap_env['CPPPATH'],
+                                   CXXFLAGS= wrap_env['CXXFLAGS'],
+                                   CPPDEFINES = ['BOOST_PYTHON_DYNAMIC_LIB'],
+                                   LIBPATH = [sysconfig.get_config_var('LIBDIR'), os.path.abspath('.')],
+                                   LIBS = [target, 'boost_python', 'python' + sysconfig.get_config_var('VERSION')],
+                                   LIBPREFIX = '')
+    Alias("build", wrap)
+

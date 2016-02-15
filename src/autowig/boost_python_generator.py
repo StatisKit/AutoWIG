@@ -112,7 +112,7 @@ def get_boost_python_export(self):
             return self._asg[boost_python_export]
     elif self.globalname == '::':
         return True
-    elif self._valid_boost_python_export and getattr(self, 'access', 'public') == 'public':
+    elif self._valid_boost_python_export and self.access in ['public', 'none']:
         return self._default_boost_python_export and self.parent.boost_python_export
     else:
         return False
@@ -197,6 +197,12 @@ def _default_boost_python_export(self):
         return False
 
 FunctionProxy._default_boost_python_export = property(_default_boost_python_export)
+del _default_boost_python_export
+
+def _default_boost_python_export(self):
+    return all(parameter.boost_python_export for parameter in self.parameters)
+
+ConstructorProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
 
 def _default_boost_python_export(self):
@@ -730,7 +736,7 @@ BoostPythonModuleFileProxy.dependencies = property(BoostPythonModuleFileProxy.ge
 BoostPythonModuleFileProxy._content = property(BoostPythonModuleFileProxy.get_content)
 
 def boost_python_modules(self, **kwargs):
-    return [module for module in self.files(**kwargs) is isinstance(module, BoostPythonModuleFileProxy)]
+    return [module for module in self.files(**kwargs) if isinstance(module, BoostPythonModuleFileProxy)]
 
 AbstractSemanticGraph.boost_python_modules = boost_python_modules
 del boost_python_modules
@@ -843,17 +849,14 @@ def boost_python_generator(asg, module, decorator=None, pattern=None, closure=Tr
     """
     """
     if closure:
-        for node in boost_python_generator(asg, module, decorator=None, pattern=pattern, closure=False, prefix=prefix):
-            yield node
+        boost_python_generator(asg, module, decorator=None, pattern=pattern, closure=False, prefix=prefix)
         boost_python_closure(asg)
-        for node in boost_python_generator(asg, module, decorator=decorator, pattern='.*', closure=False, prefix=prefix):
-            yield node
+        boost_python_generator(asg, module, decorator=decorator, pattern='.*', closure=False, prefix=prefix)
     else:
         if module in asg:
             module = asg[module]
         else:
             module = asg.add_file(module, proxy=boost_python_module())
-        yield module
         directory = module.parent
         suffix = module.suffix
         if pattern is None:
@@ -880,14 +883,12 @@ def boost_python_generator(asg, module, decorator=None, pattern=None, closure=Tr
         for export in exports:
             export = asg[export]
             export.module = module
-            yield export
         if decorator is not None:
             if decorator in asg:
                 decorator = asg[decorator]
             else:
                 decorator = asg.add_file(decorator, proxy=boost_python_decorator())
             decorator.module = module
-            yield decorator
 
 def boost_python_closure(asg):
     nodes = []

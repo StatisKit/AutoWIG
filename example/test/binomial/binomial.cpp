@@ -1,6 +1,9 @@
 #include "binomial.h"
 #include <boost/math/special_functions/beta.hpp>
 
+ProbabilityError::ProbabilityError()
+{}
+
 const char * ProbabilityError::what() const noexcept
 { return "a probability must be in the interval [0,1]"; }
 
