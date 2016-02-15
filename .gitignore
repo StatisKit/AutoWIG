@@ -16,6 +16,10 @@ xml
 
 # C extensions
 *.so
+*.os
+
+# Test
+test/binomial/_*.cpp
 
 # Python
 *.py[cod]
