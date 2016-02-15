@@ -7,10 +7,11 @@ pj = os.path.join
 SConsignFile()
 
 env = Environment()
-env.Append(CPPPATH = ['binomial'])
+env.Append(CPPPATH = ['overload', 'binomial'])
 env.AppendUnique(CXXFLAGS=['-x', 'c++', "-std=c++0x"])
 
 # Build stage
+SConscript(pj("overload/SConscript"), exports="env")
 SConscript(pj("binomial/SConscript"), exports="env")
 
 Default("build")

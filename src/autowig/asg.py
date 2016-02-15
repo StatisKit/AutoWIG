@@ -1439,9 +1439,9 @@ class AbstractSemanticGraph(object):
         if free is None:
             return [node for node in self.nodes(**kwargs) if isinstance(node, DeclarationProxy)]
         elif free:
-            return [node for node in self.declarations(free=None, **kwargs) if not isinstance(node.parent, ClassProxy)]
+            return [node for node in self.declarations(free=None, **kwargs) if not isinstance(node.parent, (ClassProxy, EnumerationProxy))]
         else:
-            return [node for node in self.declarations(free=None, **kwargs) if isinstance(node.parent, ClassProxy)]
+            return [node for node in self.declarations(free=None, **kwargs) if isinstance(node.parent, (ClassProxy, EnumerationProxy))]
 
     def fundamental_types(self, **kwargs):
         return [node for node in self.declarations(**kwargs) if isinstance(node, FundamentalTypeProxy)]

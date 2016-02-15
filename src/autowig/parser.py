@@ -40,13 +40,14 @@ def preprocessing(asg, headers, flags):
         :func:`autowig.libclang_parser.parser` for an example.
     """
     cmd = ' '.join(flag.strip() for flag in flags)
-    if '-x c' in cmd:
-        asg._language = 'c'
-        s = subprocess.Popen(['clang', '-x', 'c', '-v', '-E', '/dev/null'],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    elif '-x c++' in cmd:
+
+    if '-x c++' in cmd:
         asg._language = 'c++'
         s = subprocess.Popen(['clang++', '-x', 'c++', '-v', '-E', '/dev/null'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    elif '-x c' in cmd:
+        asg._language = 'c'
+        s = subprocess.Popen(['clang', '-x', 'c', '-v', '-E', '/dev/null'],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
