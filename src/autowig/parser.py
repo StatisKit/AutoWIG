@@ -88,7 +88,7 @@ def preprocessing(asg, headers, flags):
     headers = [path(header) if not isinstance(header, path) else header for header in headers]
 
     for header in headers:
-        header = asg.add_file(header, proxy=HeaderProxy)
+        header = asg.add_file(header, proxy=HeaderProxy, _language=asg._language)
         header.is_self_contained = True
         header.is_external_dependency = False
 

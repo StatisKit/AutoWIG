@@ -120,8 +120,6 @@ def get_boost_python_export(self):
 def set_boost_python_export(self, boost_python_export):
     if boost_python_export and not self._valid_boost_python_export:
         raise ValueError('\'boost_python_export\' cannot be set to another value than \'False\'')
-    elif not boost_python_export and self.globalname == '::':
-        raise ValueError('\'boost_python_export\' cannot be set to \'False\'')
     if isinstance(boost_python_export, basestring):
         boost_python_export = self._asg[boost_python_export]
     if isinstance(boost_python_export, BoostPythonExportFileProxy):
@@ -132,7 +130,10 @@ def set_boost_python_export(self, boost_python_export):
             boost_python_export = boost_python_export._node
     elif not isinstance(boost_python_export, bool):
         raise TypeError('\'boost_python_export\' parameter must be boolean, a \'' + BoostPythonExportFileProxy.__class__.__name__ + '\' instance or identifer')
-    self._asg._nodes[self._node]['_boost_python_export'] = boost_python_export
+    if not boost_python_export or boost_python_export and self.access in ['none', 'public']:
+        self._asg._nodes[self._node]['_boost_python_export'] = boost_python_export
+    else:
+        raise ValueError()
 
 def del_boost_python_export(self):
     boost_python_export = self.boost_python_export
@@ -313,6 +314,7 @@ void translate_error_${error.hash}(${error.globalname} const & error)
 
     SCOPE = Template(text=r"""\
 % for scope in scopes:
+
         std::string ${node_rename(scope, scope=True) + '_' + scope.hash}_name = boost::python::extract< std::string >(boost::python::scope().attr("__name__") + ".${node_rename(scope, scope=True)}");
         boost::python::object ${node_rename(scope, scope=True) + '_' + scope.hash}_module(boost::python::handle<  >(boost::python::borrowed(PyImport_AddModule(${node_rename(scope, scope=True) + '_' + scope.hash}_name.c_str()))));
         boost::python::scope().attr("${node_rename(scope, scope=True)}") = ${node_rename(scope, scope=True) + '_' + scope.hash}_module;
@@ -388,7 +390,7 @@ ${cls.globalname} *\
 , boost::noncopyable\
     % endif
  >("${node_rename(cls)}", boost::python::no_init)\
-    % if not cls.is_abstract:
+    % if cls.is_copyable and not cls.is_abstract:
         % for constructor in cls.constructors:
             % if constructor.access == 'public' and constructor.boost_python_export:
 
@@ -482,26 +484,26 @@ ${field.globalname})\
 
     @property
     def _content(self):
-        content = self.HEADER.generator(headers = self._asg.headers(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
+        content = self.HEADER.render(headers = self._asg.includes(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
         content += '\n\nvoid ' + self.prefix + '()\n{\n'
-        content += self.SCOPE.generator(scopes = self.scopes,
+        content += self.SCOPE.render(scopes = self.scopes,
                 node_rename = node_rename)
         for arg in self.declarations:
             if isinstance(arg, EnumeratorProxy):
-                content += '\n' + self.ENUMERATOR.generator(enumerator = arg,
+                content += '\n' + self.ENUMERATOR.render(enumerator = arg,
                         node_rename = node_rename)
             elif isinstance(arg, EnumerationProxy):
-                content += '\n' + self.ENUMERATION.generator(enumeration = arg,
+                content += '\n' + self.ENUMERATION.render(enumeration = arg,
                         node_rename = node_rename)
             elif isinstance(arg, VariableProxy):
-                content += '\n' + self.VARIABLE.generator(variable = arg,
+                content += '\n' + self.VARIABLE.render(variable = arg,
                         node_rename = node_rename)
             elif isinstance(arg, FunctionProxy):
-                content += '\n' + self.FUNCTION.generator(function = arg,
+                content += '\n' + self.FUNCTION.render(function = arg,
                         node_rename = node_rename,
                         call_policy = boost_python_call_policy)
             elif isinstance(arg, ClassProxy):
-                content += '\n' + self.CLASS.generator(cls = arg,
+                content += '\n' + self.CLASS.render(cls = arg,
                         node_rename = node_rename,
                         held_type = boost_python_held_type,
                         call_policy = boost_python_call_policy)
@@ -590,7 +592,7 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
     set_${cls.hash}_from_python();""")}
 
     def get_content(self):
-        content = self.HEADER.render(headers = self._asg.headers(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
+        content = self.HEADER.render(headers = self._asg.includes(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
         content += '\n\nvoid ' + self.prefix + '()\n{\n'
         content += self.SCOPE.render(scopes = self.scopes,
                 node_rename = node_rename)
@@ -650,7 +652,7 @@ void ${export.prefix}();
     % endif
 % endfor
 
-BOOST_PYTHON_MODULE(${module.prefix})
+BOOST_PYTHON_MODULE(_${module.prefix})
 {
 % for export in module.exports:
     % if not export.is_empty:
@@ -770,7 +772,7 @@ __all__ = []\
 
 % for module in modules:
 
-import ${module.package}.${module.prefix}\
+import ${module.package}._${module.prefix}\
 % endfor
 """)
 
@@ -845,7 +847,7 @@ BoostPythonDecoratorDefaultFileProxy._content = property(BoostPythonDecoratorDef
 boost_python_decorator = ProxyManager('autowig.boost_python_decorator', BoostPythonDecoratorFileProxy, brief="",
         detailed="")
 
-def boost_python_generator(asg, module, decorator=None, pattern=None, closure=True, prefix='_'):
+def boost_python_generator(asg, module, decorator=None, pattern=None, closure=True, prefix='__'):
     """
     """
     if closure:

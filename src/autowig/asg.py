@@ -872,6 +872,8 @@ class FieldProxy(VariableProxy):
     """
     """
 
+    _pakwargs = ['class ', 'struct ', 'union ']
+
     @property
     def is_mutable(self):
         return self._is_mutable
@@ -958,6 +960,8 @@ class MethodProxy(FunctionProxy):
     """
     """
 
+    _pakwargs = ['class ', 'struct ', 'union ']
+
     @property
     def is_static(self):
         return self._is_static
@@ -1034,7 +1038,7 @@ class ClassProxy(DeclarationProxy):
     def is_derived(self):
         return len(self._asg._base_edges[self._node]) > 0
 
-    def bases(self, inherited=False):
+    def bases(self, inherited=False, access='private'):
         bases = []
         already = set()
         for base in self._asg._base_edges[self._node]:
@@ -1043,15 +1047,21 @@ class ClassProxy(DeclarationProxy):
                 bases.append(self._asg[base['base']])
                 bases[-1].access = base['_access']
                 bases[-1].is_virtual_base = base['_is_virtual']
+        if access == 'public':
+            bases = [base for base in bases if base.access == 'public']
+        elif access == 'protected':
+            bases = [base for base in bases if base.access in ['public', 'protected']]
+        elif not access == 'private':
+            raise ValueError('\'access\' parameter')
         if not inherited:
             return bases
         else:
             inheritedbases = []
             for base in bases:
                 if isinstance(base, TypedefProxy):
-                    basebases = base.qualified_type.desugared_type.bases(True)
+                    basebases = base.qualified_type.desugared_type.bases(True, access=access)
                 else:
-                    basebases = base.bases(True)
+                    basebases = base.bases(True, access=access)
                 if base.access == 'protected':
                     for basebase in basebases:
                         if basebase.access == 'public':
@@ -1074,7 +1084,7 @@ class ClassProxy(DeclarationProxy):
                 self._asg._nodes[self._node]['_depth'] = max([base.type.target.depth if isinstance(base, TypedefProxy) else base.depth for base in self.bases()])+1
             return self._depth
 
-    def declarations(self, pattern=None, inherited=False, access='all'):
+    def declarations(self, pattern=None, inherited=False, access='private'):
         if inherited is None:
             declarations = self.declarations(pattern=pattern, inherited=False, access=access) + self.declarations(pattern=pattern, inherited=True, access=access)
         elif inherited:
@@ -1097,15 +1107,13 @@ class ClassProxy(DeclarationProxy):
                 declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node]]
             else:
                 declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node] if re.match(pattern, node)]
-            for declaration in declarations:
-                declaration.access = declaration._access
+            #for declaration in declarations:
+            #    declaration.access = declaration._access
         if access == 'public':
             return [declaration for declaration in declarations if declaration.access == 'public']
         elif access == 'protected':
-            return [declaration for declaration in declarations if declaration.access == 'protected']
+            return [declaration for declaration in declarations if declaration.access in ['public', 'protected']]
         elif access == 'private':
-            return [declaration for declaration in declarations if declaration.access == 'private']
-        elif access == 'all':
             return declarations
         else:
             raise ValueError('\'access\' parameter')
@@ -1503,34 +1511,38 @@ class AbstractSemanticGraph(object):
     #        else:
     #            return include
 
-    def headers(self, *nodes):
+    def dependencies(self, *nodes, **kwargs):
+        bases = kwargs.pop('bases', True)
+        access = kwargs.pop('access', 'private')
         white = []
-        headers = []
         for node in nodes:
             if isinstance(node, basestring):
                 node = self[node]
             if isinstance(node, DeclarationProxy):
                 white.append(node)
-            elif isinstance(node, HeaderProxy):
-                while not node is None and not node.is_self_contained:
-                    node = node.include
-                if not node is None:
-                    headers.append(node)
         black = set()
+        gray = set()
+        accesses = ['none', 'public', 'protected', 'private']
+        accesses = accesses[:accesses.index(access)+1]
+        print accesses
         while len(white) > 0:
             node = white.pop()
-            if not node._node in black:
+            if not node._node in black and node.access in accesses:
+                #if self[node._node].access not in ['none', 'public']:
+                #    import pdb
+                #    pdb.set_trace()
                 black.add(node._node)
+                parent = node.parent
+                if not isinstance(parent, NamespaceProxy):
+                    white.append(parent)
                 if isinstance(node, FundamentalTypeProxy):
                     continue
                 elif isinstance(node, EnumeratorProxy):
-                    pass
+                    gray.add(node._node)
                 elif isinstance(node, EnumerationProxy):
-                    pass
+                    continue
                 elif isinstance(node, ClassTemplatePartialSpecializationProxy):
-                    white.append(node.specialize)
-                    # TODO templates !
-                    pass
+                    continue
                 elif isinstance(node, (VariableProxy, TypedefProxy)):
                     white.append(node.qualified_type.unqualified_type)
                 elif isinstance(node, FunctionProxy):
@@ -1539,24 +1551,92 @@ class AbstractSemanticGraph(object):
                 elif isinstance(node, ConstructorProxy):
                     white.extend([prm.qualified_type.unqualified_type for prm in node.parameters])
                 elif isinstance(node, DestructorProxy):
-                    pass
+                    continue
                 elif isinstance(node, ClassProxy):
-                    white.extend(node.bases())
-                    white.extend(node.declarations())
-                    if isinstance(node, ClassTemplateSpecializationProxy):
-                        white.append(node.specialize)
-                        white.extend([tpl.unqualified_type for tpl in node.templates])
+                    gray.add(node._node)
+                    if bases:
+                        white.extend(node.bases(access=access))
+                    white.extend(node.declarations(access=access))
                 elif isinstance(node, ClassTemplateProxy):
-                    pass
+                    continue
                 elif isinstance(node, NamespaceProxy):
-                    white.extend(node.declarations())
+                    continue
                 else:
                     raise NotImplementedError(node.__class__.__name__)
-                header = node.header
-                while not header is None and not header.is_self_contained:
-                    header = header.include
-                if not header is None:
-                    headers.append(header)
+        return [self[node] for node in gray]
+
+    def includes(self, *nodes):
+        headers = []
+        nodes = [self[node] if isinstance(node, basestring) else node for node in nodes]
+        nodes.extend(itertools.chain(*[node.declarations() for node in nodes if isinstance(node, ClassProxy)]))
+        nodes.extend(itertools.chain(*[[node.specialize] + [template.desugared_type.unqualified_type for template in node.templates] for node in nodes if isinstance(node, ClassTemplateSpecializationProxy)]))
+        for node in nodes:
+            if isinstance(node, basestring):
+                node = self[node]
+            if isinstance(node, DeclarationProxy):
+                dependencies = [node]
+                if isinstance(node, ClassTemplatePartialSpecializationProxy):
+                    pass
+                elif isinstance(node, (VariableProxy, TypedefProxy)):
+                    dependencies.append(node.qualified_type.desugared_type.unqualified_type)
+                elif isinstance(node, FunctionProxy):
+                    dependencies.append(node.return_type.unqualified_type)
+                    dependencies.extend([prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters])
+                elif isinstance(node, ConstructorProxy):
+                    dependencies.extend([prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters])
+                elif isinstance(node, ClassProxy):
+                    dependencies.extend(node.bases())
+                for dependency in dependencies:
+                    header = dependency.header
+                    while not header is None and not header.is_self_contained:
+                        header = header.include
+                    if not header is None:
+                        headers.append(header)
+            elif isinstance(node, HeaderProxy):
+                while not node is None and not node.is_self_contained:
+                    node = node.include
+                if not node is None:
+                    headers.append(node)
+        #while len(white) > 0:
+        #    node = white.pop()
+        #    if not node._node in black:
+        #        black.add(node._node)
+        #        if isinstance(node, FundamentalTypeProxy):
+        #            continue
+        #        elif isinstance(node, EnumeratorProxy):
+        #            pass
+        #        elif isinstance(node, EnumerationProxy):
+        #            pass
+        #        elif isinstance(node, ClassTemplatePartialSpecializationProxy):
+        #            white.append(node.specialize)
+        #            # TODO templates !
+        #            pass
+        #        elif isinstance(node, (VariableProxy, TypedefProxy)):
+        #            white.append(node.qualified_type.unqualified_type)
+        #        elif isinstance(node, FunctionProxy):
+        #            white.append(node.return_type.unqualified_type)
+        #            white.extend([prm.qualified_type.unqualified_type for prm in node.parameters])
+        #        elif isinstance(node, ConstructorProxy):
+        #            white.extend([prm.qualified_type.unqualified_type for prm in node.parameters])
+        #        elif isinstance(node, DestructorProxy):
+        #            pass
+        #        elif isinstance(node, ClassProxy):
+        #            white.extend(node.bases())
+        #            white.extend(node.declarations())
+        #            if isinstance(node, ClassTemplateSpecializationProxy):
+        #                white.append(node.specialize)
+        #                white.extend([tpl.unqualified_type for tpl in node.templates])
+        #        elif isinstance(node, ClassTemplateProxy):
+        #            pass
+        #        elif isinstance(node, NamespaceProxy):
+        #            white.extend(node.declarations())
+        #        else:
+        #            raise NotImplementedError(node.__class__.__name__)
+        #        header = node.header
+        #        while not header is None and not header.is_self_contained:
+        #            header = header.include
+        #        if not header is None:
+        #            headers.append(header)
         headers = {header.globalname for header in headers}
         headers = sorted([self[header] for header in headers], key = lambda header: header.depth)
         _headers = {header.globalname for header in headers if header.depth == 0}
