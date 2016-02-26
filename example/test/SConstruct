@@ -7,7 +7,6 @@ pj = os.path.join
 SConsignFile()
 
 env = Environment()
-env.Append(CPPPATH = ['overload', 'binomial'])
 env.AppendUnique(CXXFLAGS=['-x', 'c++', "-std=c++0x"])
 
 # Build stage

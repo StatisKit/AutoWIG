@@ -8,8 +8,8 @@ def build_plugin_manager_doc(self):
     if self._brief:
         self.__doc__.append(self._brief)
         self.__doc__.append('')
-    if self._detailed:
-        self.__doc__.append(self._detailed)
+    if self._details:
+        self.__doc__.append(self._details)
         self.__doc__.append('')
     self.__doc__.append(":Available Implementations:")
     self.__doc__.extend(" - \'" + plugin.name + '\'' for plugin in pkg_resources.iter_entry_points(self._group))
@@ -55,11 +55,11 @@ class PluginManager(object):
 
     plugin = PluginManagerIdentificationDescriptor()
 
-    def __init__(self, group, brief="", detailed=""):
+    def __init__(self, group, brief="", details=""):
         """Create a plugin manager"""
         self._group = group
         self._brief = brief
-        self._detailed = detailed
+        self._details = details
         self._cache = dict()
         build_plugin_manager_doc(self)
 
@@ -91,22 +91,28 @@ class PluginManager(object):
         build_plugin_manager_doc(self)
 
 parser = PluginManager('autowig.parser', brief="AutoWIG front-end plugin_managers",
-        detailed="""AutoWIG front-end plugin_managers are responsible for Abstract Semantic Graph (ASG) completion from C/C++ parsing.
+        details="""AutoWIG front-end plugin_managers are responsible for Abstract Semantic Graph (ASG) completion from C/C++ parsing.
 
 .. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
 
 controller = PluginManager('autowig.controller', brief="AutoWIG middle-end plugin_managers",
-        detailed="""AutoWIG middle-end plugin_managers are responsible for Abstract Semantic Graph (ASG) modification from Python semantic queries.
+        details="""AutoWIG middle-end plugin_managers are responsible for Abstract Semantic Graph (ASG) modification from Python semantic queries.
 
 .. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
 
 generator = PluginManager('autowig.generator', brief="AutoWIG back-end plugin_managers",
-        detailed="""AutoWIG back-end plugin_managers are responsible for C/C++ code generation from an Abstract Semantic Graph (ASG) interpretation.
+        details="""AutoWIG back-end plugin_managers are responsible for C/C++ code generation from an Abstract Semantic Graph (ASG) interpretation.
 
 .. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
 
+visitor = PluginManager('autowig.visitor', brief="",
+        details="""""")
+
+documenter = PluginManager('autowig.documenter', brief="",
+        details="""""")
+
 node_rename = PluginManager('autowig.node_rename', brief="",
-        detailed="")
+        details="")
 
 node_path = PluginManager('autowig.node_path', brief="",
-        detailed="")
+        details="")

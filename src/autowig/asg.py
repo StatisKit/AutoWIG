@@ -10,8 +10,24 @@ import hashlib
 from path import path
 
 from .tools import subclasses
+from .plugin_manager import visitor
 
 __all__ = ['AbstractSemanticGraph']
+
+def all_visitor(node):
+    return True
+
+def free_visitor(node):
+    return getattr(node, 'access', False) == 'none'
+
+def public_visitor(node):
+    return getattr(node, 'access', False) in ['none', 'public']
+
+def protected_visitor(node):
+    return getattr(node, 'access', False) in ['none', 'public', 'protected']
+
+def private_visitor(node):
+    return getattr(node, 'access', False)
 
 class NodeProxy(object):
     """Abstract semantic graph node proxy
@@ -352,10 +368,7 @@ class HeaderProxy(FileProxy):
         while parent is not None and not parent.is_searchpath:
             incpath = parent.localname + incpath
             parent = parent.parent
-        if parent is None:
-            return '/' + incpath
-        else:
-            return incpath
+        return incpath
 
     @property
     def is_external_dependency(self):
@@ -761,6 +774,12 @@ class QualifiedTypeProxy(EdgeProxy):
         return self._qualifiers
 
     @property
+    def is_qualified(self):
+        """
+        """
+        return bool(self._qualifiers)
+
+    @property
     def is_fundamental_type(self):
         """Is the unqualified type a fundamental type"""
         return isinstance(self.unqualified_type, FundamentalTypeProxy)
@@ -845,6 +864,13 @@ class EnumerationProxy(DeclarationProxy):
     def enumerators(self):
         return [self._asg[node] for node in self._asg._syntax_edges[self._node]]
 
+    @property
+    def comment(self):
+        if hasattr(self, '_comment'):
+            return self._comment
+        else:
+            return ""
+
 class TypedefProxy(DeclarationProxy):
     """
 
@@ -868,6 +894,13 @@ class VariableProxy(DeclarationProxy):
     def qualified_type(self):
         return QualifiedTypeProxy(self._asg, self._node, **self._asg._type_edges[self._node])
 
+    @property
+    def comment(self):
+        if hasattr(self, '_comment'):
+            return self._comment
+        else:
+            return ""
+
 class FieldProxy(VariableProxy):
     """
     """
@@ -877,6 +910,10 @@ class FieldProxy(VariableProxy):
     @property
     def is_mutable(self):
         return self._is_mutable
+
+    @property
+    def is_bit_field(self):
+        return self._is_bit_field
 
     @property
     def is_static(self):
@@ -914,6 +951,14 @@ class FunctionProxy(DeclarationProxy):
     """
 
     _pakwargs = ['', 'class ', 'struct ', 'union ']
+
+    @property
+    def comment(self):
+        if hasattr(self, '_comment'):
+            return self._comment
+        else:
+            return ""
+
 
     @property
     def return_type(self):
@@ -990,6 +1035,14 @@ class ConstructorProxy(DeclarationProxy):
     """
     """
 
+    @property
+    def comment(self):
+        if hasattr(self, '_comment'):
+            return self._comment
+        else:
+            return ""
+
+
     _pakwargs = ['class ', 'struct ', 'union ']
 
     @property
@@ -1008,6 +1061,14 @@ class DestructorProxy(DeclarationProxy):
     """
     """
 
+    @property
+    def comment(self):
+        if hasattr(self, '_comment'):
+            return self._comment
+        else:
+            return ""
+
+
     _pakwargs = ['class ', 'struct ', 'union ']
 
     @property
@@ -1021,6 +1082,13 @@ class ClassProxy(DeclarationProxy):
     """
 
     _pakwargs = ['', 'class ', 'struct ', 'union ']
+
+    @property
+    def comment(self):
+        if hasattr(self, '_comment'):
+            return self._comment
+        else:
+            return ""
 
     @property
     def is_complete(self):
@@ -1072,7 +1140,7 @@ class ClassProxy(DeclarationProxy):
                 inheritedbases += basebases
             return bases + inheritedbases
 
-    def inheritors(self, recursive=False):
+    def subclasses(self, recursive=False):
         return [cls for cls in self._asg.classes() if any(base._node == self._node for base in cls.bases(inherited=recursive))]
 
     @property
@@ -1238,6 +1306,10 @@ class TemplateSpecializationProxy(object):
     def access(self):
         return self._asg._nodes[self._node].get('_access', self.specialize.access)
 
+    @property
+    def is_copyable(self):
+        return self.specialize.is_copyable
+
 class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
     """
     """
@@ -1284,6 +1356,19 @@ class ClassTemplateProxy(DeclarationProxy):
     def del_is_smart_pointer(self):
         self._asg._nodes[self._node].pop('_is_smart_pointer', False)
 
+    @property
+    def is_copyable(self):
+        return getattr(self, '_is_copyable', True)
+
+    @is_copyable.setter
+    def is_copyable(self, is_copyable):
+        self._asg._nodes[self._node]['_is_copyable'] = is_copyable
+
+    @is_copyable.deleter
+    def del_is_copyable(self):
+        self._asg._nodes[self._node].pop('_is_copyable', False)
+
+
 class ClassTemplatePartialSpecializationProxy(DeclarationProxy, TemplateSpecializationProxy):
     """
     """
@@ -1295,6 +1380,13 @@ class NamespaceProxy(DeclarationProxy):
 
     .. see:: `<http://en.cppreference.com/w/cpp/language/namespace>_`
     """
+
+    @property
+    def comment(self):
+        if hasattr(self, '_comment'):
+            return self._comment
+        else:
+            return ""
 
     _pakwargs = ['']
 
@@ -1511,29 +1603,22 @@ class AbstractSemanticGraph(object):
     #        else:
     #            return include
 
-    def dependencies(self, *nodes, **kwargs):
-        bases = kwargs.pop('bases', True)
-        access = kwargs.pop('access', 'private')
+    def dependencies(self, *nodes):
         white = []
         for node in nodes:
             if isinstance(node, basestring):
                 node = self[node]
-            if isinstance(node, DeclarationProxy):
+            if isinstance(node, DeclarationProxy) and visitor(node):
                 white.append(node)
         black = set()
         gray = set()
-        accesses = ['none', 'public', 'protected', 'private']
-        accesses = accesses[:accesses.index(access)+1]
-        print accesses
+
         while len(white) > 0:
             node = white.pop()
-            if not node._node in black and node.access in accesses:
-                #if self[node._node].access not in ['none', 'public']:
-                #    import pdb
-                #    pdb.set_trace()
+            if not node._node in black:
                 black.add(node._node)
                 parent = node.parent
-                if not isinstance(parent, NamespaceProxy):
+                if not isinstance(parent, NamespaceProxy) and visitor(parent):
                     white.append(parent)
                 if isinstance(node, FundamentalTypeProxy):
                     continue
@@ -1544,25 +1629,39 @@ class AbstractSemanticGraph(object):
                 elif isinstance(node, ClassTemplatePartialSpecializationProxy):
                     continue
                 elif isinstance(node, (VariableProxy, TypedefProxy)):
-                    white.append(node.qualified_type.unqualified_type)
+                    unqualified_type = node.qualified_type.unqualified_type
+                    if visitor(unqualified_type):
+                        white.append(unqualified_type)
                 elif isinstance(node, FunctionProxy):
-                    white.append(node.return_type.unqualified_type)
-                    white.extend([prm.qualified_type.unqualified_type for prm in node.parameters])
+                    unqualified_types = [node.return_type.desugared_type.unqualified_type] + [prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters]
+                    if all(visitor(unqualified_type) for unqualified_type in unqualified_types):
+                        white.extend(unqualified_types)
                 elif isinstance(node, ConstructorProxy):
-                    white.extend([prm.qualified_type.unqualified_type for prm in node.parameters])
+                    unqualified_types = [prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters]
+                    if all(visitor(unqualified_type) for unqualified_type in unqualified_types):
+                        white.extend(unqualified_types)
                 elif isinstance(node, DestructorProxy):
                     continue
                 elif isinstance(node, ClassProxy):
-                    gray.add(node._node)
-                    if bases:
-                        white.extend(node.bases(access=access))
-                    white.extend(node.declarations(access=access))
+                    if isinstance(node, ClassTemplateSpecializationProxy):
+                        unqualified_types = [template.desugared_type.unqualified_type for template in node.templates]
+                    else:
+                        unqualified_types = []
+                    if not unqualified_types or all(visitor(unqualified_type) for unqualified_type in unqualified_types):
+                        gray.add(node._node)
+                        for base in node.bases():
+                            if visitor(base):
+                                white.append(base)
+                        for declaration in node.declarations():
+                            if visitor(declaration):
+                                white.append(declaration)
                 elif isinstance(node, ClassTemplateProxy):
                     continue
                 elif isinstance(node, NamespaceProxy):
                     continue
                 else:
                     raise NotImplementedError(node.__class__.__name__)
+
         return [self[node] for node in gray]
 
     def includes(self, *nodes):

@@ -6,21 +6,23 @@ import os
 Import( "env" )
 
 lib_env = env.Clone()
+lib_env.Append(CPPPATH = ['foo'])
+#lib_env.AppendUnique(CXXFLAGS=["-Wl,-rpath=."])
+lib_env.AppendUnique(CXXFLAGS=["-Wwrite-strings"])
+includes= ['foo.h']
+sources = ['foo.cpp']
 
-includes= lib_env.Glob('*.h*')
-sources = lib_env.Glob('[a-zA-Z]*.cpp')
-
-target = 'binomial'
+target = 'foo'
 if lib_env.get("static"):
     lib = lib_env.StaticLibrary(target, sources)
 else:
     lib = lib_env.SharedLibrary(target, sources)
 Alias("build", lib)
 
-wrap_env = env.Clone()
-sources = wrap_env.Glob('_[a-zA-Z]*.cpp')
+wrap_env = lib_env.Clone()
+sources = wrap_env.Glob('bar*.cpp')
 if len(sources) > 0:
-    wrap = wrap_env.LoadableModule('_' + target, sources,
+    wrap = wrap_env.LoadableModule('_bar', sources,
                                    CPPPATH = [sysconfig.get_python_inc()] + wrap_env['CPPPATH'],
                                    CXXFLAGS= wrap_env['CXXFLAGS'],
                                    CPPDEFINES = ['BOOST_PYTHON_DYNAMIC_LIB'],

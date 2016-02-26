@@ -8,8 +8,8 @@ def build_proxy_manager_doc(self):
     if self._brief:
         self.__doc__.append(self._brief)
         self.__doc__.append('')
-    if self._detailed:
-        self.__doc__.append(self._detailed)
+    if self._details:
+        self.__doc__.append(self._details)
         self.__doc__.append('')
     self.__doc__.append(":Available Proxies:")
     self.__doc__.extend(" - \'" + proxy.name + '\'' for proxy in pkg_resources.iter_entry_points(self._group))
@@ -41,12 +41,12 @@ class ProxyManager(object):
 
     proxy = ProxyManagerIdentificationDescriptor()
 
-    def __init__(self, group, base, brief="", detailed=""):
+    def __init__(self, group, base, brief="", details=""):
         """Create a proxy"""
         self._group = group
         self._base = base
         self._brief = brief
-        self._detailed = detailed
+        self._details = details
         self._cache = dict()
         build_proxy_manager_doc(self)
 

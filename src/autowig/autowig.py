@@ -7,6 +7,8 @@ if 'pyclanglite' in parser:
     parser.plugin = 'pyclanglite'
 else:
     parser.plugin = 'libclang'
+visitor.plugin = 'all'
+documenter.plugin = 'doxygen2sphinx'
 controller.plugin = 'default'
 node_rename.plugin = 'PEP8'
 node_path.plugin = 'flat'
