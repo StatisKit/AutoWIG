@@ -1329,6 +1329,17 @@ class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
     def templates(self):
         return [QualifiedTypeProxy(self._asg, self._node, **template) for template in self._asg._template_edges[self._node]] #TODO
 
+    @property
+    def access(self):
+	accesses = ['none', 'public', 'protected', 'private']
+        access = accesses.index(getattr(self, '_access', self.specialize.access))
+	for template in self.templates:
+		access = max(access, accesses.index(template.desugared_type.unqualified_type.access))
+	return accesses[access]
+
+    @access.setter
+    def access(self, access):
+        self._access = access
 
 class ClassTemplateProxy(DeclarationProxy):
     """
@@ -1649,6 +1660,7 @@ class AbstractSemanticGraph(object):
                         unqualified_types = []
                     if not unqualified_types or all(visitor(unqualified_type) for unqualified_type in unqualified_types):
                         gray.add(node._node)
+                        white.extend(unqualified_types)
                         for base in node.bases():
                             if visitor(base):
                                 white.append(base)
