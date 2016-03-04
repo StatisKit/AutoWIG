@@ -4,6 +4,7 @@
 from mako.template import Template
 from operator import attrgetter
 import os
+import parse
 
 from .asg import *
 from .plugin_manager import node_path, node_rename, documenter, visitor
@@ -12,7 +13,7 @@ from .node_rename import PYTHON_OPERATOR
 from .plugin_manager import PluginManager
 from .tools import camel_case_to_lower, to_camel_case, camel_case_to_upper
 
-__all__ = ['boost_python_call_policy', 'boost_python_held_type', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
+__all__ = ['boost_python_call_policy', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
 
 def get_boost_python_call_policy(self):
     if hasattr(self, '_boost_python_call_policy'):
@@ -51,39 +52,6 @@ def boost_python_default_call_policy(node):
                 return 'boost::python::return_value_policy< boost::python::return_by_value >()'
             else:
                 return 'boost::python::return_internal_reference<>()'
-
-boost_python_held_type = PluginManager('autowig.boost_python_held_type', brief="AutoWIG Boost.Python policy plugin_managers",
-        details="")
-
-def ptr_held_type(node):
-    if isinstance(node, ClassProxy):
-        return node.globalname + '*'
-    elif not isinstance(node, BoostPythonExportFileProxy):
-        raise TypeError('\'node\' parameter')
-
-def std_unique_ptr_held_type(node):
-    if isinstance(node, ClassProxy):
-        return 'std::unique_ptr< ' + node.globalname + ' >'
-    elif isinstance(node, BoostPythonExportFileProxy):
-        return '#include <memory>'
-    else:
-        raise TypeError('\'node\' parameter')
-
-def std_shared_ptr_held_type(node):
-    if isinstance(node, ClassProxy):
-        return 'std::shared_ptr< ' + node.globalname + ' >'
-    elif isinstance(node, BoostPythonExportFileProxy):
-        return '#include <memory>'
-    else:
-        raise TypeError('\'node\' parameter')
-
-def boost_shared_ptr_held_type(node):
-    if isinstance(node, ClassProxy):
-        return 'boost::shared_ptr< ' + node.globalname + ' >'
-    elif isinstance(node, BoostPythonExportFileProxy):
-        return '#include <boost/shared_ptr.hpp>'
-    else:
-        raise TypeError('\'node\' parameter')
 
 def boost_python_visitor(node):
     return getattr(node, 'boost_python_export', False)
@@ -145,14 +113,23 @@ def boost_python_export(self):
     else:
         if desugared_type.is_class and not desugared_type.unqualified_type.is_copyable:
             if desugared_type.is_reference and desugared_type.is_const or not desugared_type.is_qualified:
-                return False
+                return getattr(desugared_type.unqualified_type, 'is_smart_pointer', False)
         return desugared_type.unqualified_type.boost_python_export
 
 QualifiedTypeProxy.boost_python_export = property(boost_python_export)
 del boost_python_export
 
 def boost_python_export(self):
-    return self.qualified_type.boost_python_export
+    desugared_type = self.qualified_type.desugared_type
+    if desugared_type.is_pointer_chain or desugared_type.is_rvalue_reference:
+        return False
+    elif desugared_type.is_fundamental_type:
+        return not desugared_type.is_pointer
+    else:
+        if desugared_type.is_class and not desugared_type.unqualified_type.is_copyable:
+            if desugared_type.is_reference and desugared_type.is_const or not desugared_type.is_qualified:
+                return False
+        return desugared_type.unqualified_type.boost_python_export
 
 ParameterProxy.boost_python_export = property(boost_python_export)
 del boost_python_export
@@ -172,6 +149,7 @@ def get_boost_python_export(self):
 def set_boost_python_export(self, boost_python_export):
     if not self._valid_boost_python_export and boost_python_export:
         raise ValueError('\'boost_python_export\' cannot be set to another value than \'False\'')
+        # warnings.warn('\'boost_python_export\' cannot be set to another value than \'False\'', UserWarning)
     if isinstance(boost_python_export, basestring):
         boost_python_export = self._asg[boost_python_export]
     if isinstance(boost_python_export, BoostPythonExportFileProxy):
@@ -215,20 +193,26 @@ ClassProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
 
 def _default_boost_python_export(self):
-    return not self.localname.startswith('_') and not self.is_smart_pointer
+    return not self.localname.startswith('_')
 
 ClassTemplateProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
 
 def _default_boost_python_export(self):
-    return self.specialize is None and not self.is_smart_pointer or self.specialize.boost_python_export
+    return self.specialize is None or self.specialize.boost_python_export
 
 ClassTemplateSpecializationProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
 
 def _default_boost_python_export(self):
-    qualified_type = self.qualified_type
-    return not qualified_type.is_reference and qualified_type.boost_python_export
+    desugared_type = self.qualified_type.desugared_type
+    if desugared_type.is_pointer or desugared_type.is_reference:
+        return False
+    else:
+        if desugared_type.is_class and not desugared_type.unqualified_type.is_copyable:
+            if desugared_type.is_reference and desugared_type.is_const or not desugared_type.is_qualified:
+                return False
+        return desugared_type.unqualified_type.boost_python_export
 
 VariableProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
@@ -237,8 +221,14 @@ def _default_boost_python_export(self):
     if self.is_bit_field:
         return False
     else:
-        qualified_type = self.qualified_type
-        return not qualified_type.is_reference and qualified_type.boost_python_export
+        desugared_type = self.qualified_type.desugared_type
+        if desugared_type.is_pointer or desugared_type.is_reference:
+            return False
+        else:
+            if desugared_type.is_class and not desugared_type.unqualified_type.is_copyable:
+                if desugared_type.is_reference and desugared_type.is_const or not desugared_type.is_qualified:
+                    return False
+            return desugared_type.unqualified_type.boost_python_export
 
 FieldProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
@@ -361,11 +351,15 @@ class BoostPythonExportFileProxy(FileProxy):
             module._exports.remove(self._node)
         self._asg._nodes[self._node].pop('_module', None)
 
+    def edit(self, line):
+        pass
+
 class BoostPythonExportBasicFileProxy(BoostPythonExportFileProxy):
 
     language = 'c++'
 
     HEADER = Template(text=r"""\
+#include <type_traits>
 #include <boost/python.hpp>\
 % for header in headers:
 
@@ -377,48 +371,42 @@ extern "C" {
 
 }\
     % endif
-% endfor
-% for error in errors:
+% endfor""")
 
-PyObject* error_type_${error.hash} = 0;
-
-void translate_error_${error.hash}(${error.globalname} const & error)
-{ PyErr_SetString(error_type_${error.hash}, error.what()); }
-% endfor
-""")
+    HELDTYPE = "namespace autowig { template<class T> using HeldType = std::shared_ptr< T >; }"
 
     SCOPE = Template(text=r"""\
 % for scope in scopes:
 
-        std::string ${node_rename(scope, scope=True) + '_' + scope.hash}_name = boost::python::extract< std::string >(boost::python::scope().attr("__name__") + ".${node_rename(scope, scope=True)}");
-        boost::python::object ${node_rename(scope, scope=True) + '_' + scope.hash}_module(boost::python::handle<  >(boost::python::borrowed(PyImport_AddModule(${node_rename(scope, scope=True) + '_' + scope.hash}_name.c_str()))));
-        boost::python::scope().attr("${node_rename(scope, scope=True)}") = ${node_rename(scope, scope=True) + '_' + scope.hash}_module;
-        boost::python::scope ${node_rename(scope, scope=True) + '_' + scope.hash}_scope = ${node_rename(scope, scope=True) + '_' + scope.hash}_module;\
+    std::string name_${scope.hash} = boost::python::extract< std::string >(boost::python::scope().attr("__name__") + ".${node_rename(scope, scope=True)}");
+    boost::python::object module_${scope.hash}(boost::python::handle<  >(boost::python::borrowed(PyImport_AddModule(name_${scope.hash}.c_str()))));
+    boost::python::scope().attr("${node_rename(scope, scope=True)}") = module_${scope.hash};
+    boost::python::scope scope_${scope.hash} = module_${scope.hash};\
 % endfor""")
 
     ENUMERATOR = Template(text="""\
-        boost::python::scope().attr("${node_rename(enumerator)}") = (int)(${enumerator.globalname});\
+    boost::python::scope().attr("${node_rename(enumerator)}") = (int)(${enumerator.globalname});\
 """)
 
     ENUMERATION = Template(text=r"""\
-        boost::python::enum_< ${enumeration.globalname} >("${node_rename(enumeration)}")\
+    boost::python::enum_< ${enumeration.globalname} >("${node_rename(enumeration)}")\
     % for enumerator in enumeration.enumerators:
         % if enumerator.boost_python_export:
 
-            .value("${node_rename(enumerator)}", ${enumerator.globalname})\
+        .value("${node_rename(enumerator)}", ${enumerator.globalname})\
         % endif
     % endfor
 ;""")
 
     VARIABLE = Template(text="""\
-        boost::python::scope().attr("${node_rename(variable)}", "${documenter(variable)}") = ${variable.globalname};\
+    boost::python::scope().attr("${node_rename(variable)}", "${documenter(variable)}") = ${variable.globalname};\
 """)
 
     FUNCTION = Template(text=r"""\
     % if function.is_overloaded:
-        ${function.return_type.globalname} (*function_pointer_${function.hash})(${", ".join(parameter.qualified_type.globalname for parameter in function.parameters)}) = ${function.globalname};
+    ${function.return_type.globalname} (*function_pointer_${function.hash})(${", ".join(parameter.qualified_type.globalname for parameter in function.parameters)}) = ${function.globalname};
     % endif
-        boost::python::def("${node_rename(function)}", \
+    boost::python::def("${node_rename(function)}", \
     % if function.is_overloaded:
 function_pointer_${function.hash}\
     % else:
@@ -429,11 +417,20 @@ ${function.globalname}\
     % endif
 , "${documenter(function)}");""")
 
+    ERROR = Template(text=r"""\
+    std::string name_${error.hash} = boost::python::extract< std::string >(boost::python::scope().attr("__name__"));
+    name_${error.hash} = name_${error.hash} + "." + "${node_rename(error)}";
+    PyObject* type_${error.hash} = PyErr_NewException(strdup(name_${error.hash}.c_str()), PyExc_RuntimeError, NULL);
+    boost::python::scope().attr("${node_rename(error)}") = boost::python::object(boost::python::handle<>(boost::python::borrowed(type_${error.hash})));
+
+    auto translate_${error.hash} = [](${error.globalname} const & error)
+    { PyErr_SetString(type_${error.hash}, error.what()); }
+    boost::python::register_exception_translator< ${error.globalname} >(&translate_${error.hash});""")
+
     CLASS = Template(text=r"""\
-% if not cls.is_error:
-    % for method in cls.methods():
-        % if method.boost_python_export and method.access == 'public' and method.is_overloaded:
-        ${method.return_type.globalname} (\
+    % for method in cls.methods(access='public'):
+        % if method.boost_python_export and method.is_overloaded:
+    ${method.return_type.globalname} (\
             % if not method.is_static:
 ${method.parent.globalname.replace('class ', '').replace('struct ', '').replace('union ', '')}::\
             % endif
@@ -448,36 +445,24 @@ ${method.parent.globalname.replace('class ', '').replace('struct ', '').replace(
 ${method.globalname};
         % endif
     % endfor
-    % if cls.is_error:
-        boost::python::scope class_${cls.hash} = \
-    % else:
-        \
-    % endif
-boost::python::class_< ${cls.globalname}, \
-    % if held_type(cls):
-${held_type(cls)}\
-    % else:
-${cls.globalname} *\
-    % endif
-    % if any(base.access == 'public' for base in cls.bases() if base.access == 'public' and base.boost_python_export):
-, boost::python::bases< ${", ".join(base.globalname for base in cls.bases() if base.access == 'public' and base.boost_python_export)} >\
+    boost::python::class_< ${cls.globalname}, autowig::HeldType< ${cls.globalname} >\
+    % if any(base for base in cls.bases(access='public') if base.boost_python_export):
+, boost::python::bases< ${", ".join(base.globalname for base in cls.bases(access='public') if base.boost_python_export)} >\
     % endif
     % if not cls.is_copyable or cls.is_abstract:
 , boost::noncopyable\
     % endif
- >("${node_rename(cls)}", "${documenter(cls)}", boost::python::no_init)\
+ > class_${cls.hash}("${node_rename(cls)}", "${documenter(cls)}", boost::python::no_init);
     % if cls.is_copyable and not cls.is_abstract:
-        % for constructor in cls.constructors:
-            % if constructor.access == 'public' and constructor.boost_python_export:
-
-            .def(boost::python::init< ${", ".join(parameter.qualified_type.globalname for parameter in constructor.parameters)} >("${documenter(constructor)}"))\
+        % for constructor in cls.constructors(access = 'public'):
+            % if constructor.boost_python_export:
+    class_${cls.hash}.def(boost::python::init< ${", ".join(parameter.qualified_type.globalname for parameter in constructor.parameters)} >("${documenter(constructor)}"));
             % endif
         % endfor
     % endif
-    % for method in cls.methods():
-        % if method.access == 'public' and method.boost_python_export:
-
-            .def("${node_rename(method)}", \
+    % for method in cls.methods(access = 'public'):
+        % if method.boost_python_export:
+    class_${cls.hash}.def("${node_rename(method)}", \
                 % if method.is_overloaded:
 method_pointer_${method.hash}, \
                 % else:
@@ -486,46 +471,37 @@ method_pointer_${method.hash}, \
                 % if call_policy(method):
 ${call_policy(method)}, \
                 % endif
-"${documenter(method)}")\
+"${documenter(method)}");
         % endif
     % endfor
     % for methodname in set([node_rename(method) for method in cls.methods() if method.access == 'public' and method.is_static and method.boost_python_export]):
-
-            .staticmethod("${methodname}")\
+    class_${cls.hash}.staticmethod("${methodname}");
     % endfor
-    % for field in cls.fields():
-        % if field.access == 'public' and field.boost_python_export:
+    % for field in cls.fields(access = 'public'):
+        % if field.boost_python_export:
             % if field.qualified_type.is_const:
-
-            .def_readonly\
+    class_${cls.hash}.def_readonly\
             % else:
-
-            .def_readwrite\
+    class_${cls.hash}.def_readwrite\
             % endif
 ("${node_rename(field)}", \
             % if not field.is_static:
 &\
             % endif
-${field.globalname}, "${documenter(field)}")\
+${field.globalname}, "${documenter(field)}");
         % endif
     % endfor
-;\
-    % if held_type(cls):
-        % for bse in cls.bases():
-            % if bse.access == 'public' and bse.boost_python_export and held_type(bse):
+    %if any(base for base in cls.bases(access='public') if base.boost_python_export):
 
-        boost::python::implicitly_convertible< ${held_type(cls)}, ${held_type(bse)} >();\
+    if(std::is_class< autowig::HeldType< ${cls.globalname} > >::value)
+    {
+        % for bse in cls.bases(access='public'):
+            % if bse.boost_python_export:
+        boost::python::implicitly_convertible< autowig::HeldType< ${cls.globalname} >, autowig::HeldType< ${bse.globalname} > >();
             % endif
         % endfor
-    % endif
-% else:
-      std::string error_name_${cls.hash} = boost::python::extract< std::string >(boost::python::scope().attr("__name__"));
-      error_name_${cls.hash} = error_name_${cls.hash} + "." + "${node_rename(cls)}";
-      error_type_${cls.hash} = PyErr_NewException(strdup(error_name_${cls.hash}.c_str()), PyExc_RuntimeError, NULL);
-      boost::python::scope().attr("${node_rename(cls)}") = boost::python::object(boost::python::handle<>(boost::python::borrowed(error_type_${cls.hash})));
-
-      boost::python::register_exception_translator< ${cls.globalname} >(&translate_error_${cls.hash});
-%endif""")
+    }
+    % endif""")
 
     @property
     def is_empty(self):
@@ -586,11 +562,15 @@ ${field.globalname}, "${documenter(field)}")\
                         documenter = documenter,
                         call_policy = boost_python_call_policy)
             elif isinstance(arg, ClassProxy):
-                content += '\n' + self.CLASS.render(cls = arg,
-                        node_rename = node_rename,
-                        documenter = documenter,
-                        held_type = boost_python_held_type,
-                        call_policy = boost_python_call_policy)
+                if arg.is_error:
+                    content += '\n' + self.ERROR.render(error = arg,
+                            node_rename = node_rename,
+                            documenter = documenter)
+                else:
+                    content += '\n' + self.CLASS.render(cls = arg,
+                            node_rename = node_rename,
+                            documenter = documenter,
+                            call_policy = boost_python_call_policy)
             elif isinstance(arg, TypedefProxy):
                 continue
             else:
@@ -598,9 +578,89 @@ ${field.globalname}, "${documenter(field)}")\
         content += '\n}'
         return content
 
+    def _feedback(self, row):
+        if row is None:
+            return '\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False" for declaration in self.declarations if isinstance(declaration, ClassProxy))
+        if row <= 0:
+            raise ValueError()
+        if not self.on_disk:
+            raise ValueError()
+        with open(self.globalname, 'r') as filehandler:
+            lines = filehandler.readlines()
+            if not row == len(lines):
+                row = row - 1
+                line = lines[row]
+                parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', line)
+                if parsed:
+                    return "asg['" + parsed["globalname"] + "'].is_copyable = False"
+                else:
+                    while row > 0 and parsed is None:
+                        row = row - 1
+                        parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', lines[row])
+                    while row < len(lines) and parsed is None:
+                        row = row + 1
+                        parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', lines[row])
+                    if parsed:
+                        node = self._asg[parsed["globalname"]]
+                        parsed = parse.parse('    class_{hash}.def(boost::python::init< {parameters} >({documentation}));', line)
+                        if parsed:
+                            parameters = parsed['parameters']
+                            return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype == '" + node.localname + "(" + parameters + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak"
+                        else:
+                            parsed = parse.parse('    class_{hash}.def{what}({python}, {cpp}, {documentation});', line)
+                            if parsed:
+                                if parsed['what'] == '':
+                                    if parsed['cpp'].startswith('method_pointer_'):
+                                        pointer = parsed['cpp']
+                                        parsed = None
+                                        while row > 0 and parsed is None:
+                                            row = row - 1
+                                            parsed = parse.parse('    {return_type} (::{scope}::*'+ pointer + ')({parameters}){cv}= {globalname};', lines[row])
+                                            if not parsed:
+                                                parsed = parse.parse('    {return_type} (::{scope}::*'+ pointer + ')(){cv}= {globalname};', lines[row])
+                                        if parsed:
+                                            return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak"
+                                        else:
+                                            return ""
+                                    else:
+                                        localname = parsed["cpp"].split('::')[-1]
+                                        return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.localname == '" + localname + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak"
+                                else:
+                                    return "asg['" + parsed['cpp'].lstrip('&') + "'].boost_python_export = False"
+                            else:
+                                parsed = parse.parse('    {return_type} ({pointer})({parameters}){cv}= {globalname};', line)
+                                if not parsed:
+                                    parsed = parse.parse('    {return_type} ({pointer})(){cv}= {globalname};', line)
+                                if parsed:
+                                    localname = parsed["globalname"].split('::')[-1]
+                                    return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak"
+                                else:
+                                    return ""
+
+                    else:
+                        return ""
+
+
+
+
+
 class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
 
-    MAPPING = {"class ::std::vector" : Template(r"""\
+    TO = {
+            "class ::std::unique_ptr" : Template(r"""\
+    struct unique_ptr_${cls.hash}_to_python
+    {
+        static PyObject* convert(${cls.globalname} const & unique_ptr_${cls.hash})
+        {
+            std::shared_ptr< ${cls.templates[0].globalname} > shared_ptr_${cls.hash}(std::move(const_cast< ${cls.globalname} & >(unique_ptr_${cls.hash})));
+            return boost::python::incref(boost::python::object(shared_ptr_${cls.hash}).ptr());
+        }
+    };
+
+    boost::python::to_python_converter< ${cls.globalname}, unique_ptr_${cls.hash}_to_python >();""") }
+
+    FROM = {
+            "class ::std::vector" : Template(r"""\
     struct vector_${cls.hash}_from_python
     {
         vector_${cls.hash}_from_python()
@@ -675,12 +735,13 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
 
     set_${cls.hash}_from_python();""")}
 
+    IGNORE = {"class ::std::shared_ptr", "class ::std::unique_ptr"}
+
     def get_content(self):
         content = self.HEADER.render(headers = self._asg.includes(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
-        content += '\n\nvoid ' + self.prefix + '()\n{\n'
-        content += self.SCOPE.render(scopes = self.scopes,
-                node_rename = node_rename,
-                documenter = documenter)
+        if any(declaration for declaration in self.declarations if isinstance(declaration, ClassProxy)):
+            content += '\n\n' + self.HELDTYPE
+        content += '\n\nvoid ' + self.prefix + '()\n{\n' + self.SCOPE.render(scopes = self.scopes, node_rename = node_rename, documenter = documenter)
         for arg in self.declarations:
             if isinstance(arg, EnumeratorProxy):
                 content += '\n' + self.ENUMERATOR.render(enumerator = arg,
@@ -699,16 +760,40 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                         node_rename = node_rename,
                         documenter = documenter,
                         call_policy = boost_python_call_policy)
+            elif isinstance(arg, ClassTemplateSpecializationProxy):
+                if not arg.globalname in self.IGNORE and not arg.specialize.globalname in self.IGNORE:
+                    if arg.is_error:
+                        content += '\n' + self.ERROR.render(error = arg,
+                                node_rename = node_rename,
+                                documenter = documenter)
+                    else:
+                        content += '\n' + self.CLASS.render(cls = arg,
+                                node_rename = node_rename,
+                                documenter = documenter,
+                                call_policy = boost_python_call_policy)
+                if arg.specialize.globalname in self.TO:
+                    content += '\n' + self.TO[arg.specialize.globalname].render(cls = arg)
+                elif arg.globalname in self.TO:
+                    content += '\n' + self.TO[arg.globalname].render(cls = arg)
+                if arg.specialize.globalname in self.FROM:
+                    content += '\n' + self.FROM[arg.specialize.globalname].render(cls = arg)
+                elif arg.globalname in self.FROM:
+                    content += '\n' + self.FROM[arg.globalname].render(cls = arg)
             elif isinstance(arg, ClassProxy):
-                content += '\n' + self.CLASS.render(cls = arg,
-                        node_rename = node_rename,
-                        documenter = documenter,
-                        held_type = boost_python_held_type,
-                        call_policy = boost_python_call_policy)
-                if arg.globalname in self.MAPPING:
-                    content += '\n' + self.MAPPING[arg.globalname].render(cls = arg)
-                elif isinstance(arg, ClassTemplateSpecializationProxy) and arg.specialize.globalname in self.MAPPING:
-                    content += '\n' + self.MAPPING[arg.specialize.globalname].render(cls = arg)
+                if not arg.globalname in self.IGNORE:
+                    if arg.is_error:
+                        content += '\n' + self.ERROR.render(error = arg,
+                                node_rename = node_rename,
+                                documenter = documenter)
+                    else:
+                        content += '\n' + self.CLASS.render(cls = arg,
+                                node_rename = node_rename,
+                                documenter = documenter,
+                                call_policy = boost_python_call_policy)
+                if arg.globalname in self.TO:
+                    content += '\n' + self.TO[arg.globalname].render(cls = arg)
+                if arg.globalname in self.FROM:
+                    content += '\n' + self.FROM[arg.globalname].render(cls = arg)
             elif isinstance(arg, TypedefProxy):
                 continue
             else:
@@ -961,7 +1046,7 @@ BoostPythonDecoratorDefaultFileProxy._content = property(BoostPythonDecoratorDef
 boost_python_decorator = ProxyManager('autowig.boost_python_decorator', BoostPythonDecoratorFileProxy, brief="",
         details="")
 
-def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, pattern='.*', closure=True, prefix=None):
+def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, closure=True, prefix=None):
     """
     """
     if module in asg:
@@ -972,6 +1057,12 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, pa
     suffix = module.suffix
     if prefix is None:
         prefix = 'export_'
+
+    if closure:
+        plugin = visitor.plugin
+        visitor.plugin = 'boost_python'
+        nodes += asg.dependencies(*nodes)
+        visitor.plugin = plugin
 
     exports = set()
     for node in nodes:
@@ -990,14 +1081,6 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, pa
     exports = [asg[export] for export in exports]
     for export in exports:
         export.module = module
-
-    if closure:
-        closure = boost_python_closure_generator(asg,
-                module=module,
-                decorator=None,
-                prefix=prefix)
-        closure.pop(0)
-        exports.extend(closure)
 
     if decorator:
         if decorator in asg:
@@ -1019,96 +1102,3 @@ def boost_python_internal_generator(asg, pattern=None, **kwargs):
     """
     """
     return boost_python_generator(asg, [node for node in asg.declarations(pattern=pattern) if not getattr(node.header, 'is_external_dependency', True)], **kwargs)
-
-def boost_python_closure_generator(asg, **kwargs):
-    """
-    """
-    plugin = visitor.plugin
-    visitor.plugin = 'boost_python'
-    nodes = [node for node in asg.declarations() if isinstance(getattr(node, '_boost_python_export', None), basestring)]
-    visitor.plugin = 'boost_python'
-    nodes = asg.dependencies(*nodes)
-    wrappers = boost_python_generator(asg, nodes, closure=False, **kwargs)
-    visitor.plugin = plugin
-    return wrappers
-    #nodes = []
-    #forbidden = set()
-    #for node in asg.nodes():
-    #    if hasattr(node, 'boost_python_export'):
-    #        if node.boost_python_export and not node.boost_python_export is True:
-    #            nodes.append(node)
-    #        elif not node.boost_python_export:
-    #            target = node
-    #            while isinstance(target, ClassTemplateSpecializationProxy) and target.is_smart_pointer:
-    #                target = target.templates[0].target
-    #            if not target.boost_python_export:
-    #                if not isinstance(target, FundamentalTypeProxy):
-    #                    forbidden.add(node._node)
-    #        elif not isinstance(node, (NamespaceProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)):
-    #            if not isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy)):
-    #                if isinstance(node, EnumeratorProxy):
-    #                    if not isinstance(node.parent, EnumerationProxy):
-    #                        node.boost_python_export = False
-    #                else:
-    #                    node.boost_python_export = False
-    #            elif not node.access == 'public':
-    #                node.boost_python_export = False
-    #while len(nodes) > 0:
-    #    node = nodes.pop()
-    #    if not node._node in forbidden and not isinstance(node, FundamentalTypeProxy):
-    #        if not node.boost_python_export:
-    #            node.boost_python_export = True
-    #        if isinstance(node, (TypedefProxy, VariableProxy)):
-    #            target = node.qualified_type.desugared_type.unqualified_type
-    #            while isinstance(target, ClassTemplateSpecializationProxy) and target.is_smart_pointer:
-    #                target = target.templates[0].target
-    #            if not target._node in forbidden:
-    #                if not target.boost_python_export:
-    #                    nodes.append(target)
-    #            else:
-    #                node.boost_python_export = False
-    #        elif isinstance(node, FunctionProxy):
-    #            return_type = node.return_type.desugared_type.unqualified_type
-    #            while isinstance(return_type, ClassTemplateSpecializationProxy) and return_type.is_smart_pointer:
-    #                return_type = return_type.templates[0].target
-    #            parameters = [parameter.qualified_type.desugared_type.unqualified_type for parameter in node.parameters]
-    #            for index in range(len(parameters)):
-    #                while isinstance(parameters[index], ClassTemplateSpecializationProxy) and parameters[index].is_smart_pointer:
-    #                    parameters[index] = parameters[index].templates[0].target
-    #            if not return_type._node in forbidden and not any([parameter._node in forbidden for parameter in parameters]):
-    #                if not return_type.boost_python_export:
-    #                    nodes.append(return_type)
-    #                for parameter in parameters:
-    #                    if not parameter.boost_python_export:
-    #                        nodes.append(parameter)
-    #            else:
-    #                node.boost_python_export = False
-    #        elif isinstance(node, ConstructorProxy):
-    #            parameters = [parameter.qualified_type.desugared_type.unqualified_type for parameter in node.parameters]
-    #            for index in range(len(parameters)):
-    #                while isinstance(parameters[index], ClassTemplateSpecializationProxy) and parameters[index].is_smart_pointer:
-    #                    parameters[index] = parameters[index].templates[0].target
-    #            if not any([parameter._node in forbidden for parameter in parameters]):
-    #                for parameter in parameters:
-    #                    if not parameter.boost_python_export:
-    #                        nodes.append(parameter)
-    #            else:
-    #                node.boost_python_export = False
-    #        elif isinstance(node, ClassProxy):
-    #            for base in node.bases():
-    #                if not base.boost_python_export and base.access == 'public':
-    #                    nodes.append(base)
-    #            for dcl in node.declarations():
-    #                if dcl.boost_python_export is True and dcl.access == 'public':
-    #                    nodes.append(dcl)
-    #for tdf in asg.typedefs():
-    #    if isinstance(tdf.boost_python_export, bool) and not tdf.boost_python_export:
-    #        if not tdf._node in forbidden and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export:
-    #            tdf.boost_python_export = True
-    #            parent = tdf.parent
-    #            while not parent.boost_python_export:
-    #                parent.boost_python_export = True
-    #                parent = parent.parent
-    #        else:
-    #            tdf.boost_python_export = False
-    #return boost_python_pattern_generator(asg, module=module, decorator=None, pattern='.*', closure=False, prefix=prefix).pop()

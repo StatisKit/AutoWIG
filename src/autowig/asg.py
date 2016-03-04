@@ -296,8 +296,10 @@ class FileProxy(FilesystemProxy):
                 parent = self.parent
                 if not parent.on_disk:
                     parent.makedirs()
-            with open(self.globalname, 'w') as filehandler:
-                filehandler.write(self.content)
+            content = self.content
+            if content:
+                with open(self.globalname, 'w') as filehandler:
+                    filehandler.write(self.content)
 
     @property
     def is_empty(self):
@@ -999,7 +1001,11 @@ class FunctionProxy(DeclarationProxy):
 
     @property
     def signature(self):
-        return self.return_type.desugared_type.globalname + ' ' + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ');'
+        return self.return_type.desugared_type.globalname + ' ' + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
+
+    @property
+    def prototype(self):
+        return self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
 
 class MethodProxy(FunctionProxy):
     """
@@ -1031,6 +1037,11 @@ class MethodProxy(FunctionProxy):
     def signature(self):
         return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ';'
 
+    @property
+    def prototype(self):
+        return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ' volatile' * self.is_volatile
+
+
 class ConstructorProxy(DeclarationProxy):
     """
     """
@@ -1056,6 +1067,10 @@ class ConstructorProxy(DeclarationProxy):
     @property
     def is_virtual(self):
         return self._is_virtual
+
+    @property
+    def prototype(self):
+        return self.parent.localname + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
 
 class DestructorProxy(DeclarationProxy):
     """
@@ -1224,9 +1239,8 @@ class ClassProxy(DeclarationProxy):
             else:
                 return [cls for cls in self.declarations(**kwargs) if isinstance(cls, ClassProxy) and not isinstance(cls, ClassTemplateSpecializationProxy)]
 
-    @property
-    def constructors(self):
-        return [ctr for ctr in self.declarations(inherited=False) if isinstance(ctr, ConstructorProxy)]
+    def constructors(self, **kwargs):
+        return [ctr for ctr in self.declarations(inherited=False, **kwargs) if isinstance(ctr, ConstructorProxy)]
 
     @property
     def destructor(self):
@@ -1654,19 +1668,19 @@ class AbstractSemanticGraph(object):
                 elif isinstance(node, DestructorProxy):
                     continue
                 elif isinstance(node, ClassProxy):
-                    if isinstance(node, ClassTemplateSpecializationProxy):
-                        unqualified_types = [template.desugared_type.unqualified_type for template in node.templates]
-                    else:
-                        unqualified_types = []
-                    if not unqualified_types or all(visitor(unqualified_type) for unqualified_type in unqualified_types):
-                        gray.add(node._node)
-                        white.extend(unqualified_types)
-                        for base in node.bases():
-                            if visitor(base):
-                                white.append(base)
-                        for declaration in node.declarations():
-                            if visitor(declaration):
-                                white.append(declaration)
+                    #if isinstance(node, ClassTemplateSpecializationProxy):
+                    #    unqualified_types = [template.desugared_type.unqualified_type for template in node.templates]
+                    #else:
+                    #    unqualified_types = []
+                    #if not unqualified_types or all(visitor(unqualified_type) for unqualified_type in unqualified_types):
+                    gray.add(node._node)
+                    #    white.extend(unqualified_types)
+                    for base in node.bases():
+                        if visitor(base):
+                            white.append(base)
+                    for declaration in node.declarations():
+                        if visitor(declaration):
+                            white.append(declaration)
                 elif isinstance(node, ClassTemplateProxy):
                     continue
                 elif isinstance(node, NamespaceProxy):

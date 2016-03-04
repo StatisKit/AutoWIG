@@ -1,5 +1,3 @@
-from .controller import *
-
 def default_controller(asg, clean=True, **kwargs):
     """Post-processing step of an AutoWIG front-end
 
@@ -24,7 +22,6 @@ def default_controller(asg, clean=True, **kwargs):
         :func:`autowig.libclang_parser.parser` for an example.
         :func:`compute_overloads`, :func:`discard_forward_declarations` and :func:`resolve_templates` for a more detailed documentatin about AutoWIG front-end post-processing step.
     """
-    resolve_overload(asg)
-    suppress_forward_declarations(asg)
     if clean:
         asg.clean()
+    return asg

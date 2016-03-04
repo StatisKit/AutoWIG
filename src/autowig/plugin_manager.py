@@ -111,6 +111,9 @@ visitor = PluginManager('autowig.visitor', brief="",
 documenter = PluginManager('autowig.documenter', brief="",
         details="""""")
 
+feedback = PluginManager('autowig.feedback', brief="",
+        details="""""")
+
 node_rename = PluginManager('autowig.node_rename', brief="",
         details="")
 

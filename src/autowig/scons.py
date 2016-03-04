@@ -4,7 +4,10 @@
 from pygments import highlight
 from pygments.lexers import BashSessionLexer
 from pygments.formatters import HtmlFormatter
+from path import path
+import os
 import subprocess
+import parse
 
 __all__ = ['scons']
 
@@ -37,11 +40,13 @@ class ShellSession(object):
         return highlight(str(self), self.lexer, HtmlFormatter(full = True))
 
 def scons(directory, *args, **kwargs):
+    if not isinstance(directory, path):
+        directory = path(directory)
+    directory = directory.abspath()
     s = subprocess.Popen(['scons']+[arg for arg in args] , cwd=directory,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = s.communicate()
-    session = ShellSession(out, err, **kwargs)
-    return session
+    return ShellSession(out, err, **kwargs)
 
 def boost_python_emitter(target, source, env):
     if True:#'srcnode' in env:
