@@ -301,6 +301,10 @@ class FileProxy(FilesystemProxy):
                 with open(self.globalname, 'w') as filehandler:
                     filehandler.write(self.content)
 
+    def remove(self):
+        if self.on_disk:
+	    os.remove(self.globalname)
+
     @property
     def is_empty(self):
         """Is the file empty"""

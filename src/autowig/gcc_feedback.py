@@ -53,6 +53,7 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
     code = "\t" * indent + ("\n" + "\t" * indent).join(code for code in code if code)
     if code.isspace():
         code += "pass"
+    code += '\n'
     if tabsize:
         code = code.expandtabs(tabsize)
     if filename:

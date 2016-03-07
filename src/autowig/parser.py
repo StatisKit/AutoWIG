@@ -206,16 +206,40 @@ def update_overload(asg, overload='none', **kwargs):
         free = False
     elif not overload == 'none':
         raise ValueError('\'overload\' parameter')
-    if overload == 'none':
-        for fct in asg.functions(free=None):
-            fct.is_overloaded = True
-    else:
-        for fct in asg.functions(free=free):
-            if not fct.is_overloaded:
-                overloads = fct.overloads
-                if len(overloads) > 1:
-                    for overload in overloads:
-                        overload.is_overloaded = True
+    for fct in asg.functions(free=None):
+        del fct.is_overloaded
+    #if overload == 'none':
+    for fct in asg.functions(free=None):
+        fct.is_overloaded = True
+    #elif free is None:
+    #    for fct in asg.functions(free=None):
+    #        if not fct.is_overloaded:
+    #            overloads = fct.overloads
+    #            if len(overloads) > 1:
+    #                for overload in overloads:
+    #                    overload.is_overloaded = True
+    #            else:
+    #    	    fct.is_overloaded = False
+    #        else:
+    #            fct.is_overloaded = False
+    #elif free:
+    #    for fct in asg.functions(free=None):
+    #        if not fct.is_overloaded and not isinstance(fct, MethodProxy):
+    #            overloads = fct.overloads
+    #            if len(overloads) > 1:
+    #                for overload in overloads:
+    #                    overload.is_overloaded = True
+    #        else:
+    #            fct.is_overloaded = True
+    #else:
+    #    for fct in asg.functions(free=None):
+    #        if not fct.is_overloaded and isinstance(fct, MethodProxy):
+    #            overloads = fct.overloads
+    #            if len(overloads) > 1:
+    #                for overload in overloads:
+    #                    overload.is_overloaded = True
+    #        else:
+    #            fct.is_overloaded = True
 
 def suppress_forward_declaration(asg, **kwargs):
     """

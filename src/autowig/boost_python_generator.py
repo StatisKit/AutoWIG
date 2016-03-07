@@ -580,7 +580,7 @@ ${field.globalname}, "${documenter(field)}");
 
     def _feedback(self, row):
         if row is None:
-            return '\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False" for declaration in self.declarations if isinstance(declaration, ClassProxy))
+            content = '\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False" for declaration in self.declarations if isinstance(declaration, ClassProxy)) + "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n"
         if row <= 0:
             raise ValueError()
         if not self.on_disk:
@@ -592,7 +592,7 @@ ${field.globalname}, "${documenter(field)}");
                 line = lines[row]
                 parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', line)
                 if parsed:
-                    return "asg['" + parsed["globalname"] + "'].is_copyable = False"
+                    return "asg['" + parsed["globalname"] + "'].is_copyable = False\n"
                 else:
                     while row > 0 and parsed is None:
                         row = row - 1
@@ -605,7 +605,7 @@ ${field.globalname}, "${documenter(field)}");
                         parsed = parse.parse('    class_{hash}.def(boost::python::init< {parameters} >({documentation}));', line)
                         if parsed:
                             parameters = parsed['parameters']
-                            return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype == '" + node.localname + "(" + parameters + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak"
+                            return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype == '" + node.localname + "(" + parameters + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak\n"
                         else:
                             parsed = parse.parse('    class_{hash}.def{what}({python}, {cpp}, {documentation});', line)
                             if parsed:
@@ -619,12 +619,12 @@ ${field.globalname}, "${documenter(field)}");
                                             if not parsed:
                                                 parsed = parse.parse('    {return_type} (::{scope}::*'+ pointer + ')(){cv}= {globalname};', lines[row])
                                         if parsed:
-                                            return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak"
+                                            return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
                                         else:
                                             return ""
                                     else:
                                         localname = parsed["cpp"].split('::')[-1]
-                                        return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.localname == '" + localname + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak"
+                                        return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.localname == '" + localname + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
                                 else:
                                     return "asg['" + parsed['cpp'].lstrip('&') + "'].boost_python_export = False"
                             else:
@@ -633,12 +633,13 @@ ${field.globalname}, "${documenter(field)}");
                                     parsed = parse.parse('    {return_type} ({pointer})(){cv}= {globalname};', line)
                                 if parsed:
                                     localname = parsed["globalname"].split('::')[-1]
-                                    return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak"
+                                    return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
                                 else:
                                     return ""
 
                     else:
                         return ""
+        return ""
 
 
 
