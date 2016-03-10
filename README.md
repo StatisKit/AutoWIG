@@ -1,4 +1,6 @@
-# VPlants.AutoWIG
+# AutoWIG
+
+AutoWIG (Automatic Wrapper and Interface Generator) is an automatic wrapper generator for C/C++ libraries written in Python and based on LLVM/Clang. It generates Boost.Python code for C/C++ enumerations, variables, functions, C structures and C++ classes in order to provide Python bindings for C/C++ libraries. The main features of AutoWIG are the automatic construction of Abstract Semantic Graphs (ASGs) in Python from Abstract Syntax Trees (ASTs) given by LLVM/Clang and the versatile generation of Python bindings using the Python Mako templating engine.
 
 ## Documentation
 
