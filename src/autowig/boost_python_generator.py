@@ -54,7 +54,13 @@ def boost_python_default_call_policy(node):
                 return 'boost::python::return_internal_reference<>()'
 
 def boost_python_visitor(node):
-    return getattr(node, 'boost_python_export', False)
+    if getattr(node, 'boost_python_export', False):
+        if isinstance(node, ClassTemplateSpecializationProxy) and node.is_smart_pointer:
+            return node.templates[0].desugared_type.unqualified_type.boost_python_export
+        else:
+            return True
+    else:
+        return False
 
 def caching(asg):
     white = [asg['::']]
@@ -65,13 +71,14 @@ def caching(asg):
             black = [node]
             while len(black) > 0:
                 temp = black.pop()
-                temp.boost_python_export = False
-                if isinstance(temp, NamespaceProxy):
-                    black.extend(temp.declarations())
-                elif isinstance(temp, EnumerationProxy):
-                    black.extend(temp.enumerators)
-                elif isinstance(temp, ClassProxy):
-                    black.extend(temp.declarations())
+                if not getattr(temp, '_boost_python_export', False):
+                    temp.boost_python_export = False
+                    if isinstance(temp, NamespaceProxy):
+                        black.extend(temp.declarations())
+                    elif isinstance(temp, EnumerationProxy):
+                        black.extend(temp.enumerators)
+                    elif isinstance(temp, ClassProxy):
+                        black.extend(temp.declarations())
         else:
             if isinstance(node, NamespaceProxy):
                 node.boost_python_export = export
@@ -104,7 +111,7 @@ def uncaching(asg):
             if not node.boost_python_export == export:
                 asg._nodes[node._node]['_boost_python_export'] = export
 
-def boost_python_export(self):
+def get_boost_python_export(self):
     desugared_type = self.desugared_type
     if desugared_type.is_pointer_chain or desugared_type.is_rvalue_reference:
         return False
@@ -116,10 +123,16 @@ def boost_python_export(self):
                 return getattr(desugared_type.unqualified_type, 'is_smart_pointer', False)
         return desugared_type.unqualified_type.boost_python_export
 
-QualifiedTypeProxy.boost_python_export = property(boost_python_export)
-del boost_python_export
+def set_boost_python_export(self, boost_python_export):
+    self.desugared_type.unqualified_type.boost_python_export = boost_python_export
 
-def boost_python_export(self):
+def del_boost_python_export(self, boost_python_export):
+    del self.desugared_type.unqualified_type.boost_python_export
+
+QualifiedTypeProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
+del get_boost_python_export
+
+def get_boost_python_export(self):
     desugared_type = self.qualified_type.desugared_type
     if desugared_type.is_pointer_chain or desugared_type.is_rvalue_reference:
         return False
@@ -131,8 +144,8 @@ def boost_python_export(self):
                 return False
         return desugared_type.unqualified_type.boost_python_export
 
-ParameterProxy.boost_python_export = property(boost_python_export)
-del boost_python_export
+ParameterProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
+del get_boost_python_export, set_boost_python_export, del_boost_python_export
 
 def get_boost_python_export(self):
     if hasattr(self, '_boost_python_export'):
@@ -155,18 +168,18 @@ def set_boost_python_export(self, boost_python_export):
     if isinstance(boost_python_export, BoostPythonExportFileProxy):
         scope = boost_python_export.scope
         if scope is None or scope == self.parent:
-            del self.boost_python_export
             boost_python_export._declarations.add(self._node)
             boost_python_export = boost_python_export._node
     elif not isinstance(boost_python_export, bool):
         raise TypeError('\'boost_python_export\' parameter must be boolean, a \'' + BoostPythonExportFileProxy.__class__.__name__ + '\' instance or identifer')
+    del self.boost_python_export
     self._asg._nodes[self._node]['_boost_python_export'] = boost_python_export
 
 def del_boost_python_export(self):
     if hasattr(self, '_boost_python_export'):
         boost_python_export = self.boost_python_export
         if isinstance(boost_python_export, BoostPythonExportFileProxy):
-            boost_python_export._declarations.remove(self._node)
+            self._asg._nodes[boost_python_export._node]['_declarations'].remove(self._node)
         self._asg._nodes[self._node].pop('_boost_python_export', boost_python_export)
 
 DeclarationProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
@@ -453,7 +466,7 @@ ${method.globalname};
 , boost::noncopyable\
     % endif
  > class_${cls.hash}("${node_rename(cls)}", "${documenter(cls)}", boost::python::no_init);
-    % if cls.is_copyable and not cls.is_abstract:
+    % if not cls.is_abstract:
         % for constructor in cls.constructors(access = 'public'):
             % if constructor.boost_python_export:
     class_${cls.hash}.def(boost::python::init< ${", ".join(parameter.qualified_type.globalname for parameter in constructor.parameters)} >("${documenter(constructor)}"));
@@ -491,6 +504,9 @@ ${call_policy(method)}, \
 ${field.globalname}, "${documenter(field)}");
         % endif
     % endfor
+    % if cls.is_iterable:
+    class_${cls.hash}.def("__iter__", boost::python::range(&${cls.globalname.replace('class ', '').replace('struct ', '').replace('union ', '')}::begin, &${cls.globalname.replace('class ', '').replace('struct ', '').replace('union ', '')}::end));
+    % endif
     %if any(base for base in cls.bases(access='public') if base.boost_python_export):
 
     if(std::is_class< autowig::HeldType< ${cls.globalname} > >::value)
@@ -580,7 +596,7 @@ ${field.globalname}, "${documenter(field)}");
 
     def _feedback(self, row):
         if row is None:
-            content = '\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False" for declaration in self.declarations if isinstance(declaration, ClassProxy)) + "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n"
+            return '\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False" for declaration in self.declarations if isinstance(declaration, ClassProxy)) + "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n"
         if row <= 0:
             raise ValueError()
         if not self.on_disk:
@@ -603,9 +619,11 @@ ${field.globalname}, "${documenter(field)}");
                     if parsed:
                         node = self._asg[parsed["globalname"]]
                         parsed = parse.parse('    class_{hash}.def(boost::python::init< {parameters} >({documentation}));', line)
+                        if not parsed:
+                            parsed = parse.parse('    class_{hash}.def(boost::python::init<  >({documentation}));', line)
+
                         if parsed:
-                            parameters = parsed['parameters']
-                            return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype == '" + node.localname + "(" + parameters + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak\n"
+                            return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype == '" + node.localname + "(" + parsed.named.get("parameters","") + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak\n"
                         else:
                             parsed = parse.parse('    class_{hash}.def{what}({python}, {cpp}, {documentation});', line)
                             if parsed:

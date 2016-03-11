@@ -1125,6 +1125,26 @@ class ClassProxy(DeclarationProxy):
     def is_derived(self):
         return len(self._asg._base_edges[self._node]) > 0
 
+    @property
+    def is_iterable(self):
+        if not hasattr(self, '_is_iterable'):
+            begin, end = False, False
+            for method in self.methods():
+                if method.localname == 'begin' and method.nb_parameters == 0 and not method.is_static:
+                    begin = True
+                elif  method.localname == 'end' and method.nb_parameters == 0 and not method.is_static:
+                    end = True
+            self.is_iterable = begin and end
+        return self._is_iterable
+
+    @is_iterable.setter
+    def is_iterable(self, is_iterable):
+        self._asg._nodes[self._node]['_is_iterable'] = is_iterable
+
+    @is_iterable.deleter
+    def is_iterable(self):
+        self._asg._nodes[self._node].pop('_is_iterable', None)
+
     def bases(self, inherited=False, access='private'):
         bases = []
         already = set()
@@ -1685,6 +1705,8 @@ class AbstractSemanticGraph(object):
                     for declaration in node.declarations():
                         if visitor(declaration):
                             white.append(declaration)
+                    if isinstance(node, ClassTemplateSpecializationProxy) and node.is_smart_pointer:
+                        white.append(node.templates[0].desugared_type.unqualified_type)
                 elif isinstance(node, ClassTemplateProxy):
                     continue
                 elif isinstance(node, NamespaceProxy):

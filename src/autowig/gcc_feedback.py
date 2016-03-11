@@ -23,8 +23,9 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
     variantdir = str(variantdir.relpath(directory))
     variantdir += os.sep
     wrappers = dict()
+    undefined = set()
     for line in err.splitlines():
-        parsed = parse.parse(variantdir+'{filename}:{row}:{column}:   required from here', line)
+        parsed = parse.parse(variantdir+'{filename}:{row}:{column}:{message}', line)
         if parsed:
             row = int(parsed['row'])
             node = directory + parsed['filename']
@@ -33,18 +34,20 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
                     wrappers[node] = [row]
                 else:
                     wrappers[node].append(row)
-    code = []
     force = kwargs.pop('force', False)
+    code = []
     for wrapper, rows in wrappers.iteritems():
         wrapper = asg[wrapper]
-        if force and len(rows) == 1:
+        if len(rows) == 1:
             row = rows[-1]
-            with open(wrapper.globalname, 'r') as filehandler:
-                lines = filehandler.readlines()
-                if len(lines) == row:
-                    edit = getattr(wrapper, '_feedback', None)
-                    if edit:
+            edit = getattr(wrapper, '_feedback', None)
+            if edit:
+                with open(wrapper.globalname, 'r') as filehandler:
+                    lines = filehandler.readlines()
+                    if len(lines) == row and force:
                         code.extend(edit(None).splitlines())
+                    else:
+                        code.extend(edit(row).splitlines())
         else:
             edit = getattr(wrapper, '_feedback', None)
             if edit:
