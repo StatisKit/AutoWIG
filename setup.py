@@ -128,8 +128,8 @@ setup(
         'autowig.boost_python_decorator': ['default = autowig.boost_python_generator:BoostPythonDecoratorDefaultFileProxy'],
         'autowig.node_rename': ['PEP8 = autowig.node_rename:pep8_node_rename'],
         'autowig.documenter': ['doxygen2sphinx = autowig.doxygen2sphinx:doxygen2sphinx_documenter'],
-        'autowig.node_path' : ['flat = autowig.node_path:flat_node_path',
-            'nested = autowig.node_path:nested_node_path'],
+        'autowig.node_path' : ['scope = autowig.node_path:scope_node_path',
+            'hash = autowig.node_path:hash_node_path'],
         'console_scripts': [],
         # 'gui_scripts': [
         #      'fake_gui = openalea.fakepackage.amodule:gui_script',],

@@ -12,7 +12,7 @@ documenter.plugin = 'doxygen2sphinx'
 controller.plugin = 'default'
 feedback.plugin = 'gcc-5'
 node_rename.plugin = 'PEP8'
-node_path.plugin = 'flat'
+node_path.plugin = 'hash'
 from .boost_python_generator import *
 boost_python_call_policy.plugin = 'default'
 boost_python_export.proxy = 'mapping'

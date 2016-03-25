@@ -12,6 +12,7 @@ from .proxy_manager import ProxyManager
 from .node_rename import PYTHON_OPERATOR
 from .plugin_manager import PluginManager
 from .tools import camel_case_to_lower, to_camel_case, camel_case_to_upper
+from .generator import iterator_range
 
 __all__ = ['boost_python_call_policy', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
 
@@ -260,7 +261,7 @@ def _valid_boost_python_export(self):
         if not isinstance(self.return_type.desugared_type.unqualified_type, ClassProxy):
             return False
     if self.return_type.boost_python_export and all(parameter.boost_python_export for parameter in self.parameters):
-        return not self.localname.startswith('operator')
+        return not self.localname.startswith('operator') or isinstance(self.parent, ClassProxy)
     else:
         return False
 
@@ -403,12 +404,21 @@ extern "C" {
 
     ENUMERATION = Template(text=r"""\
     boost::python::enum_< ${enumeration.globalname} >("${node_rename(enumeration)}")\
-    % for enumerator in enumeration.enumerators:
-        % if enumerator.boost_python_export:
+    % if enumeration.is_scoped:
+        % for enumerator in enumeration.enumerators:
+            % if enumerator.boost_python_export:
 
         .value("${node_rename(enumerator)}", ${enumerator.globalname})\
-        % endif
-    % endfor
+            % endif
+        % endfor
+    % else:
+        % for enumerator in enumeration.enumerators:
+            % if enumerator.boost_python_export:
+
+        .value("${node_rename(enumerator)}", ${enumerator.globalname.replace(enumeration.localname + '::', '')})\
+            % endif
+        % endfor
+    % endif
 ;""")
 
     VARIABLE = Template(text="""\
@@ -458,6 +468,26 @@ ${method.parent.globalname.replace('class ', '').replace('struct ', '').replace(
 ${method.globalname};
         % endif
     % endfor
+    % if any(function.boost_python_export for function in cls.functions()):
+    struct function_group
+    {
+        % for function in cls.functions():
+            % if function.boost_python_export:
+        static ${function.return_type.globalname} function_${function.hash}(${", ".join(parameter.qualified_type.globalname + "parameter_" + str(index) for index, parameter in enumerate(function.parameters))})
+        { \
+            % if not function.return_type.globalname == 'void':
+return \
+            % endif
+            % if function.is_operator:
+${function.localname}\
+            % else:
+${function.globalname}\
+            % endif
+(${', '.join('parameter_' + str(index) for index in range(function.nb_parameters))}); }
+            % endif
+        % endfor
+    };
+    % endif
     boost::python::class_< ${cls.globalname}, autowig::HeldType< ${cls.globalname} >\
     % if any(base for base in cls.bases(access='public') if base.boost_python_export):
 , boost::python::bases< ${", ".join(base.globalname for base in cls.bases(access='public') if base.boost_python_export)} >\
@@ -490,6 +520,15 @@ ${call_policy(method)}, \
     % for methodname in set([node_rename(method) for method in cls.methods() if method.access == 'public' and method.is_static and method.boost_python_export]):
     class_${cls.hash}.staticmethod("${methodname}");
     % endfor
+    % for function in cls.functions():
+        % if function.boost_python_export:
+    class_${cls.hash}.def("${node_rename(function)}", function_group::function_${function.hash}, \
+                % if call_policy(function):
+${call_policy(function)}, \
+                % endif
+"${documenter(function)}");
+        % endif
+    % endfor
     % for field in cls.fields(access = 'public'):
         % if field.boost_python_export:
             % if field.qualified_type.is_const:
@@ -504,9 +543,6 @@ ${call_policy(method)}, \
 ${field.globalname}, "${documenter(field)}");
         % endif
     % endfor
-    % if cls.is_iterable:
-    class_${cls.hash}.def("__iter__", boost::python::range(&${cls.globalname.replace('class ', '').replace('struct ', '').replace('union ', '')}::begin, &${cls.globalname.replace('class ', '').replace('struct ', '').replace('union ', '')}::end));
-    % endif
     %if any(base for base in cls.bases(access='public') if base.boost_python_export):
 
     if(std::is_class< autowig::HeldType< ${cls.globalname} > >::value)
@@ -586,7 +622,8 @@ ${field.globalname}, "${documenter(field)}");
                     content += '\n' + self.CLASS.render(cls = arg,
                             node_rename = node_rename,
                             documenter = documenter,
-                            call_policy = boost_python_call_policy)
+                            call_policy = boost_python_call_policy,
+                            iterator_range = iterator_range)
             elif isinstance(arg, TypedefProxy):
                 continue
             else:
@@ -613,9 +650,10 @@ ${field.globalname}, "${documenter(field)}");
                     while row > 0 and parsed is None:
                         row = row - 1
                         parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', lines[row])
+                    row = row + 1
                     while row < len(lines) and parsed is None:
-                        row = row + 1
                         parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', lines[row])
+                        row = row + 1
                     if parsed:
                         node = self._asg[parsed["globalname"]]
                         parsed = parse.parse('    class_{hash}.def(boost::python::init< {parameters} >({documentation}));', line)
@@ -626,8 +664,10 @@ ${field.globalname}, "${documenter(field)}");
                             return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype == '" + node.localname + "(" + parsed.named.get("parameters","") + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak\n"
                         else:
                             parsed = parse.parse('    class_{hash}.def{what}({python}, {cpp}, {documentation});', line)
+                            if not parsed:
+                                parsed = parse.parse('    class_{hash}.def({python}, {cpp}, {documentation});', line)
                             if parsed:
-                                if parsed['what'] == '':
+                                if not 'what' in parsed.named:
                                     if parsed['cpp'].startswith('method_pointer_'):
                                         pointer = parsed['cpp']
                                         parsed = None
@@ -637,9 +677,22 @@ ${field.globalname}, "${documenter(field)}");
                                             if not parsed:
                                                 parsed = parse.parse('    {return_type} (::{scope}::*'+ pointer + ')(){cv}= {globalname};', lines[row])
                                         if parsed:
+                                            localname = parsed["globalname"].split('::')[-1]
                                             return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
                                         else:
-                                            return ""
+                                            row = row + 1
+                                            while row < len(lines) and parsed is None:
+                                                parsed = parse.parse('    {return_type} (*'+ pointer + ')({parameters}){cv}= {globalname};', lines[row])
+                                                if not parsed:
+                                                    parsed = parse.parse('    {return_type} (*'+ pointer + ')(){cv}= {globalname};', lines[row])
+                                                row = row + 1
+                                            if parsed:
+                                                localname = parsed["globalname"].split('::')[-1]
+                                                return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == 'static " + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
+                                            else:
+                                                return ""
+                                    elif parsed['cpp'].startswith('function_pointer_'):
+                                        return ""
                                     else:
                                         localname = parsed["cpp"].split('::')[-1]
                                         return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.localname == '" + localname + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
@@ -651,7 +704,7 @@ ${field.globalname}, "${documenter(field)}");
                                     parsed = parse.parse('    {return_type} ({pointer})(){cv}= {globalname};', line)
                                 if parsed:
                                     localname = parsed["globalname"].split('::')[-1]
-                                    return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
+                                    return "for method in asg['" + node.globalname + "'].methods(access='public') + asg['" + node.globalname + "'].functions():\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
                                 else:
                                     return ""
 
@@ -789,7 +842,8 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                         content += '\n' + self.CLASS.render(cls = arg,
                                 node_rename = node_rename,
                                 documenter = documenter,
-                                call_policy = boost_python_call_policy)
+                                call_policy = boost_python_call_policy,
+                                iterator_range = iterator_range)
                 if arg.specialize.globalname in self.TO:
                     content += '\n' + self.TO[arg.specialize.globalname].render(cls = arg)
                 elif arg.globalname in self.TO:
@@ -808,7 +862,8 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                         content += '\n' + self.CLASS.render(cls = arg,
                                 node_rename = node_rename,
                                 documenter = documenter,
-                                call_policy = boost_python_call_policy)
+                                call_policy = boost_python_call_policy,
+                                iterator_range = iterator_range)
                 if arg.globalname in self.TO:
                     content += '\n' + self.TO[arg.globalname].render(cls = arg)
                 if arg.globalname in self.FROM:
@@ -1075,7 +1130,7 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, cl
     directory = module.parent
     suffix = module.suffix
     if prefix is None:
-        prefix = 'export_'
+        prefix = ''
 
     if closure:
         plugin = visitor.plugin

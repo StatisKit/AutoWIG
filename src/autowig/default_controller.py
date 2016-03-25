@@ -1,4 +1,4 @@
-def default_controller(asg, clean=True, **kwargs):
+def default_controller(asg, clean=True, operators=False, **kwargs):
     """Post-processing step of an AutoWIG front-end
 
     During this step, three distinct operations are executed:
@@ -24,4 +24,13 @@ def default_controller(asg, clean=True, **kwargs):
     """
     if clean:
         asg.clean()
+    if operators:
+        move_operators(asg)
     return asg
+
+def move_operators(asg):
+    for function in asg.functions(free=True):
+        if function.localname.startswith('operator'):
+            parameter = function.parameters[0].qualified_type.desugared_type
+            if parameter.is_class:
+                function.parent = parameter.unqualified_type

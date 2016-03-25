@@ -495,34 +495,52 @@ class DeclarationProxy(NodeProxy):
     def access(self, access):
         self._access = access
 
-    def get_parent(self):
-        if not self._node == '::':
-	    parentname = self.globalname[:-len(self.localname)-2]
-	    if isinstance(self, EnumerationProxy):
-                if parentname.startswith('enum '):
-		    parentname = parentname[len('enum '):]
-	    elif isinstance(self, (ClassProxy, ClassTemplatePartialSpecializationProxy)):
-	        if parentname.startswith('class '):
-		    parentname = parentname[len('class '):]
-		elif parentname.startswith('struct '):
-		    parentname = parentname[len('struct '):]
-		elif parentname.startswith('union '):
-		    parentname = parentname[len('union '):]
-	    elif isinstance(self, ClassTemplateProxy):
-	        parentname = parentname[len('class '):]
-            if parentname == '':
-                return self._asg['::']
-            else:
-	        for keyword in self._pakwargs:
-	            if keyword + parentname in self._asg:
-	                parent = self._asg[keyword + parentname]
-	                break
-                if isinstance(parent, TypedefProxy):
-	            return parent.qualified_type.desugared_type.unqualified_type
+    @property
+    def parent(self):
+        if not hasattr(self, '_parent'):
+            if not self._node == '::':
+                parentname = self.globalname[:-len(self.localname)-2]
+                if isinstance(self, EnumerationProxy):
+                    if parentname.startswith('enum '):
+                        parentname = parentname[len('enum '):]
+                elif isinstance(self, (ClassProxy, ClassTemplatePartialSpecializationProxy)):
+                    if parentname.startswith('class '):
+                        parentname = parentname[len('class '):]
+                    elif parentname.startswith('struct '):
+                        parentname = parentname[len('struct '):]
+                    elif parentname.startswith('union '):
+                        parentname = parentname[len('union '):]
+                elif isinstance(self, ClassTemplateProxy):
+                    parentname = parentname[len('class '):]
+                if parentname == '':
+                    return self._asg['::']
                 else:
-	            return parent
+                    for keyword in self._pakwargs:
+                        if keyword + parentname in self._asg:
+                            parent = self._asg[keyword + parentname]
+                            break
+                    if isinstance(parent, TypedefProxy):
+                        return parent.qualified_type.desugared_type.unqualified_type
+                    else:
+                        return parent
+        else:
+            return self._asg[self._parent]
 
-DeclarationProxy.parent = property(DeclarationProxy.get_parent)
+    @parent.setter
+    def parent(self, parent):
+        if isinstance(parent, basestring):
+            parent = self._asg[parent]
+        if not isinstance(parent, DeclarationProxy):
+            raise TypeError('\'parent\' parameter')
+        self._asg._syntax_edges[self.parent._node].remove(self._node)
+        self._asg._syntax_edges[parent._node].append(self._node)
+        self._asg._nodes[self._node]['_parent'] = parent._node
+
+    @parent.deleter
+    def parent(self):
+        self._asg._syntax_edges[self.parent._node].remove(self._node)
+        self._asg._nodes[self._node].pop('_parent', None)
+        self._asg._syntax_edges[self.parent._node].append(self._node)
 
 class FundamentalTypeProxy(DeclarationProxy):
     """Abstract semantic graph node proxy for a fundamental type
@@ -867,6 +885,14 @@ class EnumerationProxy(DeclarationProxy):
         return len(self._asg._syntax_edges[self._node]) > 0
 
     @property
+    def is_scoped(self):
+        return self._is_scoped
+
+    @is_scoped.setter
+    def is_scoped(self, is_scoped):
+        self._asg._nodes[self._node]['_is_scoped'] = is_scoped
+
+    @property
     def enumerators(self):
         return [self._asg[node] for node in self._asg._syntax_edges[self._node]]
 
@@ -965,6 +991,9 @@ class FunctionProxy(DeclarationProxy):
         else:
             return ""
 
+    @property
+    def is_operator(self):
+        return self.localname.startswith('operator')
 
     @property
     def return_type(self):
@@ -1126,24 +1155,16 @@ class ClassProxy(DeclarationProxy):
         return len(self._asg._base_edges[self._node]) > 0
 
     @property
-    def is_iterable(self):
-        if not hasattr(self, '_is_iterable'):
-            begin, end = False, False
-            for method in self.methods():
-                if method.localname == 'begin' and method.nb_parameters == 0 and not method.is_static:
-                    begin = True
-                elif  method.localname == 'end' and method.nb_parameters == 0 and not method.is_static:
-                    end = True
-            self.is_iterable = begin and end
-        return self._is_iterable
+    def is_iterator(self):
+        return getattr(self, '_is_iterator', False)
 
-    @is_iterable.setter
-    def is_iterable(self, is_iterable):
-        self._asg._nodes[self._node]['_is_iterable'] = is_iterable
+    @is_iterator.setter
+    def is_iterator(self, is_iterator):
+        self._asg._nodes[self._node]['_is_iterator'] == is_iterator
 
-    @is_iterable.deleter
-    def is_iterable(self):
-        self._asg._nodes[self._node].pop('_is_iterable', None)
+    @is_iterator.deleter
+    def is_iterator(self):
+        self._asg._nodes[self._node].pop('_is_iterator', False)
 
     def bases(self, inherited=False, access='private'):
         bases = []
@@ -1236,6 +1257,9 @@ class ClassProxy(DeclarationProxy):
 
     def fields(self, **kwargs):
         return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, FieldProxy)]
+
+    def functions(self, **kwargs):
+        return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, FunctionProxy) and not isinstance(dcl, MethodProxy)]
 
     def methods(self, **kwargs):
         return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, MethodProxy)]
@@ -1672,9 +1696,11 @@ class AbstractSemanticGraph(object):
                 if isinstance(node, FundamentalTypeProxy):
                     continue
                 elif isinstance(node, EnumeratorProxy):
-                    gray.add(node._node)
-                elif isinstance(node, EnumerationProxy):
+                    if not isinstance(parent, EnumerationProxy):
+                        gray.add(node._node)
                     continue
+                elif isinstance(node, EnumerationProxy):
+                    gray.add(node._node)
                 elif isinstance(node, ClassTemplatePartialSpecializationProxy):
                     continue
                 elif isinstance(node, (VariableProxy, TypedefProxy)):

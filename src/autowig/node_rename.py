@@ -39,7 +39,7 @@ PYTHON_OPERATOR['()'] = '__call__'
 PYTHON_OPERATOR['[]'] = '__getitem__'
 
 def pep8_node_rename(node, scope=False):
-    if isinstance(node, MethodProxy) and node.localname.startswith('operator'):
+    if isinstance(node, FunctionProxy) and node.localname.startswith('operator'):
         return PYTHON_OPERATOR[node.localname.strip('operator').strip()]
     elif isinstance(node, FunctionProxy):
         return camel_case_to_lower(node.localname)
