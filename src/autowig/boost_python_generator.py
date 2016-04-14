@@ -35,16 +35,7 @@ boost_python_call_policy = PluginManager('autowig.boost_python_call_policy', bri
         details="")
 
 def boost_python_default_call_policy(node):
-    if isinstance(node, FunctionProxy):
-        return_type = node.return_type.desugared_type
-        if return_type.is_pointer:
-            return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
-        elif return_type.is_reference:
-            if return_type.is_const or isinstance(return_type.unqualified_type, (FundamentalTypeProxy, EnumerationProxy)):
-                return 'boost::python::return_value_policy< boost::python::return_by_value >()'
-            else:
-                return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
-    elif isinstance(node, MethodProxy):
+    if isinstance(node, MethodProxy):
         return_type = node.return_type.desugared_type
         if return_type.is_pointer:
             return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
@@ -53,6 +44,15 @@ def boost_python_default_call_policy(node):
                 return 'boost::python::return_value_policy< boost::python::return_by_value >()'
             else:
                 return 'boost::python::return_internal_reference<>()'
+    elif isinstance(node, FunctionProxy):
+        return_type = node.return_type.desugared_type
+        if return_type.is_pointer:
+            return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
+        elif return_type.is_reference:
+            if return_type.is_const or isinstance(return_type.unqualified_type, (FundamentalTypeProxy, EnumerationProxy)):
+                return 'boost::python::return_value_policy< boost::python::return_by_value >()'
+            else:
+                return 'boost::python::return_value_policy< boost::python::reference_existing_object >()'
 
 def boost_python_visitor(node):
     if getattr(node, 'boost_python_export', False):
@@ -257,7 +257,7 @@ del _default_boost_python_export
 FunctionProxy._default_boost_python_export = True
 
 def _valid_boost_python_export(self):
-    if boost_python_call_policy(self) in ['boost::python::return_value_policy< boost::python::return_by_value >()', 'boost::python::return_value_policy< boost::python::reference_existing_object >()']:
+    if boost_python_call_policy(self) == 'boost::python::return_value_policy< boost::python::reference_existing_object >()':
         if not isinstance(self.return_type.desugared_type.unqualified_type, ClassProxy):
             return False
     if self.return_type.boost_python_export and all(parameter.boost_python_export for parameter in self.parameters):
@@ -277,7 +277,7 @@ ConstructorProxy._valid_boost_python_export = property(_valid_boost_python_expor
 del _valid_boost_python_export
 
 def _valid_boost_python_export(self):
-    if boost_python_call_policy(self) in ['boost::python::return_value_policy< boost::python::return_by_value >()', 'boost::python::return_value_policy< boost::python::reference_existing_object >()']:
+    if boost_python_call_policy(self) in ['boost::python::return_internal_reference<>()', 'boost::python::return_value_policy< boost::python::reference_existing_object >()']:
         if not isinstance(self.return_type.desugared_type.unqualified_type, ClassProxy):
             return False
     if self.access == 'public' and self.return_type.boost_python_export and all(parameter.boost_python_export for parameter in self.parameters):
@@ -441,16 +441,16 @@ ${function.globalname}\
 , "${documenter(function)}");""")
 
     ERROR = Template(text=r"""\
-    std::string name_${error.hash} = boost::python::extract< std::string >(boost::python::scope().attr("__name__"));
-    name_${error.hash} = name_${error.hash} + "." + "${node_rename(error)}";
-    PyObject* type_${error.hash} = PyErr_NewException(strdup(name_${error.hash}.c_str()), PyExc_RuntimeError, NULL);
-    boost::python::scope().attr("${node_rename(error)}") = boost::python::object(boost::python::handle<>(boost::python::borrowed(type_${error.hash})));
+namespace autowig
+{
+    PyObject* error_${error.hash} = nullptr;
 
-    auto translate_${error.hash} = [](${error.globalname} const & error)
-    { PyErr_SetString(type_${error.hash}, error.what()); }
-    boost::python::register_exception_translator< ${error.globalname} >(&translate_${error.hash});""")
+    void translate_${error.hash}(${error.globalname} const & error)
+    { PyErr_SetString(error_${error.hash}, error.what()); };
+}""")
 
     CLASS = Template(text=r"""\
+% if not cls.is_error:
     % for method in cls.methods(access='public'):
         % if method.boost_python_export and method.is_overloaded:
     ${method.return_type.globalname} (\
@@ -473,7 +473,7 @@ ${method.globalname};
     {
         % for function in cls.functions():
             % if function.boost_python_export:
-        static ${function.return_type.globalname} function_${function.hash}(${", ".join(parameter.qualified_type.globalname + "parameter_" + str(index) for index, parameter in enumerate(function.parameters))})
+        static ${function.return_type.globalname} function_${function.hash}(${", ".join(parameter.qualified_type.globalname + " parameter_" + str(index) for index, parameter in enumerate(function.parameters))})
         { \
             % if not function.return_type.globalname == 'void':
 return \
@@ -553,7 +553,14 @@ ${field.globalname}, "${documenter(field)}");
             % endif
         % endfor
     }
-    % endif""")
+    % endif
+% else:
+    std::string name_${cls.hash} = boost::python::extract< std::string >(boost::python::scope().attr("__name__"));
+    name_${cls.hash} = name_${cls.hash} + "." + "${node_rename(cls)}";
+    autowig::error_${cls.hash} = PyErr_NewException(strdup(name_${cls.hash}.c_str()), PyExc_RuntimeError, NULL);
+    boost::python::scope().attr("${node_rename(cls)}") = boost::python::object(boost::python::handle<>(boost::python::borrowed(autowig::error_${cls.hash})));
+    boost::python::register_exception_translator< ${cls.globalname} >(&autowig::translate_${cls.hash});
+% endif""")
 
     @property
     def is_empty(self):
@@ -591,6 +598,11 @@ ${field.globalname}, "${documenter(field)}");
     @property
     def _content(self):
         content = self.HEADER.render(headers = self._asg.includes(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
+        if any(declaration for declaration in self.declarations if isinstance(declaration, ClassProxy)):
+            content += '\n\n' + self.HELDTYPE
+        for arg in self.declarations:
+            if isinstance(arg, ClassProxy) and arg.is_error:
+                content += '\n\n' + self.ERROR.render(error = arg)
         content += '\n\nvoid ' + self.prefix + '()\n{\n'
         content += self.SCOPE.render(scopes = self.scopes,
                 node_rename = node_rename,
@@ -614,16 +626,11 @@ ${field.globalname}, "${documenter(field)}");
                         documenter = documenter,
                         call_policy = boost_python_call_policy)
             elif isinstance(arg, ClassProxy):
-                if arg.is_error:
-                    content += '\n' + self.ERROR.render(error = arg,
-                            node_rename = node_rename,
-                            documenter = documenter)
-                else:
-                    content += '\n' + self.CLASS.render(cls = arg,
-                            node_rename = node_rename,
-                            documenter = documenter,
-                            call_policy = boost_python_call_policy,
-                            iterator_range = iterator_range)
+                content += '\n' + self.CLASS.render(cls = arg,
+                        node_rename = node_rename,
+                        documenter = documenter,
+                        call_policy = boost_python_call_policy,
+                        iterator_range = iterator_range)
             elif isinstance(arg, TypedefProxy):
                 continue
             else:
@@ -645,7 +652,7 @@ ${field.globalname}, "${documenter(field)}");
                 line = lines[row]
                 parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', line)
                 if parsed:
-                    return "asg['" + parsed["globalname"] + "'].is_copyable = False\n"
+                    return "if asg['" + parsed["globalname"] + "'].is_copyable:\n\tasg['" + parsed["globalname"] + "'].is_copyable = False\nelse:\n\tasg['" + parsed["globalname"] + "'].boost_python_export = False\n\t\n\tif '" + self.globalname + "' in asg:\n\t\tasg['" + self.globalname + "'].remove()\n"
                 else:
                     while row > 0 and parsed is None:
                         row = row - 1
@@ -659,7 +666,6 @@ ${field.globalname}, "${documenter(field)}");
                         parsed = parse.parse('    class_{hash}.def(boost::python::init< {parameters} >({documentation}));', line)
                         if not parsed:
                             parsed = parse.parse('    class_{hash}.def(boost::python::init<  >({documentation}));', line)
-
                         if parsed:
                             return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype == '" + node.localname + "(" + parsed.named.get("parameters","") + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak\n"
                         else:
@@ -813,6 +819,9 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
         content = self.HEADER.render(headers = self._asg.includes(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
         if any(declaration for declaration in self.declarations if isinstance(declaration, ClassProxy)):
             content += '\n\n' + self.HELDTYPE
+        for arg in self.declarations:
+            if isinstance(arg, ClassProxy) and arg.is_error:
+                content += '\n\n' + self.ERROR.render(error = arg)
         content += '\n\nvoid ' + self.prefix + '()\n{\n' + self.SCOPE.render(scopes = self.scopes, node_rename = node_rename, documenter = documenter)
         for arg in self.declarations:
             if isinstance(arg, EnumeratorProxy):
@@ -834,16 +843,11 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                         call_policy = boost_python_call_policy)
             elif isinstance(arg, ClassTemplateSpecializationProxy):
                 if not arg.globalname in self.IGNORE and not arg.specialize.globalname in self.IGNORE:
-                    if arg.is_error:
-                        content += '\n' + self.ERROR.render(error = arg,
-                                node_rename = node_rename,
-                                documenter = documenter)
-                    else:
-                        content += '\n' + self.CLASS.render(cls = arg,
-                                node_rename = node_rename,
-                                documenter = documenter,
-                                call_policy = boost_python_call_policy,
-                                iterator_range = iterator_range)
+                    content += '\n' + self.CLASS.render(cls = arg,
+                            node_rename = node_rename,
+                            documenter = documenter,
+                            call_policy = boost_python_call_policy,
+                            iterator_range = iterator_range)
                 if arg.specialize.globalname in self.TO:
                     content += '\n' + self.TO[arg.specialize.globalname].render(cls = arg)
                 elif arg.globalname in self.TO:
@@ -854,16 +858,11 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                     content += '\n' + self.FROM[arg.globalname].render(cls = arg)
             elif isinstance(arg, ClassProxy):
                 if not arg.globalname in self.IGNORE:
-                    if arg.is_error:
-                        content += '\n' + self.ERROR.render(error = arg,
-                                node_rename = node_rename,
-                                documenter = documenter)
-                    else:
-                        content += '\n' + self.CLASS.render(cls = arg,
-                                node_rename = node_rename,
-                                documenter = documenter,
-                                call_policy = boost_python_call_policy,
-                                iterator_range = iterator_range)
+                    content += '\n' + self.CLASS.render(cls = arg,
+                            node_rename = node_rename,
+                            documenter = documenter,
+                            call_policy = boost_python_call_policy,
+                            iterator_range = iterator_range)
                 if arg.globalname in self.TO:
                     content += '\n' + self.TO[arg.globalname].render(cls = arg)
                 if arg.globalname in self.FROM:
@@ -1045,36 +1044,36 @@ __all__ = []\
 
 % for module in modules:
 
-import ${module.package}._${module.prefix}\
+import ${module.package}\
 % endfor
 """)
 
     SCOPES = Template(text=r"""\
 % for scope in scopes:
 
-${module.package}.${module.modulename}.${".".join(node_rename(ancestor) for ancestor in scope.ancestors[1:])}.${node_rename(scope)} = ${module.package}.${module.modulename}.${".".join(node_rename(ancestor, scope=True) for ancestor in scope.ancestors[1:])}.${node_rename(scope)}\
+${module.package}.${".".join(node_rename(ancestor) for ancestor in scope.ancestors[1:])}.${node_rename(scope)} = ${module.package}.${".".join(node_rename(ancestor, scope=True) for ancestor in scope.ancestors[1:])}.${node_rename(scope)}\
 % endfor
 """)
 
     TEMPLATES = Template(text=r"""\
 % for tpl, spcs in templates:
 
-${module.package}.${module.modulename}.\
+${module.package}.\
     % if len(tpl.ancestors) > 1:
-${".".join(node_rename(ancestor) for ancestor in tpl.ancestors[1:])}.${node_rename(tpl)} = [${", ".join([module.package + "." + module.modulename + "." + ".".join(node_rename(ancestor) for ancestor in spc.ancestors[1:]) + "." + node_rename(spc) for spc in spcs])}]\
+${".".join(node_rename(ancestor) for ancestor in tpl.ancestors[1:])}.${node_rename(tpl)} = [${", ".join([module.package + "." + ".".join(node_rename(ancestor) for ancestor in spc.ancestors[1:]) + "." + node_rename(spc) for spc in spcs])}]\
     % else:
-${node_rename(tpl)} = [${", ".join([module.package + "." + module.modulename + "." + node_rename(spc) for spc in spcs])}]\
+${node_rename(tpl)} = [${", ".join([module.package + "." + node_rename(spc) for spc in spcs])}]\
     % endif
 % endfor""")
 
     TYPEDEFS = Template(text=r"""\
 % for tdf in typedefs:
 
-${module.package}.${module.modulename}.\
+${module.package}.\
     % if len(tdf.ancestors) > 1:
 ${".".join(node_rename(ancestor) for ancestor in tdf.ancestors[1:])}.\
     % endif
-${node_rename(tdf)} = ${tdf.qualified_type.desugared_type.unqualified_type.boost_python_export.module.package}.${tdf.qualified_type.desugared_type.unqualified_type.boost_python_export.module.modulename}.\
+${node_rename(tdf)} = ${tdf.qualified_type.desugared_type.unqualified_type.boost_python_export.module.package}.\
     % if len(tdf.qualified_type.desugared_type.unqualified_type.ancestors) > 1:
 ${".".join(node_rename(ancestor) for ancestor in tdf.qualified_type.desugared_type.unqualified_type.ancestors[1:])}.\
     % endif
@@ -1112,8 +1111,8 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}\
                 elif isinstance(declaration, ClassProxy):
                     typedefs.extend([tdf for tdf in declaration.typedefs() if tdf.boost_python_export and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export and not tdf.qualified_type.desugared_type.unqualified_type.boost_python_export is True])
         content.append(self.TYPEDEFS.render(typedefs = typedefs, module = self.module, node_rename=node_rename))
-        self.content = "\n".join(content)
-        return self._content
+        return "\n".join(content)
+
 
 BoostPythonDecoratorDefaultFileProxy._content = property(BoostPythonDecoratorDefaultFileProxy.get_content)
 
@@ -1166,7 +1165,7 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, cl
     else:
         return [module] + exports
 
-def boost_python_pattern_generator(asg, pattern='.*', **kwargs):
+def boost_python_pattern_generator(asg, pattern=None, **kwargs):
     """
     """
     return boost_python_generator(asg, asg.declarations(pattern=pattern), **kwargs)

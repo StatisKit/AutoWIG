@@ -53,13 +53,16 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
             if edit:
                 for row in rows:
                     code.extend(edit(row).splitlines())
+        code.extend(["wrapper = asg['" + wrapper.globalname + "']", "if wrapper.on_disk:", "\twrapper.write()"])
+    if len(wrappers) > 0:
+        for wrapper in {asg[wrapper].module.globalname for wrapper in wrappers}:
+            code.extend(["wrapper = asg['" + wrapper + "']", "if wrapper.on_disk:", "\twrapper.write()"])
     code = "\t" * indent + ("\n" + "\t" * indent).join(code for code in code if code)
-    if code.isspace():
-        code += "pass"
-    code += '\n'
-    if tabsize:
-        code = code.expandtabs(tabsize)
-    if filename:
-        with open(filename, 'w') as filehandler:
-            filehandler.write(code)
-    return code
+    if not code.isspace():
+        code += '\n'
+        if tabsize:
+            code = code.expandtabs(tabsize)
+        if filename:
+            with open(filename, 'w') as filehandler:
+                filehandler.write(code)
+        return code

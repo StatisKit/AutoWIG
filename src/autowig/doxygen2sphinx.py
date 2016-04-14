@@ -346,3 +346,4 @@ def name_formatter(node):
 def desc_converter(desc):
     desc = pypandoc.convert(desc, to='rst', format='markdown')
     return re.sub(r'\[STRIKEOUT:(\:.*)\:``(.*)``\]', r'\1:`\2`', desc).rstrip().replace(r"\"", "\"").replace("\"", "\\\"")
+

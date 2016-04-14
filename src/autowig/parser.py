@@ -3,6 +3,8 @@
 
 import subprocess
 from path import path
+from tempfile import NamedTemporaryFile
+import os
 
 from .asg import *
 from .tools import subclasses
@@ -40,10 +42,21 @@ def pre_processing(asg, headers, flags, **kwargs):
         :class:`FrontEndFunctor` for a detailed documentation about AutoWIG front-end step.
         :func:`autowig.libclang_parser.parser` for an example.
     """
-    for directory in asg.directories():
-        del directory.is_searchpath
-
     cmd = ' '.join(flag.strip() for flag in flags)
+
+    bootstrapping = kwargs.pop('bootstrapping', False)
+
+    if not bootstrapping:
+        for directory in asg.directories():
+            del directory.is_searchpath
+
+        for header in asg.files(header=True):
+            del header.is_external_dependency
+
+        for flag in flags:
+            if flag.startswith('-I'):
+                includedir = asg.add_directory(flag.strip('-I'))
+                includedir.is_searchpath = True
 
     if '-x c++' in cmd:
         asg._language = 'c++'
@@ -52,35 +65,29 @@ def pre_processing(asg, headers, flags, **kwargs):
     elif '-x c' in cmd:
         asg._language = 'c'
         s = subprocess.Popen(['clang', '-x', 'c', '-v', '-E', '/dev/null'],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
-    if s.returncode:
-        warnings.warn('System includes not computed: clang command failed', Warning)
-    else:
-        out, err = s.communicate()
-        sysincludes = err.splitlines()
-        if '#include <...> search starts here:' not in sysincludes or 'End of search list.' not in sysincludes:
-            warnings.warn('System includes not computed: parsing clang command output failed', Warning)
+
+    if not bootstrapping:
+        if s.returncode:
+            warnings.warn('System includes not computed: clang command failed', Warning)
         else:
-            sysincludes = sysincludes[sysincludes.index('#include <...> search starts here:')+1:sysincludes.index('End of search list.')]
-            #flags.extend(['-I'+str(path(sysinclude.strip()).abspath()) for sysinclude in sysincludes])
-            for sysinclude in sysincludes:
-                includedir = asg.add_directory(str(path(sysinclude.strip()).abspath()))
-                includedir.is_searchpath = True
+            out, err = s.communicate()
+            sysincludes = err.splitlines()
+            if '#include <...> search starts here:' not in sysincludes or 'End of search list.' not in sysincludes:
+                warnings.warn('System includes not computed: parsing clang command output failed', Warning)
+            else:
+                sysincludes = sysincludes[sysincludes.index('#include <...> search starts here:')+1:sysincludes.index('End of search list.')]
+                sysincludes = [str(path(sysinclude.strip()).abspath()) for sysinclude in sysincludes]
+                flags.extend(['-I' + sysinclude for sysinclude in sysincludes if not '-I' + sysinclude in flags])
+                for sysinclude in sysincludes:
+                    asg.add_directory(sysinclude).is_searchpath = True
 
     if not '::' in asg._nodes:
         asg._nodes['::'] = dict(_proxy = NamespaceProxy)
     if not '::' in asg._syntax_edges:
         asg._syntax_edges['::'] = []
-
-    for header in asg.files(header=True):
-        del header.is_external_dependency
-
-    for flag in flags:
-        if flag.startswith('-I'):
-            includedir = asg.add_directory(flag.strip('-I'))
-            includedir.is_searchpath = True
 
     for fundamental in subclasses(FundamentalTypeProxy):
         if hasattr(fundamental, '_node'):
@@ -91,17 +98,19 @@ def pre_processing(asg, headers, flags, **kwargs):
 
     headers = [path(header) if not isinstance(header, path) else header for header in headers]
 
-    for header in headers:
-        header = asg.add_file(header, proxy=HeaderProxy, _language=asg._language)
-        header.is_self_contained = True
-        header.is_external_dependency = False
+    if not bootstrapping:
+        for header in headers:
+            header = asg.add_file(header, proxy=HeaderProxy, _language=asg._language)
+            header.is_self_contained = True
+            header.is_external_dependency = False
 
     return "\n".join('#include "' + str(header.abspath()) + '"' for header in headers)
 
 def post_processing(asg, flags, **kwargs):
-    bootstrap(asg, flags, **kwargs)
-    update_overload(asg, **kwargs)
-    suppress_forward_declaration(asg, **kwargs)
+    if not kwargs.pop('bootstrapping', False):
+        bootstrap(asg, flags, **kwargs)
+        update_overload(asg, **kwargs)
+        suppress_forward_declaration(asg, **kwargs)
 
 def bootstrap(asg, flags, bootstrap=True, maximum=1000, **kwargs):
     if bootstrap:
@@ -173,7 +182,7 @@ def bootstrap(asg, flags, bootstrap=True, maximum=1000, **kwargs):
             gray = list(gray)
             for gray in [gray[index:index+maximum] for index in xrange(0, len(gray), maximum)]:
                 headers = []
-                for header in asg.headers(*[asg[node] for node in gray]):
+                for header in asg.includes(*[asg[node] for node in gray]):
                     headers.append("#include \"" + header.globalname + "\"")
                 headers.append("")
                 headers.append("int main(void)")
@@ -183,9 +192,12 @@ def bootstrap(asg, flags, bootstrap=True, maximum=1000, **kwargs):
                         headers.append("\tsizeof(" + spc + ");")
                 headers.append("\treturn 0;")
                 headers.append("}")
-                header = '\n'.join(headers)
                 forbidden.update(set(gray))
-                parser(asg, header, flags, booststrap=False, **kwargs)
+                header = NamedTemporaryFile(delete=False)
+                header.write('\n'.join(headers))
+                asg = parser(asg, [header.name], flags+["-Wunused-value",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
+                header.close()
+                os.unlink(header.name)
             index += 1
 
 def update_overload(asg, overload='none', **kwargs):

@@ -1676,7 +1676,7 @@ class AbstractSemanticGraph(object):
     #        else:
     #            return include
 
-    def dependencies(self, *nodes):
+    def dependencies(self, *nodes, **kwargs):
         white = []
         for node in nodes:
             if isinstance(node, basestring):
@@ -1685,6 +1685,8 @@ class AbstractSemanticGraph(object):
                 white.append(node)
         black = set()
         gray = set()
+
+        recursive = kwargs.pop('recursive', False)
 
         while len(white) > 0:
             node = white.pop()
@@ -1743,37 +1745,60 @@ class AbstractSemanticGraph(object):
         return [self[node] for node in gray]
 
     def includes(self, *nodes):
+        plugin = visitor.plugin
+        visitor.plugin = 'all'
         headers = []
-        nodes = [self[node] if isinstance(node, basestring) else node for node in nodes]
-        nodes.extend(itertools.chain(*[node.declarations() for node in nodes if isinstance(node, ClassProxy)]))
-        nodes.extend(itertools.chain(*[[node.specialize] + [template.desugared_type.unqualified_type for template in node.templates] for node in nodes if isinstance(node, ClassTemplateSpecializationProxy)]))
-        for node in nodes:
-            if isinstance(node, basestring):
-                node = self[node]
-            if isinstance(node, DeclarationProxy):
-                dependencies = [node]
-                if isinstance(node, ClassTemplatePartialSpecializationProxy):
-                    pass
-                elif isinstance(node, (VariableProxy, TypedefProxy)):
-                    dependencies.append(node.qualified_type.desugared_type.unqualified_type)
-                elif isinstance(node, FunctionProxy):
-                    dependencies.append(node.return_type.unqualified_type)
-                    dependencies.extend([prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters])
-                elif isinstance(node, ConstructorProxy):
-                    dependencies.extend([prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters])
-                elif isinstance(node, ClassProxy):
-                    dependencies.extend(node.bases())
-                for dependency in dependencies:
-                    header = dependency.header
-                    while not header is None and not header.is_self_contained:
-                        header = header.include
-                    if not header is None:
-                        headers.append(header)
-            elif isinstance(node, HeaderProxy):
-                while not node is None and not node.is_self_contained:
-                    node = node.include
-                if not node is None:
-                    headers.append(node)
+        for node in self.dependencies(*nodes):
+            header = node.header
+            while not header is None and not header.is_self_contained:
+                header = header.include
+            if not header is None:
+                headers.append(header)
+        visitor.plugin = plugin
+
+        white = [self[node] if isinstance(node, basestring) else node for node in nodes]
+        while len(white) > 0:
+            node = white.pop()
+            if isinstance(node, FunctionProxy):
+                header = node.header
+                while not header is None and not header.is_self_contained:
+                    header = header.include
+                if not header is None:
+                    headers.append(header)
+            elif isinstance(node, ClassProxy):
+                white.extend(node.functions())
+
+        #nodes = [self[node] if isinstance(node, basestring) else node for node in nodes]
+        ##test = any(node._node == 'class ::std::vector<std::shared_ptr<statiskit::NegativeBinomialDistribution>, std::allocator<std::shared_ptr<statiskit::NegativeBinomialDistribution> > >' for node in nodes)
+        #nodes.extend(itertools.chain(*[node.declarations() for node in nodes if isinstance(node, ClassProxy)]))
+        #nodes.extend(itertools.chain(*[[node.specialize] + [template.desugared_type.unqualified_type for template in node.templates] for node in nodes if isinstance(node, ClassTemplateSpecializationProxy)]))
+        #for node in nodes:
+        #    if isinstance(node, basestring):
+        #        node = self[node]
+        #    if isinstance(node, DeclarationProxy):
+        #        dependencies = [node]
+        #        if isinstance(node, ClassTemplatePartialSpecializationProxy):
+        #            pass
+        #        elif isinstance(node, (VariableProxy, TypedefProxy)):
+        #            dependencies.append(node.qualified_type.desugared_type.unqualified_type)
+        #        elif isinstance(node, FunctionProxy):
+        #            dependencies.append(node.return_type.unqualified_type)
+        #            dependencies.extend([prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters])
+        #        elif isinstance(node, ConstructorProxy):
+        #            dependencies.extend([prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters])
+        #        elif isinstance(node, ClassProxy):
+        #            dependencies.extend(node.bases())
+        #        for dependency in dependencies:
+        #            header = dependency.header
+        #            while not header is None and not header.is_self_contained:
+        #                header = header.include
+        #            if not header is None:
+        #                headers.append(header)
+        #    elif isinstance(node, HeaderProxy):
+        #        while not node is None and not node.is_self_contained:
+        #            node = node.include
+        #        if not node is None:
+        #            headers.append(node)
         #while len(white) > 0:
         #    node = white.pop()
         #    if not node._node in black:
@@ -1814,6 +1839,9 @@ class AbstractSemanticGraph(object):
         #            header = header.include
         #        if not header is None:
         #            headers.append(header)
+        #if test:
+        #    import pdb
+        #    pdb.set_trace()
         headers = {header.globalname for header in headers}
         headers = sorted([self[header] for header in headers], key = lambda header: header.depth)
         _headers = {header.globalname for header in headers if header.depth == 0}
@@ -1855,125 +1883,6 @@ class AbstractSemanticGraph(object):
                         raise KeyError('\'' + node + '\' parameter')
                 else:
                     raise KeyError('\'' + node + '\' parameter')
-
-    def clean(self):
-        """
-        """
-        cleanbuffer = [(node, node._clean) for node in self.nodes() if hasattr(node, '_clean')]
-        temp = []
-        for node in self.nodes():
-            if node.clean:
-                node.clean = True
-            else:
-                temp.append(node)
-        while len(temp) > 0:
-            node = temp.pop()
-            node.clean = False
-            parent = node.parent
-            if not parent is None:
-                if parent.clean:
-                    temp.append(parent)
-                else:
-                    parent.clean = False
-            if hasattr(node, 'header'):
-                header = node.header
-                if not header is None:
-                    if header.clean:
-                        temp.append(header)
-                    else:
-                        header.clean = False
-            if isinstance(node, HeaderProxy):
-                include = node.include
-                if not include is None:
-                    if include.clean:
-                        temp.append(include)
-                    else:
-                        include.clean = False
-            elif isinstance(node, (TypedefProxy, VariableProxy)):
-                target = node.qualified_type.unqualified_type
-                if target.clean:
-                    temp.append(target)
-                else:
-                    target.clean = False
-            elif isinstance(node, EnumerationProxy):
-                for enumerator in node.enumerators:
-                    if enumerator.clean:
-                        temp.append(enumerator)
-                    else:
-                        enumerator.clean = False
-            elif isinstance(node, FunctionProxy):
-                result_type = node.return_type.unqualified_type
-                if result_type.clean:
-                    temp.append(result_type)
-                else:
-                    result_type.clean = False
-                for parameter in node.parameters:
-                    target = parameter.qualified_type.unqualified_type
-                    if target.clean:
-                        temp.append(target)
-                    else:
-                        target.clean = False
-            elif isinstance(node, ConstructorProxy):
-                for parameter in node.parameters:
-                    target = parameter.qualified_type.unqualified_type
-                    if target.clean:
-                        temp.append(target)
-                    else:
-                        target.clean = False
-            elif isinstance(node, ClassProxy):
-                for base in node.bases():
-                    if base.clean:
-                        temp.append(base)
-                    else:
-                        base.clean = False
-                for dcl in node.declarations():
-                    if dcl.clean:
-                        temp.append(dcl)
-                    else:
-                        dcl.clean = False
-                if isinstance(node, ClassTemplateSpecializationProxy):
-                    specialize = node.specialize
-                    if specialize.clean:
-                        temp.append(node.specialize)
-                    else:
-                        specialize.clean = False
-                    for template in node.templates:
-                        target = template.desugared_type.unqualified_type
-                        if target.clean:
-                            temp.append(target)
-                        else:
-                            target.clean = False
-            elif isinstance(node, ClassTemplateProxy):
-                pass
-        for tdf in self.typedefs():
-            if tdf.clean and not tdf.qualified_type.unqualified_type.clean and not tdf.parent.clean:
-                tdf.clean = False
-                include = tdf.header
-                while not include is None:
-                    include.clean = False
-                    include = include.include
-        nodes = [node for node in self.nodes() if node.clean]
-        for node in nodes:
-            if not node._node in ['::', '/']:
-                self._syntax_edges[node.parent._node].remove(node._node)
-                if isinstance(node, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy)):
-                    self._specialization_edges[node.specialize._node].remove(node._node)
-        for node in nodes:
-            self._nodes.pop(node._node)
-            self._include_edges.pop(node._node, None)
-            self._syntax_edges.pop(node._node, None)
-            self._base_edges.pop(node._node, None)
-            self._type_edges.pop(node._node, None)
-            self._parameter_edges.pop(node._node, None)
-            self._specialization_edges.pop(node._node, None)
-        nodes = set([node._node for node in nodes])
-        for node in self.nodes():
-            if isinstance(node, ClassProxy):
-                self._base_edges[node._node] = [base for base in self._base_edges[node._node] if not base['base'] in nodes]
-            del node.clean
-        for node, clean in cleanbuffer:
-            if node._node in self:
-                node.clean = clean
 
 __all__ += [subclass.__name__.rsplit('.', 1).pop() for subclass in subclasses(NodeProxy)]
 __all__ += [subclass.__name__.rsplit('.', 1).pop() for subclass in subclasses(EdgeProxy)]

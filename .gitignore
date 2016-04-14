@@ -1,6 +1,9 @@
 # IPython Notebook
 .ipynb_checkpoints
 
+# Pickle
+*.pkl
+
 # Sphinx
 _build
 _static
