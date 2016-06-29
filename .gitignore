@@ -1,6 +1,9 @@
 # IPython Notebook
 .ipynb_checkpoints
 
+# Pickle
+*.pkl
+
 # Sphinx
 _build
 _static
@@ -16,6 +19,10 @@ xml
 
 # C extensions
 *.so
+*.os
+
+# Test
+test/binomial/_*.cpp
 
 # Python
 *.py[cod]

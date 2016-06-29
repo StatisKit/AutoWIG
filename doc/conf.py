@@ -13,4 +13,12 @@ for key in ['version','project','release', 'name']:
 # by product that need to be updated:
 latex_documents = [('contents', 'main.tex', project + ' documentation', authors, 'manual')]
 
+from recommonmark.parser import CommonMarkParser
+
+source_parsers = {
+    '.md': CommonMarkParser,
+}
+
+source_suffix = ['.rst', '.md']
+
 project = name
