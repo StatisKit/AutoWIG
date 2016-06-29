@@ -19,9 +19,10 @@ else:
 Alias("build", lib)
 
 wrap_env = lib_env.Clone()
-sources = wrap_env.Glob('bar*.cpp')
+sources = wrap_env.Glob('wrapper_*.cpp')
+sources += ["module.cpp"]
 if len(sources) > 0:
-    wrap = wrap_env.LoadableModule('_bar', sources,
+    wrap = wrap_env.LoadableModule('_module', sources,
                                    CPPPATH = [sysconfig.get_python_inc()] + wrap_env['CPPPATH'],
                                    CXXFLAGS= wrap_env['CXXFLAGS'],
                                    CPPDEFINES = ['BOOST_PYTHON_DYNAMIC_LIB'],

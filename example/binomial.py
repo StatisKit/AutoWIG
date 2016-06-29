@@ -3,32 +3,23 @@ autowig.scons('test', '-c')
 
 asg = autowig.AbstractSemanticGraph()
 autowig.parser.plugin = 'pyclanglite'
-autowig.parser(asg, ['./test/binomial/foo.h'], ['-x', 'c++', '-std=c++11'])
-
-from autowig.doxygen2sphinx import doxygen_parser, doxygen2sphinx_documenter
-doxygen_parser(asg.nodes('::BinomialDistribution::set_pi::.*').pop())
-
-doxygen2sphinx_documenter(asg.nodes('::BinomialDistribution::set_pi::.*').pop())
+autowig.parser(asg, ['./test/binomial/binomial.h'], ['-x', 'c++', '-std=c++11'])
 
 autowig.controller.plugin = 'default'
 autowig.controller(asg)
 
-autowig.generator.plugin = 'boost_python'
-autowig.generator(asg,'./test/binomial/bar.cpp',
-                  None, prefix='bar_')
+autowig.generator.plugin = 'boost_python_internal'
+wrappers = autowig.generator(asg, module='./test/binomial/module.cpp',
+        decorator=None,
+        prefix='wrapper_')
 
-module = asg['./test/binomial/bar.cpp']
-module.write()
-for export in module.exports:
-    export.write()
+for wrapper in wrappers:
+    wrapper.write()
 
-autowig.scons('test')
+print autowig.scons('test')
 
 import sys
 import os
-
-from autowig import autowig
-autowig.scons('test')
 
 try:
     from test.binomial import *
@@ -47,17 +38,15 @@ except ImportError:
         os.environ['DYLD_LIBRARY_PATH'] += ':' + libpath
     else:
         os.environ['LD_LIBRARY_PATH'] += ':' + libpath
-
-    python = sys.executable
+    execmd = sys.executable
     argv = sys.argv + [os.environ]
-    os.execle(python, python, *argv)
+    os.execle(execmd, execmd, *argv)
 
 from test.binomial import *
+
 binomial = BinomialDistribution(1, .5)
 binomial.pmf(0)
 binomial.pmf(1)
 binomial.n = 0
 binomial.pmf(0)
 binomial.set_pi(1.1)
-
-print autowig.documenter(asg.nodes('::BinomialDistribution::set_pi::.*').pop(), False)

@@ -1,1 +1,1 @@
-from _bar import *
+from _module import *

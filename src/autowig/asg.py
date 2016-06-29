@@ -38,6 +38,10 @@ class NodeProxy(object):
     _clean_default = True
 
     def __init__(self, asg, node):
+        #from boost_python_generator import BoostPythonExportFileProxy
+        #if node == 'class ::std::fpos< __mbstate_t >' and '_boost_python_export' in asg._nodes[node] and not isinstance(asg._nodes[node]['_boost_python_export'], bool) and not isinstance(asg[asg._nodes[node]['_boost_python_export']], BoostPythonExportFileProxy):
+        #    import ipdb
+        #    ipdb.set_trace()
         self._asg = asg
         self._node = node
 
@@ -457,6 +461,10 @@ class DeclarationProxy(NodeProxy):
             else:
                 return self.parent.header
         else:
+            if not self._header in self._asg:
+                import pdb
+                pdb.set_trace()
+                return None
             return self._asg[self._header]
 
     @property
@@ -515,14 +523,18 @@ class DeclarationProxy(NodeProxy):
                 if parentname == '':
                     return self._asg['::']
                 else:
-                    for keyword in self._pakwargs:
-                        if keyword + parentname in self._asg:
-                            parent = self._asg[keyword + parentname]
-                            break
-                    if isinstance(parent, TypedefProxy):
-                        return parent.qualified_type.desugared_type.unqualified_type
-                    else:
-                        return parent
+                    try:
+                        for keyword in self._pakwargs:
+                            if keyword + parentname in self._asg:
+                                parent = self._asg[keyword + parentname]
+                                break
+                        if isinstance(parent, TypedefProxy):
+                            return parent.qualified_type.desugared_type.unqualified_type
+                        else:
+                            return parent
+                    except:
+                        import pdb
+                        pdb.set_trace()
         else:
             return self._asg[self._parent]
 
@@ -547,6 +559,8 @@ class FundamentalTypeProxy(DeclarationProxy):
 
     .. seealso:: `C++ fundamental types <http://en.cppreference.com/w/cpp/language/types>`
     """
+
+    is_assignable = True
 
     @property
     def globalname(self):
@@ -726,6 +740,8 @@ class VoidTypeProxy(FundamentalTypeProxy):
     """
     """
 
+    is_assignable = False
+
     _node = "::void"
 
 
@@ -764,7 +780,6 @@ class QualifiedTypeProxy(EdgeProxy):
         The unqualified type is the node without qualifiers and without aliases possibly masking some qualifiers
         """
         return self._asg[self._target]
-
 
     @property
     def globalname(self):
@@ -863,7 +878,6 @@ class QualifiedTypeProxy(EdgeProxy):
         else:
             return self.qualifiers.endswith('volatile') or self.qualifiers.endswith('volatile const')
 
-
 class EnumeratorProxy(DeclarationProxy):
     """
 
@@ -878,11 +892,13 @@ class EnumerationProxy(DeclarationProxy):
     .. seealso:: `Enumerations <http://en.cppreference.com/w/cpp/language/enum>`
     """
 
-    _pakwargs = ['', 'class ', 'struct ', 'union ']
+    _pakwargs = ['class ', 'struct ', 'union ', '']
 
     @property
     def is_complete(self):
         return len(self._asg._syntax_edges[self._node]) > 0
+
+    is_assignable = True
 
     @property
     def is_scoped(self):
@@ -909,12 +925,11 @@ class TypedefProxy(DeclarationProxy):
     .. seealso:: `Typedefs <http://en.cppreference.com/w/cpp/language/typedef>`
     """
 
-    _pakwargs = ['', 'class ', 'struct ', 'union ']
+    _pakwargs = ['class ', 'struct ', 'union ', '']
 
     @property
     def qualified_type(self):
         return QualifiedTypeProxy(self._asg, self._node, **self._asg._type_edges[self._node])
-
 
 class VariableProxy(DeclarationProxy):
     """
@@ -937,7 +952,7 @@ class FieldProxy(VariableProxy):
     """
     """
 
-    _pakwargs = ['class ', 'struct ', 'union ']
+    _pakwargs = ['class ', 'struct ', 'union ', '']
 
     @property
     def is_mutable(self):
@@ -950,7 +965,6 @@ class FieldProxy(VariableProxy):
     @property
     def is_static(self):
         return self._is_static
-
 
 class ParameterProxy(EdgeProxy):
     """
@@ -977,6 +991,10 @@ class ParameterProxy(EdgeProxy):
     @property
     def hash(self):
         return str(uuid.uuid5(uuid.NAMESPACE_X500, self.globalname + '::' + str(self._target))).replace('-', '')
+
+    @property
+    def index(self):
+        return self._target
 
 class FunctionProxy(DeclarationProxy):
     """
@@ -1044,7 +1062,7 @@ class MethodProxy(FunctionProxy):
     """
     """
 
-    _pakwargs = ['class ', 'struct ', 'union ']
+    _pakwargs = ['class ', 'struct ', 'union ', '']
 
     @property
     def is_static(self):
@@ -1074,7 +1092,6 @@ class MethodProxy(FunctionProxy):
     def prototype(self):
         return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ' volatile' * self.is_volatile
 
-
 class ConstructorProxy(DeclarationProxy):
     """
     """
@@ -1087,7 +1104,7 @@ class ConstructorProxy(DeclarationProxy):
             return ""
 
 
-    _pakwargs = ['class ', 'struct ', 'union ']
+    _pakwargs = ['class ', 'struct ', 'union ', '']
 
     @property
     def nb_parameters(self):
@@ -1109,6 +1126,8 @@ class DestructorProxy(DeclarationProxy):
     """
     """
 
+    _pakwargs = ['class ', 'struct ', 'union ', '']
+
     @property
     def comment(self):
         if hasattr(self, '_comment'):
@@ -1116,8 +1135,6 @@ class DestructorProxy(DeclarationProxy):
         else:
             return ""
 
-
-    _pakwargs = ['class ', 'struct ', 'union ']
 
     @property
     def is_virtual(self):
@@ -1129,7 +1146,7 @@ class ClassProxy(DeclarationProxy):
     .. see:: `<http://en.cppreference.com/w/cpp/language/class>_`
     """
 
-    _pakwargs = ['', 'class ', 'struct ', 'union ']
+    _pakwargs = ['class ', 'struct ', 'union ', '']
 
     @property
     def comment(self):
@@ -1149,6 +1166,19 @@ class ClassProxy(DeclarationProxy):
     @property
     def is_copyable(self):
         return self._is_copyable
+
+    def get_is_instantiable(self):
+        if hasattr(self, '_is_instantiable'):
+            return self._is_instantiable
+        else:
+            return self.destructor is not None and self.destructor.access == 'public'
+
+    @property
+    def is_assignable(self):
+        for method in self.methods():
+            if method.localname == 'operator=':
+                return method.access == 'public'
+        return any(base.is_assignable for base in self.bases(access='public'))
 
     @property
     def is_derived(self):
@@ -1319,6 +1349,7 @@ class ClassProxy(DeclarationProxy):
     def is_copyable(self, copyable):
         self._asg._nodes[self._node]['_is_copyable'] = copyable
 
+ClassProxy.is_instantiable = property(ClassProxy.get_is_instantiable)
 #class TemplateTypeSpecifiersProxy(TypeSpecifiersProxy):
 #
 #    def __init__(self, asg, source, target):
@@ -1407,7 +1438,7 @@ class ClassTemplateProxy(DeclarationProxy):
     """
     """
 
-    _pakwargs = ['', 'class ', 'struct ', 'union ']
+    _pakwargs = ['class ', 'struct ', 'union ', '']
 
     def specializations(self, partial=None):
         if partial is None:
@@ -1446,7 +1477,7 @@ class ClassTemplatePartialSpecializationProxy(DeclarationProxy, TemplateSpeciali
     """
     """
 
-    _pakwargs = ['', 'class ', 'struct ', 'union ']
+    _pakwargs = ['class ', 'struct ', 'union ', '']
 
 class NamespaceProxy(DeclarationProxy):
     """
@@ -1676,7 +1707,7 @@ class AbstractSemanticGraph(object):
     #        else:
     #            return include
 
-    def dependencies(self, *nodes, **kwargs):
+    def dependencies(self, *nodes):
         white = []
         for node in nodes:
             if isinstance(node, basestring):
@@ -1685,8 +1716,6 @@ class AbstractSemanticGraph(object):
                 white.append(node)
         black = set()
         gray = set()
-
-        recursive = kwargs.pop('recursive', False)
 
         while len(white) > 0:
             node = white.pop()
@@ -1720,21 +1749,19 @@ class AbstractSemanticGraph(object):
                 elif isinstance(node, DestructorProxy):
                     continue
                 elif isinstance(node, ClassProxy):
-                    #if isinstance(node, ClassTemplateSpecializationProxy):
-                    #    unqualified_types = [template.desugared_type.unqualified_type for template in node.templates]
-                    #else:
-                    #    unqualified_types = []
-                    #if not unqualified_types or all(visitor(unqualified_type) for unqualified_type in unqualified_types):
                     gray.add(node._node)
-                    #    white.extend(unqualified_types)
                     for base in node.bases():
                         if visitor(base):
                             white.append(base)
                     for declaration in node.declarations():
                         if visitor(declaration):
                             white.append(declaration)
-                    if isinstance(node, ClassTemplateSpecializationProxy) and node.is_smart_pointer:
-                        white.append(node.templates[0].desugared_type.unqualified_type)
+                    if isinstance(node, ClassTemplateSpecializationProxy):
+                        for template in node.templates:
+                            if visitor(template):
+                                white.append(template.desugared_type.unqualified_type)
+                    #if isinstance(node, ClassTemplateSpecializationProxy) and node.is_smart_pointer:
+                    #    white.append(node.templates[0].desugared_type.unqualified_type)
                 elif isinstance(node, ClassTemplateProxy):
                     continue
                 elif isinstance(node, NamespaceProxy):

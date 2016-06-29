@@ -52,6 +52,7 @@ Cursor.is_copyable_record = is_copyable_record
 del is_copyable_record
 
 def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, cache=None, force=False, **kwargs):
+    warnings.warn('The libclang parser is no more maintened', DeprecationWarning)
     content = preprocessing(asg, filepaths, flags, cache, force)
     if content:
         step = []

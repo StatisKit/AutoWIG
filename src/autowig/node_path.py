@@ -27,12 +27,12 @@ def hash_node_path( node, prefix='', suffix=''):
         raise TypeError('\'node\' parameter is not \'autowig.asg.CodeNodeProxy\' instance but a \'' + node.__class__.__name__ + '\' instance')
     if prefix and not prefix.endswith('_'):
         prefix = prefix + '_'
-    if not isinstance(node, EnumeratorProxy):
-        prefix = prefix + camel_case_to_lower(node.__class__.__name__)
-        prefix = prefix.replace('_proxy', '')
-    else:
-        prefix = prefix + 'enumerators'
+    if isinstance(node, EnumeratorProxy):
         node = node.parent
-    if not prefix.endswith('_'):
-        prefix += '_'
+    #if not isinstance(node, EnumeratorProxy):
+    #    prefix = prefix + camel_case_to_lower(node.__class__.__name__)
+    #    prefix = prefix.replace('_proxy', '')
+    #else:
+    #    prefix = prefix + 'enumerators'
+    #    node = node.parent
     return prefix + node.hash + suffix

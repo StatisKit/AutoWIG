@@ -1,4 +1,21 @@
+from dateutil.relativedelta import relativedelta
+
 __all__ = ['camel_case_to_lower', 'to_camel_case', 'camel_case_to_upper']
+
+def strdiff(seconds):
+    rel = relativedelta(seconds=seconds)
+    fmt = []
+    if rel.years:
+        fmt.append(str(rel.years)+ "y")
+    if rel.years or rel.days:
+        fmt.append(str(rel.days)+ "d")
+    if rel.years or rel.days or rel.hours:
+        fmt.append(str(rel.hours)+ "h")
+    if rel.years or rel.days or rel.hours or rel.minutes:
+        fmt.append(str(rel.minutes)+ "m")
+    if rel.years or rel.days or rel.hours or rel.minutes or rel.seconds:
+        fmt.append(str(rel.seconds)+ "s")
+    return ", ".join(fmt)
 
 def subclasses(cls, recursive=True):
     if recursive:

@@ -27,13 +27,16 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
     for line in err.splitlines():
         parsed = parse.parse(variantdir+'{filename}:{row}:{column}:{message}', line)
         if parsed:
-            row = int(parsed['row'])
-            node = directory + parsed['filename']
-            if node in asg:
-                if not node in wrappers:
-                    wrappers[node] = [row]
-                else:
-                    wrappers[node].append(row)
+            try:
+                row = int(parsed['row'])
+                node = directory + parsed['filename']
+                if node in asg:
+                    if not node in wrappers:
+                        wrappers[node] = [row]
+                    else:
+                        wrappers[node].append(row)
+            except:
+                pass
     force = kwargs.pop('force', False)
     code = []
     for wrapper, rows in wrappers.iteritems():
@@ -53,10 +56,6 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
             if edit:
                 for row in rows:
                     code.extend(edit(row).splitlines())
-        code.extend(["wrapper = asg['" + wrapper.globalname + "']", "if wrapper.on_disk:", "\twrapper.write()"])
-    if len(wrappers) > 0:
-        for wrapper in {asg[wrapper].module.globalname for wrapper in wrappers}:
-            code.extend(["wrapper = asg['" + wrapper + "']", "if wrapper.on_disk:", "\twrapper.write()"])
     code = "\t" * indent + ("\n" + "\t" * indent).join(code for code in code if code)
     if not code.isspace():
         code += '\n'

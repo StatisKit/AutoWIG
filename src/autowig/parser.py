@@ -46,6 +46,9 @@ def pre_processing(asg, headers, flags, **kwargs):
 
     bootstrapping = kwargs.pop('bootstrapping', False)
 
+    if hasattr(asg, '_headers'):
+        delattr(asg, '_headers')
+
     if not bootstrapping:
         for directory in asg.directories():
             del directory.is_searchpath
@@ -111,15 +114,24 @@ def post_processing(asg, flags, **kwargs):
         bootstrap(asg, flags, **kwargs)
         update_overload(asg, **kwargs)
         suppress_forward_declaration(asg, **kwargs)
+    return asg
 
-def bootstrap(asg, flags, bootstrap=True, maximum=1000, **kwargs):
+def bootstrap(asg, flags, **kwargs):
+    if 'env' in kwargs:
+        env = kwargs.get('env')
+        if 'autowig_parser_bootstrap' in env and 'bootstrap' not in kwargs:
+            kwargs['bootstrap'] = env['autowig_parser_bootstrap']
+        if 'autowig_parser_maximum' in env and 'maximum' not in kwargs:
+            kwargs['maximum'] = env['autowig_parser_maximum']
+    bootstrap = kwargs.pop('bootstrap', True)
+    maximum = kwargs.pop('maximum', 1000)
     if bootstrap:
-        index = 0
+        __index = 0
         if isinstance(bootstrap, bool):
             bootstrap = float("Inf")
         nodes = 0
         forbidden = set()
-        while not nodes == len(asg) and index < bootstrap:
+        while not nodes == len(asg) and __index < bootstrap:
             nodes = len(asg)
             white = []
             black = set()
@@ -195,10 +207,23 @@ def bootstrap(asg, flags, bootstrap=True, maximum=1000, **kwargs):
                 forbidden.update(set(gray))
                 header = NamedTemporaryFile(delete=False)
                 header.write('\n'.join(headers))
-                asg = parser(asg, [header.name], flags+["-Wunused-value",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
                 header.close()
+                asg = parser(asg, [header.name], flags +["-Wno-unused-value",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
                 os.unlink(header.name)
-            index += 1
+                asg._syntax_edges[asg[header.name].parent.globalname].remove(header.name)
+                asg._nodes.pop(header.name)
+                asg._include_edges.pop(header.name, None)
+                asg._include_edges = {key : value for key, value in asg._include_edges.iteritems() if not value == header.name}
+                for node in asg.nodes('::main::.*'):
+                    asg._syntax_edges['::'].remove(node._node)
+                    asg._nodes.pop(node._node)
+                    asg._include_edges.pop(node._node, None)
+                    asg._syntax_edges.pop(node._node, None)
+                    asg._base_edges.pop(node._node, None)
+                    asg._type_edges.pop(node._node, None)
+                    asg._parameter_edges.pop(node._node, None)
+                    asg._specialization_edges.pop(node._node, None)
+            __index += 1
 
 def update_overload(asg, overload='none', **kwargs):
     """
@@ -398,7 +423,7 @@ def suppress_forward_declaration(asg, **kwargs):
     for parent, children in asg._syntax_edges.items():
         asg._syntax_edges[parent] = [child for child in children if not child in gray]
     for cls in asg.classes(templated=True, specialized=False):
-        asg._specialization_edges[cls._node] = [spec for spec in asg._specialization_edges[cls._node] if not spec in black]
+        asg._specialization_edges[cls._node] = {spec for spec in asg._specialization_edges[cls._node] if not spec in black}
     for cls in black:
         asg._nodes.pop(cls)
         asg._syntax_edges.pop(cls, None)

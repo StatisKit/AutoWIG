@@ -1,4 +1,4 @@
-#include "foo.h"
+#include "binomial.h"
 #include <boost/math/special_functions/beta.hpp>
 
 ProbabilityError::ProbabilityError()
