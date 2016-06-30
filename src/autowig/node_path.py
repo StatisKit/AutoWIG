@@ -1,5 +1,6 @@
 """
 """
+import uuid
 
 from .tools import camel_case_to_lower
 from .asg import *
@@ -36,3 +37,7 @@ def hash_node_path( node, prefix='', suffix=''):
     #    prefix = prefix + 'enumerators'
     #    node = node.parent
     return prefix + node.hash + suffix
+    #if not isinstance(node, FunctionProxy):
+    #    return prefix + node.hash + suffix
+    #else:
+    #    return prefix + str(uuid.uuid5(uuid.NAMESPACE_X500, self.globalname)).replace('-', '') + suffix
