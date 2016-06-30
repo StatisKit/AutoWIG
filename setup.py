@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 packages = {"" : "src"}
 for package in find_packages("src"):
     packages[package] = ""
-    
+
 setup(
     name="AutoWIG",
     version="0.1.0",
@@ -29,11 +29,6 @@ setup(
     #namespace_packages = [namespace],
     #create_namespaces = False,
     zip_safe= False,
-
-    # Dependencies
-    setup_requires = setup_requires,
-    install_requires = install_requires,
-    dependency_links = dependency_links,
 
     # Eventually include data in your package
     # (flowing is to include all versioned files other than .py)
