@@ -6,56 +6,10 @@ import os
 
 from setuptools import setup, find_packages
 
-
-#The metainfo files must contains
-# version, release, project, name, namespace, pkg_name,
-# description, long_description,
-# authors, authors_email, url and license
-# * version is 1.0.0 and release 1.0
-# * project must be in [openalea, vplants, alinea]
-# * name is the full name (e.g., VPlants.autowig) whereas pkg_name is only 'autowig'
-
-# name will determine the name of the egg, as well as the name of
-# the pakage directory under Python/lib/site-packages). It is also
-# the one to use in setup script of other packages to declare a dependency to this package)
-# (The version number is used by deploy to detect UPDATES)
-
-
-# Packages list, namespace and root directory of packages
-
-pkg_root_dir = 'src'
-pkgs = [ pkg for pkg in find_packages(pkg_root_dir)]
-top_pkgs = [pkg for pkg in pkgs if  len(pkg.split('.')) < 2]
-packages = pkgs
-package_dir = dict( [('',pkg_root_dir)] + [(namespace + "." + pkg, pkg_root_dir + "/" + pkg) for pkg in top_pkgs] )
-
-# Define global variables
-has_scons = False
-if has_scons:
-    build_prefix = "build-scons"
-    scons_scripts=['SConstruct']
-    lib_dirs = {'lib' : build_prefix+'/lib' }
-    inc_dirs = { 'include' : build_prefix+'/include' }
-    bin_dirs = { 'bin' : build_prefix+'/bin' }
-else:
-    build_prefix = None
-    scons_scripts=None
-    lib_dirs = None
-    inc_dirs = None
-    bin_dirs = None
-
-# List of top level wralea packages (directories with __wralea__.py)
-#wralea_entry_points = ['%s = %s'%(pkg,namespace + '.' + pkg) for pkg in top_pkgs]
-
-# dependencies to other eggs
-setup_requires = ['openalea.deploy']
-if("win32" in sys.platform):
-    install_requires = []
-else:
-    install_requires = []
-
-# web sites where to find eggs
-dependency_links = ['http://openalea.gforge.inria.fr/pi']
+packages = {"" : "src"}
+for package in find_packages("src"):
+    packages[package] = ""
+    
 setup(
     name="AutoWIG",
     version="0.1.0",
@@ -68,8 +22,8 @@ setup(
     keywords = '',
 
     # package installation
-    packages= packages,
-    package_dir= package_dir,
+    packages= packages.keys(),
+    package_dir=  {"" : "src"},
 
     # Namespace packages creation by deploy
     #namespace_packages = [namespace],
