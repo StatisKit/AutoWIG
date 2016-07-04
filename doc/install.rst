@@ -6,11 +6,13 @@ But, since the most effective wrapping process relies on the **PyCLangLite** lib
 
     Wrappers generated with **AutoWIG** do not depend on **AutoWIG** and can be built on any operating system.
 
-Installation from sources
-=========================
-
 Requirements
-------------
+============
+
+.. warning::
+
+    We here explicit and present **AutoWIG** dependencies but these dependencies installation procedures are discussed in following sections.
+
 
 To install AutoWIG, you need to install these dependencies:
 
@@ -38,6 +40,33 @@ To install AutoWIG, you need to install these dependencies:
     This library (http://PyClangLite.readthedocs.io/en/latest) contains **Boost.Python** wrappers for the **Clang** library.
     Since **AutoWIG** most effective wrapping process relies on the **PyCLangLite** library, we highly recommand to install it.
     Nevertheless, this dependency is optional.
+
+
+Installating from Anaconda 
+==========================
+
+(Conda)[http://conda.pydata.org/docs/] is an open source package management system and environment management system for installing multiple versions of software packages and their dependencies and switching easily between them.
+It works on Linux, OS X and Windows, and was created for Python programs but can package and distribute any software.
+
+For installing **AutoWIG**, you will first need Conda to be installed and downloading and running the Miniconda will do this for you.
+The installation procedure is described (here)[http://conda.pydata.org/docs/install/quick.html].
+
+.. code-block:: console
+
+    conda install python-autowig -c StatisKit
+
+.. note::
+
+    If you want to benefit from the :code:`pyclanglite` :code:`parser`, you should also install **PyClangLite**
+
+
+    .. code-block:: console
+
+        conda install python-clanglite -c StatisKit
+
+Installing from sources
+=======================
+
 
 .. code-block:: console
 

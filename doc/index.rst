@@ -8,6 +8,14 @@
 AutoWIG: Automatic Wrapper and Interface Generator
 ##################################################
 
+.. sidebar:: Summary
+
+    :Version: |version|
+    :Release: |release|
+    :Date: |today|
+    :Status: |TRAVIS| |COVERALLS| |LANDSCAPE| |READTHEDOCS|
+    :Author: See `Authors`_ section
+
 High-level programming languages, like *Python* and *R*, are popular among scientists.
 They tend to be concise and readable, leading to a rapid development cycle, but suffer from performance drawback compare to compiled language. 
 However, these languages allow to interface *C*, *C++* and *Fortran* code.
@@ -18,14 +26,6 @@ Our solution consists in parsing *C++*  code using **LLVM**/**CLang** technology
 Our approach is automatic, extensible, and can scale from simple *C++* libraries to very complex ones, composed of thousands of classes or using modern meta-programming constructs.
 The usage and extension of **AutoWIG** is also illustrated on a set of statistical libraries.
 
-
-.. sidebar:: Summary
-
-    :Version: |version|
-    :Release: |release|
-    :Date: |today|
-    :Status: |TRAVIS| |COVERALLS| |LANDSCAPE| |READTHEDOCS|
-    :Author: See `Authors`_ section
 
 Documentation
 =============
