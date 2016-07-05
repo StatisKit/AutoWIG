@@ -52,6 +52,10 @@ For installing **AutoWIG**, you will first need Conda to be installed and downlo
 The installation procedure is described (here)[http://conda.pydata.org/docs/install/quick.html].
 
 .. code-block:: console
+    $ conda create -n <envname> python
+    $ source activate <envname>
+
+.. code-block:: console
 
     conda install python-autowig -c StatisKit
 
