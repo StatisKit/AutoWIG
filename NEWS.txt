@@ -1,1 +1,0 @@
-This file is used to document modifications from the last release at the user level (functional)

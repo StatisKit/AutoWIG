@@ -1,3 +1,0 @@
-This file can be used to document future development
-
- * document the Sconstruct file of the VPlants.autowig package 
