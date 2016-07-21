@@ -20,6 +20,17 @@ requirements:
   run:
     - python
     - mako
+    - dateutil
+    - python-parse
+    - pygments
     - pypandoc
     - path.py
     - libclang
+
+test:
+   requires:
+     - nose
+     - coverage
+     - python-clanglite
+   commands:
+     - nosetests {{ SRC_DIR }} -v --with-coverage --cover-package=autowig

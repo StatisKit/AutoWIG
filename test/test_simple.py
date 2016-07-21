@@ -92,12 +92,12 @@ unsigned int BinomialDistribution::factorial(const unsigned int n) const
         #subprocess.call(['gcc', '-o', os.path.join(cls.directory, 'binomial.os'), '-c', '-x', 'c++',
         #     '-std=c++0x', '-Wwrite-strings', '-fPIC', os.path.join(cls.directory, 'binomial.cpp')])
 
-        cls.md5sum = ''
+        cls.md5sum = 'f3282d4f035092d5b9c546905c6f2525'
 
     def test_wrappers(self):
         asg = autowig.AbstractSemanticGraph()
         autowig.parser.plugin = 'pyclanglite'
-        autowig.parser(asg, [os.path.join(self.directory, 'binomial.h')], ['-x', 'c++', '-std=c++11'])
+        autowig.parser(asg, [os.path.join(self.directory, 'binomial.h')], ['-x', 'c++', '-std=c++11', '-I' + os.path.abspath(self.directory)])
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
@@ -107,13 +107,14 @@ unsigned int BinomialDistribution::factorial(const unsigned int n) const
                         decorator=None,
                         prefix='wrapper_')
 
+        wrappers = sorted(wrappers, key=lambda wrapper: wrapper.globalname)
         md5sum = hashlib.md5()
         for wrapper in wrappers:
             md5sum.update(wrapper.content)
-        md5sum = md5sum.digest()
-
+        md5sum = md5sum.hexdigest()
         self.assertEqual(md5sum, self.md5sum)
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(cls.directory)
+        pass
+        #shutil.rmtree(cls.directory)

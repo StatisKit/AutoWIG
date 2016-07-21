@@ -53,6 +53,7 @@ setup(packages = packages.keys(),
             'hash = autowig.node_path:hash_node_path'],
         'console_scripts': [],
         },
+        zip_safe = False
     )
 
 
