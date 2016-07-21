@@ -22,7 +22,7 @@ install:
     - conda build conda/python-autowig -c StatisKit -c salford_systems
 
 script:
-    - conda install python-clanglite -c StatisKit
+    - conda install python-clanglite -c StatisKit -c salford_systems
     - nosetests -v --with-coverage --cover-package=autowig
 
 after_success:
