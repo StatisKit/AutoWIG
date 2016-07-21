@@ -2,7 +2,8 @@ import os
 import unittest
 import tempfile
 import shutil
-import subprocess
+import hashlib
+
 from autowig import autowig
 
 class TestSimple(unittest.TestCase):
@@ -88,11 +89,12 @@ void BinomialDistribution::set_pi(const double pi)
 unsigned int BinomialDistribution::factorial(const unsigned int n) const
 { return (n == 1 || n == 0) ? 1 : factorial(n - 1) * n; }""")
 
-        subprocess.call(['gcc', '-o', os.path.join(cls.directory, 'binomial.os'), '-c', '-x', 'c++',
-             '-std=c++0x', '-Wwrite-strings', '-fPIC', os.path.join(cls.directory, 'binomial.cpp')])
+        #subprocess.call(['gcc', '-o', os.path.join(cls.directory, 'binomial.os'), '-c', '-x', 'c++',
+        #     '-std=c++0x', '-Wwrite-strings', '-fPIC', os.path.join(cls.directory, 'binomial.cpp')])
 
+        cls.md5sum = ''
 
-    def test(self):
+    def test_wrappers(self):
         asg = autowig.AbstractSemanticGraph()
         autowig.parser.plugin = 'pyclanglite'
         autowig.parser(asg, [os.path.join(self.directory, 'binomial.h')], ['-x', 'c++', '-std=c++11'])
@@ -101,13 +103,17 @@ unsigned int BinomialDistribution::factorial(const unsigned int n) const
         autowig.controller(asg)
 
         autowig.generator.plugin = 'boost_python_internal'
-        wrappers = autowig.generator(asg, module=os.path.join(self.directory, 'module.cpp',
+        wrappers = autowig.generator(asg, module=os.path.join(self.directory, 'module.cpp'),
                         decorator=None,
                         prefix='wrapper_')
 
+        md5sum = hashlib.md5()
         for wrapper in wrappers:
-            wrapper.write()
+            md5sum.update(wrapper.content)
+        md5sum = md5sum.digest()
+
+        self.assertEqual(md5sum, self.md5sum)
 
     @classmethod
     def tearDownClass(cls):
-        #shutil.rmtree(cls.directory)
+        shutil.rmtree(cls.directory)
