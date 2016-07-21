@@ -1,0 +1,25 @@
+package:
+  name: python-autowig
+  version: "1.0.0"
+
+source:
+  path: ../..
+
+build:
+  number: 0
+  script: python setup.py install
+
+about:
+  home: http://autowig.readthedocs.org
+  license: CeCILL-C
+
+requirements:
+  build:
+    - python
+    - pyyaml
+  run:
+    - python
+    - mako
+    - pypandoc
+    - path.py
+    - libclang
