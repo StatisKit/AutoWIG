@@ -22,7 +22,7 @@ before_install:
 
 install:
     - conda build conda/python-autowig -c StatisKit -c salford_systems
-    - conda install python-autowig --use-local
+    - conda install --use-local --no-deps python-autowig
 
 script:
     - conda install python-clanglite -c StatisKit -c salford_systems
