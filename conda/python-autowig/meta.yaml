@@ -26,11 +26,11 @@ requirements:
     - pypandoc
     - path.py
     - libclang
+     - python-clanglite
 
 test:
    requires:
      - nose
      - coverage
-     - python-clanglite
    commands:
      - nosetests {{ SRC_DIR }} -v --with-coverage --cover-package=autowig
