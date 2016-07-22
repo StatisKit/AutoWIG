@@ -23,14 +23,14 @@ requirements:
     - dateutil
     - python-parse
     - pygments
-    #- pypandoc
+    - pypandoc
     - path.py
     - libclang
 
-# test:
-#    requires:
-#      - nose
-#      - coverage
-#      - python-clanglite
-#    commands:
-#      - nosetests {{ SRC_DIR }} -v --with-coverage --cover-package=autowig
+test:
+   requires:
+     - nose
+     - coverage
+     - python-clanglite
+   commands:
+     - nosetests {{ SRC_DIR }} -v --with-coverage --cover-package=autowig
