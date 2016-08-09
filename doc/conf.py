@@ -38,9 +38,19 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     #'sphinxcontrib.blockdiag',
+    #'sphinx_gallery.gen_gallery',
     'nbsphinx',
     'sphinxcontrib.bibtex'
 ]
+
+# sphinx_gallery_conf = {
+#     # path to your examples scripts
+#     'examples_dirs' : './examples',
+#     # path where to save gallery generated examples
+#     'gallery_dirs'  : 'auto_examples',
+#     'filename_pattern' : os.sep + '*'
+#     }
+
 
 numfig = True
 
@@ -88,7 +98,7 @@ release = '0.1'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['_build', '**.ipynb_checkpoints']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -117,9 +127,11 @@ pygments_style = 'sphinx'
 
 # -- Options for HTML output ----------------------------------------------
 
+import sphinx_rtd_theme
+
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+html_theme = "sphinx_rtd_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -127,7 +139,7 @@ html_theme = 'default'
 #html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
-#html_theme_path = []
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -284,3 +296,7 @@ intersphinx_mapping = {'http://docs.python.org/': None}
 
 numfig = True
 numfig_format = {'figure': 'Fig. %s', 'table': 'Tab. %s', 'code-block': 'Lst. %s'}
+
+rst_epilog = """
+
+"""
