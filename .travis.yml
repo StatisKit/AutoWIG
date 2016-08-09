@@ -21,16 +21,18 @@ before_install:
     - pip install coveralls
 
 
-install:
+before_script:
     - conda build conda/python-autowig -c statiskit -c conda-forge
 
-test:
-  requires:
-    - nose
-    - python-clanglite
-  commands:
-    - nosetests test -v --with-coverage --cover-package=autowig
+script:
+  - conda install python-autowig -c statiskit -c conda-forge --use-local
+  #- nosetest test -v --with-coverage --cover-package=autowig
 
 after_success:
-    - coveralls
-
+  - coveralls
+  - if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
+      conda install anaconda-client
+      anaconda login --username ${ANACONDA_USERNAME%%} --password ${ANACONDA_PASSWORD%%};
+      CONDA_FILE=`conda build conda/python-autowig --output`; 
+      anaconda upload --user ${ANACONDA_CHANNEL%%} ${CONDA_FILE%%};
+    fi
