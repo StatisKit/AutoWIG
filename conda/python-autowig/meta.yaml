@@ -25,18 +25,18 @@ requirements:
     - pygments
     - pypandoc
     - path.py
-    - libclang
-    - python-clanglite
 
 test:
    requires:
      - nose
      - coverage
+    - libclang
+    - python-clanglite
    commands:
      - echo {{ environ.get('TRAVIS_BUILD_DIR', '') }}
-     - nosetests {{ SRC_DIR }} -v --with-coverage --cover-package=autowig
      - if [[ $TRAVIS_BUILD_DIR ]]; then
          echo "travis";
        else
          echo "not travis";
        fi
+     - nosetests {{ SRC_DIR }} -v --with-coverage --cover-package=autowig
