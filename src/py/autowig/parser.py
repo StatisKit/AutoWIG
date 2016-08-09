@@ -5,6 +5,7 @@ import subprocess
 from path import path
 from tempfile import NamedTemporaryFile
 import os
+import warnings
 
 from .asg import *
 from .tools import subclasses

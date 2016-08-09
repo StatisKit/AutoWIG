@@ -21,12 +21,8 @@ before_install:
     - pip install coveralls
 
 
-before_script:
-    - conda build conda/python-autowig -c statiskit -c conda-forge --no-test
-
 script:
-  - conda install python-autowig -c statiskit -c conda-forge --use-local
-  #- nosetest test -v --with-coverage --cover-package=autowig
+  - conda build conda/python-autowig -c statiskit -c conda-forge
 
 after_success:
   - coveralls
