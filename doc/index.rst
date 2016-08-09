@@ -39,7 +39,7 @@ Exemples
 Authors
 =======
 
-.. include:: ../AUTHORS.txt
+.. include:: ../AUTHORS.rst
 
 License
 =======
