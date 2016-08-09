@@ -18,6 +18,7 @@ before_install:
     - conda update -q conda
     - conda info -a
     - conda install conda-build
+    - pip install coverage
     - pip install coveralls
 
 
