@@ -13,25 +13,30 @@ The usage and extension of **AutoWIG** is also illustrated on a set of statistic
 
 .. sidebar:: Summary
 
-    :License: |LICENSELINK|
+    :License: |LICENSELINK| (see `LICENSE.rst <LICENSE.rst>`_ file)
     :Version: |VERSION|
     :Status: |TRAVIS| |COVERALLS| |LANDSCAPE| |READTHEDOCS|
+    :Authors: see `AUTHORS.rst <AUTHORS.rst>`_ file
 
 
 .. |VERSION| replace:: 0.1.0
 
 .. |LICENSELINK| replace:: CeCILL-C license
 
-.. |TRAVIS| image:: https://travis-ci.org/VirtualPlants/AutoWIG.svg?branch=master
-           :target: https://travis-ci.org/VirtualPlants/AutoWIG
+.. |VERSION| replace:: 0.1.0
+
+.. |LICENSELINK| replace:: CeCILL-C license
+
+.. |TRAVIS| image:: https://travis-ci.org/StatisKit/AutoWIG.svg?branch=master
+           :target: https://travis-ci.org/StatisKit/AutoWIG
            :alt: Travis
 
-.. |COVERALLS| image:: https://coveralls.io/repos/github/VirtualPlants/AutoWIG/badge.svg?branch=master
-               :target: https://coveralls.io/github/VirtualPlants/AutoWIG?branch=master
+.. |COVERALLS| image:: https://coveralls.io/repos/github/StatisKit/AutoWIG/badge.svg?branch=master
+               :target: https://coveralls.io/github/StatisKit/AutoWIG?branch=master
                :alt: Coveralls
 
-.. |LANDSCAPE| image:: https://landscape.io/github/VirtualPlants/AutoWIG/master/landscape.svg?style=flat
-                :target: https://landscape.io/github/VirtualPlants/AutoWIG/master
+.. |LANDSCAPE| image:: https://landscape.io/github/StatisKit/AutoWIG/master/landscape.svg?style=flat
+                :target: https://landscape.io/github/StatisKit/AutoWIG/master
                 :alt: Landscape
 
 .. |READTHEDOCS| image:: https://readthedocs.org/projects/AutoWIG/badge/?version=latest
