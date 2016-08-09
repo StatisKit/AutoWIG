@@ -34,6 +34,7 @@ test:
      - python-clanglite
    commands:
      - nosetests {{ SRC_DIR }} -v --with-coverage --cover-package=autowig
+     - ls
      - if [[ $TRAVIS_BUILD_DIR ]]; then
          mv {{ SRC_DIR }}/.coverage {{ environ.get('TRAVIS_BUILD_DIR', '') }};
        fi
