@@ -30,8 +30,8 @@ test:
    requires:
      - nose
      - coverage
-    - libclang
-    - python-clanglite
+     - libclang
+     - python-clanglite
    commands:
      - echo {{ environ.get('TRAVIS_BUILD_DIR', '') }}
      - if [[ $TRAVIS_BUILD_DIR ]]; then
