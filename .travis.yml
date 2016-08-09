@@ -28,7 +28,7 @@ script:
   - python setup.py develop --user
   - conda install python-clanglite -c statiskit
   - pip install nose
-  - nosetest test -v --with-coverage --cover-package=autowig
+  - nosetests test -v --with-coverage --cover-package=autowig
 
 after_success:
   - coveralls
