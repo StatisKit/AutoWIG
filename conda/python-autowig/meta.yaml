@@ -35,5 +35,5 @@ test:
    commands:
      - nosetests {{ SRC_DIR }} -v --with-coverage --cover-package=autowig
      - if [[ $TRAVIS_BUILD_DIR ]]; then
-         mv .coverage $TRAVIS_BUILD_DIR/.coverage;
+         ln -s .coverage $TRAVIS_BUILD_DIR/.coverage;
        fi
