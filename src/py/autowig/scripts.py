@@ -9,5 +9,4 @@ def bootstrap_script(args):
     subprocess.call(['scons'] + args.scons)
     subprocess.call(['scons autowig'] + args.scons)
     bootstrap = 0
-    while
 

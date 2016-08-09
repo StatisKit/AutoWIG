@@ -1,8 +1,5 @@
 #include "binomial.h"
-#include <boost/math/special_functions/beta.hpp>
-
-ProbabilityError::ProbabilityError()
-{}
+#include <cmath>
 
 const char * ProbabilityError::what() const noexcept
 { return "a probability must be in the interval [0,1]"; }
@@ -19,13 +16,13 @@ BinomialDistribution::BinomialDistribution(const BinomialDistribution& binomial)
     _pi = binomial._pi;
 }
 
-double BinomialDistribution::pmf(const unsigned int& value) const
+double BinomialDistribution::pmf(const unsigned int value) const
 {
     double p;
     if(value > n)
     { p = 0; }
     else
-    { p = boost::math::ibeta_derivative(value + 1, n - value + 1, _pi) / (n + 1); }
+    { p = exp(std::lgamma(n + 1) - std::lgamma(n - value + 1) - std::lgamma(value + 1) + (n - value) * log(1 - _pi) + value * log(_pi)); }
     return p;
 }
 

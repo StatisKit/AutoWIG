@@ -1,46 +1,33 @@
-# -*- coding: utf-8 -*-
-__revision__ = "$Id: $"
-
-import sys
 import os
-
 from setuptools import setup, find_packages
 
-packages = {"" : "src"}
-for package in find_packages("src"):
-    packages[package] = ""
+packages = {"" : "src" + os.sep + "py"}
+for package in find_packages("src" + os.sep + "py"):
+    packages[package] = "src" + os.sep + "py"
 
-setup(
-    name="AutoWIG",
-    version="0.1.0",
-    description="AUTOmatic Wrapper and Interface Generator package",
-    long_description="",
-    author="P. Fernique, C. Pradal",
-    author_email="pierre.fernique@inria.fr, christophe.pradal@cirad.fr",
-    url="autowig.readthedocs.org",
-    license="CeCILL-C",
-    keywords = '',
+try:
+    from mngit.config import load_config
+    config = load_config('.')
+except:
+    import os
+    import yaml
+    with open('.' + os.sep + '.mngit.yml', 'r') as filehandler:
+        config = yaml.load(filehandler.read())
 
-    # package installation
-    packages= packages.keys(),
-    package_dir=  {"" : "src"},
+with open('README.rst', 'r') as filehandler:
+    long_description = filehandler.read()
 
-    # Namespace packages creation by deploy
-    #namespace_packages = [namespace],
-    #create_namespaces = False,
-    zip_safe= False,
-
-    # Eventually include data in your package
-    # (flowing is to include all versioned files other than .py)
-    include_package_data = True,
-    # (you can provide an exclusion dictionary named exclude_package_data to remove parasites).
-    # alternatively to global inclusion, list the file to include
-    #package_data = {'' : ['*.pyd', '*.so'],},
-
-    # postinstall_scripts = ['',],
-
-    # Declare scripts and wralea as entry_points (extensions) of your package
-    entry_points = {
+setup(packages = packages.keys(),
+      package_dir = {"" : "src" + os.sep + "py"},
+      name = config['about']['name'],
+      version = config['about']['version'],
+      author = config['about']['authors'],
+      author_email = config['about']['email'],
+      description = config['about']['brief'],
+      long_description = long_description,
+      license = config['license']['plugin'],
+      package_data = {package: [ "*.so", "*.dll"] for package in packages},
+      entry_points = {
         'autowig.parser': ['libclang = autowig.libclang_parser:libclang_parser'],
         'autowig.controller': ['default = autowig.default_controller:default_controller'],
         'autowig.generator': ['boost_python = autowig.boost_python_generator:boost_python_generator',
@@ -65,10 +52,8 @@ setup(
         'autowig.node_path' : ['scope = autowig.node_path:scope_node_path',
             'hash = autowig.node_path:hash_node_path'],
         'console_scripts': [],
-        # 'gui_scripts': [
-        #      'fake_gui = openalea.fakepackage.amodule:gui_script',],
-        #	'wralea': wralea_entry_points
         },
+        zip_safe = False
     )
 
 
