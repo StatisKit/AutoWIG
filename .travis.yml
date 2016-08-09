@@ -26,7 +26,7 @@ before_script:
 
 script:
   - conda install python-autowig -c statiskit -c conda-forge --use-local
-  #- nosetest test -v --with-coverage --cover-package=autowig
+  - nosetest test -v --with-coverage --cover-package=autowig
 
 after_success:
   - coveralls
