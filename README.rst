@@ -14,9 +14,10 @@ The usage and extension of **AutoWIG** is also illustrated on a set of statistic
 .. sidebar:: Summary
 
     :License: |LICENSELINK|
-    :Version: |version|
-    :Release: |release|
+    :Version: |VERSION|
     :Status: |TRAVIS| |COVERALLS| |LANDSCAPE| |READTHEDOCS|
+
+.. |VERSION| replace:: 0.1.0
 
 .. |LICENSELINK| replace:: CeCILL-C license
 
