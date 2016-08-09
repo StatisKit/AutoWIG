@@ -61,7 +61,5 @@ license is a LGPL compatible license.</p>
 </div>
 </div>
 </div>
-
-
-           </div>
-          </div>
+</div>
+</div>
