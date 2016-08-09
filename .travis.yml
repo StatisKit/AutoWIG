@@ -23,7 +23,12 @@ before_install:
 
 
 script:
-  - conda build conda/python-autowig -c statiskit -c conda-forge
+  - conda build conda/python-autowig -c statiskit -c conda-forge --no-test
+  - conda install python-autowig -c statiskit -c conda-forge --use-local
+  - conda remove python-autowig
+  - python setup.py develop --user
+  - conda install python-clanglite -c statiskit
+  - nosetest test -v --with-coverage --cover-package=autowig
 
 after_success:
   - coveralls
