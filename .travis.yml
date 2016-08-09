@@ -26,6 +26,7 @@ script:
 
 after_success:
   - coveralls
+  - coveralls debug
   - if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
       conda install anaconda-client;
       anaconda login --username ${ANACONDA_USERNAME%%} --password ${ANACONDA_PASSWORD%%};
