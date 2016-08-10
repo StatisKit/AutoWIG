@@ -4,7 +4,6 @@
 from path import path
 from ConfigParser import ConfigParser
 from clang.cindex import Config, conf, Cursor, Index, TranslationUnit, CursorKind, Type, TypeKind
-from ConfigParser import ConfigParser
 from tempfile import NamedTemporaryFile
 import os
 import warnings
@@ -256,7 +255,7 @@ def read_builtin_type(asg, btype):
             specifiers = ''
         return VoidTypeProxy.node, specifiers
     else:
-        warnings.warn('\'' + str(btype.kind) + '\'', NotImplementedTypeWarning)
+        warnings.warn('\'' + str(btype.kind) + '\'', Warning)
 
 def read_enum(asg, cursor, scope):
     if not scope.endswith('::'):
@@ -282,7 +281,7 @@ def read_enum(asg, cursor, scope):
         spelling = 'enum ' + spelling
         if not spelling in asg:
             asg._syntax_edges[spelling] = []
-            asg._nodes[spelling] = dict(proxy=EnumProxy)
+            asg._nodes[spelling] = dict(proxy=EnumerationProxy)
             asg._syntax_edges[scope].append(spelling)
         elif not asg[spelling].is_complete:
             asg._syntax_edges[scope].remove(spelling)
