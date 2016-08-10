@@ -8,7 +8,7 @@ class TestBasic(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.directory = os.path.abspath(os.path.join(os.path.pardir, 'doc', 'basic'))
+        cls.directory = os.path.abspath(os.path.join('doc', 'basic'))
 
     def test_wrappers(self):
         asg = autowig.AbstractSemanticGraph()
