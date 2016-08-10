@@ -6,12 +6,62 @@ from operator import attrgetter
 import os
 import parse
 
-from .asg import *
+from .asg import AbstractSemanticGraph, \
+                 ClassTemplateSpecializationProxy, \
+                 SignedFloatingPointTypeProxy, \
+                 SignedLongDoubleTypeProxy, \
+                 WCharTypeProxy, \
+                 ComplexLongDoubleTypeProxy, \
+                 EnumeratorProxy, \
+                 ClassTemplatePartialSpecializationProxy, \
+                 ComplexDoubleTypeProxy, \
+                 FilesystemProxy, \
+                 UnsignedShortIntegerTypeProxy, \
+                 UnsignedCharTypeProxy, \
+                 DeclarationProxy, \
+                 NodeProxy, \
+                 CharTypeProxy, \
+                 ClassProxy, \
+                 Char32TypeProxy, \
+                 FileProxy, \
+                 SignedCharTypeProxy, \
+                 FieldProxy, \
+                 HeaderProxy, \
+                 UnsignedLongLongIntegerTypeProxy, \
+                 FundamentalTypeProxy, \
+                 ClassTemplateProxy, \
+                 NullPtrTypeProxy, \
+                 SignedLongIntegerTypeProxy, \
+                 SignedDoubleTypeProxy, \
+                 CharacterFundamentalTypeProxy, \
+                 SignedIntegerTypeProxy, \
+                 VariableProxy, \
+                 VoidTypeProxy, \
+                 UnsignedLongIntegerTypeProxy, \
+                 BoolTypeProxy, \
+                 MethodProxy, \
+                 SignedShortIntegerTypeProxy, \
+                 ComplexTypeProxy, \
+                 SignedFloatTypeProxy, \
+                 UnsignedIntegerTypeProxy, \
+                 Char16TypeProxy, \
+                 SignedLongLongIntegerTypeProxy, \
+                 DestructorProxy, \
+                 NamespaceProxy, \
+                 TypedefProxy, \
+                 DirectoryProxy, \
+                 EnumerationProxy, \
+                 FunctionProxy, \
+                 ComplexFloatTypeProxy, \
+                 ConstructorProxy, \
+                 EdgeProxy, \
+                 QualifiedTypeProxy, \
+                 ParameterProxy
 from .plugin_manager import node_path, node_rename, documenter, visitor
 from .proxy_manager import ProxyManager
 from .node_rename import PYTHON_OPERATOR
 from .plugin_manager import PluginManager
-from .tools import camel_case_to_lower, to_camel_case, camel_case_to_upper
+from .tools import camel_case_to_lower, camel_case_to_upper
 from .generator import iterator_range
 
 __all__ = ['boost_python_call_policy', 'boost_python_export_factory', 'boost_python_module_factory', 'boost_python_decorator_factory']
@@ -78,7 +128,7 @@ def get_boost_python_export(self):
 def set_boost_python_export(self, boost_python_export):
     self.desugared_type.unqualified_type.boost_python_export = boost_python_export
 
-def del_boost_python_export(self, boost_python_export):
+def del_boost_python_export(self):
     del self.desugared_type.unqualified_type.boost_python_export
 
 QualifiedTypeProxy.boost_python_export = property(get_boost_python_export, set_boost_python_export, del_boost_python_export)
