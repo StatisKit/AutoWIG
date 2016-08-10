@@ -931,7 +931,7 @@ BOOST_PYTHON_MODULE(_${module.prefix})
         if not hasattr(self, '_exports'):
             return []
         else:
-            return [export for export in sorted([self._asg[export] for export in self._exports], key = attrgetter('depth'))]
+            return [export for export in sorted(sorted([self._asg[export] for export in self._exports], key = attrgetter('globalname')), key = attrgetter('depth'))]
 
     #@property
     def get_dependencies(self):
