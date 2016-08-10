@@ -1,9 +1,7 @@
 """
 """
-import uuid
 
-from .tools import camel_case_to_lower
-from .asg import *
+from .asg import DeclarationProxy, EnumeratorProxy
 
 __all__ = []
 
