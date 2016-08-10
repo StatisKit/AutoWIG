@@ -1,4 +1,12 @@
-from .asg import AbstractSemanticGraph
+from .asg import AbstractSemanticGraph, \
+                 HeaderProxy, \
+                 TypedefProxy, \
+                 EnumerationProxy, \
+                 FunctionProxy, \
+                 ConstructorProxy, \
+                 ClassProxy, \
+                 ClassTemplateSpecializationProxy, \
+                 ClassTemplateProxy, \
 
 __all__ = ['refactoring', 'cleaning']
 
