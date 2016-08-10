@@ -34,9 +34,7 @@ script:
   - nosetests test -v --with-coverage --cover-package=autowig
 
 after_success:
-  - clang++ -x c++ -v -E /dev/null
   - coveralls
-  - coveralls debug
   - if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
       conda install anaconda-client;
       anaconda login --username ${ANACONDA_USERNAME%%} --password ${ANACONDA_PASSWORD%%};
