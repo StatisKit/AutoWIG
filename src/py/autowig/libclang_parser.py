@@ -25,7 +25,21 @@ from .asg import (CharTypeProxy,
                  SignedFloatTypeProxy,
                  SignedDoubleTypeProxy,
                  SignedLongDoubleTypeProxy,
-                 BoolTypeProxy, )
+                 BoolTypeProxy, 
+                 ComplexTypeProxy,
+                 VoidTypeProxy,
+                 HeaderProxy,
+                 EnumerationProxy,
+                 EnumeratorProxy, 
+                 TypedefProxy,
+                 VariableProxy,
+                 FunctionProxy,
+                 MethodProxy,
+                 ConstructorProxy,
+                 DestructorProxy,
+                 FieldProxy,
+                 ClassProxy,
+                 NamespaceProxy)
                  
                  
 from .parser import preprocessing
