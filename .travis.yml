@@ -1,8 +1,8 @@
-os: linux
+sudo: required
 dist: trusty
-language: python
+language: cpp
 
-python: "2.7"
+os: linux
 
 before_install:
     - if [[ "$TRAVIS_OS_NAME" = "linux" ]]; then
