@@ -8,6 +8,25 @@ import os
 import warnings
 import uuid
 
+from .asg import CharTypeProxy, \
+                 UnsignedCharTypeProxy, \
+                 SignedCharTypeProxy, \
+                 Char16TypeProxy, \
+                 Char32TypeProxy, \
+                 WCharTypeProxy, \
+                 SignedShortIntegerTypeProxy, \
+                 SignedIntegerTypeProxy, \
+                 SignedLongIntegerTypeProxy, \
+                 SignedLongLongIntegerTypeProxy, \
+                 UnsignedShortIntegerTypeProxy, \
+                 UnsignedIntegerTypeProxy, \
+                 UnsignedLongIntegerTypeProxy, \
+                 UnsignedLongLongIntegerTypeProxy, \
+                 SignedFloatTypeProxy, \
+                 SignedDoubleTypeProxy, \
+                 SignedLongDoubleTypeProxy, \
+                 BoolTypeProxy, \
+                 
 from .parser import preprocessing
 
 def is_virtual_method(self):
