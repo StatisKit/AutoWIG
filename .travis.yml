@@ -1,23 +1,14 @@
-os: linux
-language: statiskit/ubuntu
+sudo: required
 
-python: "2.7"
+services:
+  - docker
 
 before_install:
-    - if [[ "$TRAVIS_OS_NAME" = "linux" ]]; then
-        wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
-      elif [[ "$TRAVIS_OS_NAME" = "osx" ]]; then
-        curl https://repo.continuum.io/miniconda/Miniconda2-latest-MacOSX-x86_64.sh -o miniconda.sh;
-      fi
-    - bash miniconda.sh -b -p $HOME/miniconda
-    - export PATH=$HOME/miniconda/bin:$PATH
-    - export LD_LIBRARY_PATH=$HOME/miniconda/lib:$LD_LIBRARY_PATH
-    - conda config --set always_yes yes --set changeps1 no
-    - conda update -q conda
-    - conda info -a
-    - conda install conda-build
-    - pip install coverage
-    - pip install coveralls
+    - docker pull statiskit/ubuntu
+    - docker run -it statiskit/ubuntu
+    - ls
+    - cd ~
+    
 
 
 script:
