@@ -307,7 +307,7 @@ class FileProxy(FilesystemProxy):
 
     def remove(self):
         if self.on_disk:
-	    os.remove(self.globalname)
+            os.remove(self.globalname)
 
     @property
     def is_empty(self):
@@ -1424,11 +1424,11 @@ class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
 
     @property
     def access(self):
-	accesses = ['none', 'public', 'protected', 'private']
+        accesses = ['none', 'public', 'protected', 'private']
         access = accesses.index(getattr(self, '_access', self.specialize.access))
-	for template in self.templates:
-		access = max(access, accesses.index(template.desugared_type.unqualified_type.access))
-	return accesses[access]
+        for template in self.templates:
+                access = max(access, accesses.index(template.desugared_type.unqualified_type.access))
+        return accesses[access]
 
     @access.setter
     def access(self, access):
