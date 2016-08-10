@@ -2,7 +2,7 @@
 """
 
 from .asg import AbstractSemanticGraph
-from .plugin_manager import parser, visitor, documenter, controller, feedback, node_rename, node_path
+from .plugin_manager import parser, visitor, documenter, controller, feedback, node_rename, node_path, generator
 if 'pyclanglite' in parser:
     parser.plugin = 'pyclanglite'
 else:
