@@ -2,16 +2,13 @@
 """
 
 from path import path
-from clang.cindex import Config, conf, Cursor, Index, TranslationUnit, CursorKind, Type, TypeKind
+from clang.cindex import Config, conf, Cursor, Index, TranslationUnit, CursorKind, TypeKind
 from tempfile import NamedTemporaryFile
 import os
 import warnings
 import uuid
 
-from .ast import AbstractSyntaxTree
-from .asg import *
-from .tools import remove_templates
-from .parser import preprocessing, postprocessing
+from .parser import preprocessing
 
 def is_virtual_method(self):
     """Returns True if the cursor refers to a C++ member function that
@@ -53,7 +50,6 @@ def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, cache=Non
     warnings.warn('The libclang parser is no more maintened', DeprecationWarning)
     content = preprocessing(asg, filepaths, flags, cache, force)
     if content:
-        step = []
         if not libpath is None:
             if Config.loaded:
                 warnings.warn('\'libpath\' parameter not used since libclang config is already loaded', SyntaxWarning)
@@ -77,7 +73,7 @@ def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, cache=Non
         tempfilehandler.close()
         tu = index.parse(tempfilehandler.name, args=flags, unsaved_files=None, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
         os.unlink(tempfilehandler.name)
-        with warnings.catch_warnings() as cw:
+        with warnings.catch_warnings():
             if silent:
                 warnings.simplefilter('ignore')
             else:
