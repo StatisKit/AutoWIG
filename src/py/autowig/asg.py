@@ -38,10 +38,6 @@ class NodeProxy(object):
     _clean_default = True
 
     def __init__(self, asg, node):
-        #from boost_python_generator import BoostPythonExportFileProxy
-        #if node == 'class ::std::fpos< __mbstate_t >' and '_boost_python_export' in asg._nodes[node] and not isinstance(asg._nodes[node]['_boost_python_export'], bool) and not isinstance(asg[asg._nodes[node]['_boost_python_export']], BoostPythonExportFileProxy):
-        #    import ipdb
-        #    ipdb.set_trace()
         self._asg = asg
         self._node = node
 
@@ -96,7 +92,7 @@ class NodeProxy(object):
         return sorted([key for key in self._asg._nodes[self._node].keys()] + [key for key in dir(self.__class__)])
 
     def __getattr__(self, attr):
-        if not attr in dir(self):
+        if attr not in dir(self):
             raise AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
         else:
             try:
@@ -275,10 +271,12 @@ class FileProxy(FilesystemProxy):
          - `database` ({str:str}) - A database interfaced as a dictionnary.
                                     A database key correspond to a file global name.
                                     A database value correspond to a file md5.
-                                    If the database is given, the file is written to the disk only if its current md5 is the same as the one stored in the database.
+                                    If the database is given, the file is written to the disk
+                                    only if its current md5 is the same as the one stored in the database.
                                     If a file is written to the disk, its md5 is updated.
          - `force` (bool) - If set to true, files are written to disk whatever the md5 stored in the database.
-                            Yet, if its current md5 is the same as the one stored in the database, a warning is displayed.
+                            Yet, if its current md5 is the same as the one stored in the database,
+                            a warning is displayed.
         """
         if database:
             if self.on_disk and self.globalname in database:
@@ -402,7 +400,7 @@ def set_language(self, language):
     if not isinstance(language, basestring):
         raise TypeError('\'language\' parameter')
     language = language.lower()
-    if not language in ['c', 'c++']:
+    if language not in ['c', 'c++']:
         raise ValueError('\'language\' parameter')
     self._asg._nodes[self._node]['_language'] = language
 
@@ -461,7 +459,7 @@ class DeclarationProxy(NodeProxy):
             else:
                 return self.parent.header
         else:
-            if not self._header in self._asg:
+            if self._header not in self._asg:
                 import pdb
                 pdb.set_trace()
                 return None
@@ -634,17 +632,13 @@ class SignedIntegerTypeProxy(FundamentalTypeProxy):
     """
     """
 
+    _node = "::int"
+    
 class SignedShortIntegerTypeProxy(SignedIntegerTypeProxy):
     """
     """
 
     _node = "::short int"
-
-class SignedIntegerTypeProxy(SignedIntegerTypeProxy):
-    """
-    """
-
-    _node = "::int"
 
 class SignedLongIntegerTypeProxy(SignedIntegerTypeProxy):
     """
@@ -661,18 +655,13 @@ class SignedLongLongIntegerTypeProxy(SignedIntegerTypeProxy):
 class UnsignedIntegerTypeProxy(FundamentalTypeProxy):
     """
     """
-
+    
+    _node = "::unsigned int"
 class UnsignedShortIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
     """
 
     _node = "::unsigned short int"
-
-class UnsignedIntegerTypeProxy(UnsignedIntegerTypeProxy):
-    """
-    """
-
-    _node = "::unsigned int"
 
 class UnsignedLongIntegerTypeProxy(UnsignedIntegerTypeProxy):
     """
@@ -750,12 +739,17 @@ class QualifiedTypeProxy(EdgeProxy):
 
     A (possibly-)qualified type.
 
-    For efficiency, we don't store CV-qualified types as nodes on their own: instead each reference to a type stores the qualifiers.
-    This greatly reduces the number of nodes we need to allocate for types (for example we only need one for 'int', 'const int', 'volatile int', 'const volatile int', etc).
+    For efficiency, we don't store CV-qualified types as nodes on their own:
+    instead each reference to a type stores the qualifiers.
+    This greatly reduces the number of nodes we need to allocate for
+    types (for example we only need one for 'int', 'const int', 'volatile int', 'const volatile int', etc).
 
-    As an added efficiency bonus, instead of making this a pair, we just store the two bits we care about in the low bits of the pointer.
-    To handle the packing/unpacking, we make QualType be a simple generator class that acts like a smart pointer.
-    A third bit indicates whether there are extended qualifiers present, in which case the pointer points to a special structure.
+    As an added efficiency bonus, instead of making this a pair, we just store
+    the two bits we care about in the low bits of the pointer.
+    To handle the packing/unpacking, we make QualType be a simple generator
+    class that acts like a smart pointer.
+    A third bit indicates whether there are extended qualifiers present, in which 
+    case the pointer points to a special structure.
 
     .. seealso::
 
@@ -972,7 +966,10 @@ class ParameterProxy(EdgeProxy):
 
     @property
     def qualified_type(self):
-        return QualifiedTypeProxy(self._asg, self._source, self._asg._parameter_edges[self._source][self._target]['target'], self._asg._parameter_edges[self._source][self._target]['qualifiers'])
+        return QualifiedTypeProxy(self._asg, 
+                                  self._source,
+                                  self._asg._parameter_edges[self._source][self._target]['target'],
+                                  self._asg._parameter_edges[self._source][self._target]['qualifiers'])
 
     @property
     def localname(self):
@@ -1052,11 +1049,13 @@ class FunctionProxy(DeclarationProxy):
 
     @property
     def signature(self):
-        return self.return_type.desugared_type.globalname + ' ' + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
+        return self.return_type.desugared_type.globalname + ' ' + '(' + \
+        ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
 
     @property
     def prototype(self):
-        return self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
+        return self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + \
+        ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
 
 class MethodProxy(FunctionProxy):
     """
@@ -1086,11 +1085,13 @@ class MethodProxy(FunctionProxy):
 
     @property
     def signature(self):
-        return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ';'
+        return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + '(' + \
+        ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ';'
 
     @property
     def prototype(self):
-        return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ' volatile' * self.is_volatile
+        return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + \
+        ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ' volatile' * self.is_volatile
 
 class ConstructorProxy(DeclarationProxy):
     """
@@ -1163,10 +1164,6 @@ class ClassProxy(DeclarationProxy):
     def is_abstract(self):
         return self._is_abstract
 
-    @property
-    def is_copyable(self):
-        return self._is_copyable
-
     def get_is_instantiable(self):
         if hasattr(self, '_is_instantiable'):
             return self._is_instantiable
@@ -1190,7 +1187,7 @@ class ClassProxy(DeclarationProxy):
 
     @is_iterator.setter
     def is_iterator(self, is_iterator):
-        self._asg._nodes[self._node]['_is_iterator'] == is_iterator
+        self._asg._nodes[self._node]['_is_iterator'] = is_iterator
 
     @is_iterator.deleter
     def is_iterator(self):
@@ -1239,19 +1236,23 @@ class ClassProxy(DeclarationProxy):
             return 0
         else:
             if not hasattr(self, '_depth'):
-                self._asg._nodes[self._node]['_depth'] = max([base.type.target.depth if isinstance(base, TypedefProxy) else base.depth for base in self.bases()])+1
+                depth = max([base.type.target.depth if isinstance(base, TypedefProxy) else base.depth for base in self.bases()]) + 1
+                self._asg._nodes[self._node]['_depth'] = depth
             return self._depth
 
     def declarations(self, pattern=None, inherited=False, access='private'):
         if inherited is None:
-            declarations = self.declarations(pattern=pattern, inherited=False, access=access) + self.declarations(pattern=pattern, inherited=True, access=access)
+            declarations = self.declarations(pattern=pattern, inherited=False, access=access) + \
+                self.declarations(pattern=pattern, inherited=True, access=access)
         elif inherited:
             declarations = []
             for base in self.bases(True):
                 if isinstance(base, TypedefProxy):
-                    basedeclarations = [basedeclaration for basedeclaration in base.qualified_type.desugared_type.unqualified_type.declarations(pattern=pattern, inherited=False) if not basedeclaration.access == 'private']
+                    basedeclarations = [basedeclaration for basedeclaration in base.qualified_type.desugared_type.unqualified_type.declarations(pattern=pattern, inherited=False) \
+                                        if not basedeclaration.access == 'private']
                 else:
-                    basedeclarations = [basedeclaration for basedeclaration in base.declarations(pattern=pattern, inherited=False) if not basedeclaration.access == 'private']
+                    basedeclarations = [basedeclaration for basedeclaration in base.declarations(pattern=pattern, inherited=False) \
+                                        if not basedeclaration.access == 'private']
                 if base.access == 'protected':
                     for basedeclaration in basedeclarations:
                         if basedeclaration.access == 'public':
@@ -1297,28 +1298,38 @@ class ClassProxy(DeclarationProxy):
     def classes(self, templated=None, specialized=None, **kwargs):
         if templated is None:
             if specialized is None:
-                return [cls for cls in self.declarations(**kwargs) if isinstance(cls, (ClassProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy))]
+                return [cls for cls in self.declarations(**kwargs) \
+                        if isinstance(cls, (ClassProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy))]
             elif specialized:
-                return [cls for cls in self.declarations(**kwargs) if isinstance(cls, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy))]
+                return [cls for cls in self.declarations(**kwargs) \
+                        if isinstance(cls, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy))]
             else:
-                return [cls for cls in self.declarations(**kwargs) if isinstance(cls, (ClassProxy, ClassTemplateProxy)) and not isinstance(cls, ClassTemplateSpecializationProxy)]
+                return [cls for cls in self.declarations(**kwargs) \
+                        if isinstance(cls, (ClassProxy, ClassTemplateProxy)) and not isinstance(cls, ClassTemplateSpecializationProxy)]
         elif templated:
             if specialized is None:
-                return [cls for cls in self.declarations(**kwargs) if isinstance(cls, (ClassTemplateProxy, ClassTemplatePartialSpecializationProxy))]
+                return [cls for cls in self.declarations(**kwargs) \
+                        if isinstance(cls, (ClassTemplateProxy, ClassTemplatePartialSpecializationProxy))]
             elif specialized:
-                return [cls for cls in self.declarations(**kwargs) if isinstance(cls, ClassTemplatePartialSpecializationProxy)]
+                return [cls for cls in self.declarations(**kwargs) \
+                        if isinstance(cls, ClassTemplatePartialSpecializationProxy)]
             else:
-                return [cls for cls in self.declarations(**kwargs) if isinstance(cls, ClassTemplateProxy)]
+                return [cls for cls in self.declarations(**kwargs) \
+                        if isinstance(cls, ClassTemplateProxy)]
         else:
             if specialized is None:
-                return [cls for cls in self.declarations(**kwargs) if isinstance(cls, ClassProxy)]
+                return [cls for cls in self.declarations(**kwargs) \
+                        if isinstance(cls, ClassProxy)]
             elif specialized:
-                return [cls for cls in self.declarations(**kwargs) if isinstance(cls, ClassTemplateSpecializationProxy)]
+                return [cls for cls in self.declarations(**kwargs) \
+                        if isinstance(cls, ClassTemplateSpecializationProxy)]
             else:
-                return [cls for cls in self.declarations(**kwargs) if isinstance(cls, ClassProxy) and not isinstance(cls, ClassTemplateSpecializationProxy)]
+                return [cls for cls in self.declarations(**kwargs) \
+                        if isinstance(cls, ClassProxy) and not isinstance(cls, ClassTemplateSpecializationProxy)]
 
     def constructors(self, **kwargs):
-        return [ctr for ctr in self.declarations(inherited=False, **kwargs) if isinstance(ctr, ConstructorProxy)]
+        return [ctr for ctr in self.declarations(inherited=False, **kwargs) \
+                if isinstance(ctr, ConstructorProxy)]
 
     @property
     def destructor(self):
