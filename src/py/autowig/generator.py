@@ -1,5 +1,3 @@
-from .asg import *
-
 class IteratorRange(object):
 
     def __init__(self, asg, begin=None, end=None):
