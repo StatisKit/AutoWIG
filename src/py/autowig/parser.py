@@ -74,8 +74,6 @@ def pre_processing(asg, headers, flags, **kwargs):
         raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
 
     if not bootstrapping:
-        out, err = s.communicate()
-        print err
         if s.returncode:
             warnings.warn('System includes not computed: clang command failed', Warning)
         else:

@@ -1,6 +1,6 @@
 #include <exception>
 
-class ProbabilityError : public std::exception
+struct ProbabilityError : std::exception
 {
     /// \brief Compute the exception content
     /// \returns The message "a probability must be in the interval [0,1]"
@@ -12,7 +12,7 @@ class BinomialDistribution
   public:
     BinomialDistribution(const unsigned int n, const double pi);
     BinomialDistribution(const BinomialDistribution& binomial);
-  
+    
     double pmf(const unsigned int value) const;
         
     double get_pi() const;
@@ -27,4 +27,7 @@ class BinomialDistribution
     
   protected:
     double _pi;
+
+  private:
+     unsigned int factorial(const unsigned int value) const;
 };

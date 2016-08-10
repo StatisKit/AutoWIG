@@ -22,7 +22,7 @@ double BinomialDistribution::pmf(const unsigned int value) const
     if(value > n)
     { p = 0; }
     else
-    { p = exp(std::lgamma(n + 1) - std::lgamma(n - value + 1) - std::lgamma(value + 1) + (n - value) * log(1 - _pi) + value * log(_pi)); }
+    { p = factorial(n)/(factorial(n-value) * factorial(value)) * pow(1-p, n-value) * pow(p, value); }
     return p;
 }
 
@@ -35,3 +35,6 @@ void BinomialDistribution::set_pi(const double pi)
     { throw ProbabilityError(); }
     _pi = pi;
 }
+
+unsigned int BinomialDistribution::factorial(const unsigned int n) const
+{ return (n == 1 || n == 0) ? 1 : factorial(n - 1) * n; }
