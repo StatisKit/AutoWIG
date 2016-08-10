@@ -23,7 +23,6 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
     variantdir = str(variantdir.relpath(directory))
     variantdir += os.sep
     wrappers = dict()
-    undefined = set()
     for line in err.splitlines():
         parsed = parse.parse(variantdir+'{filename}:{row}:{column}:{message}', line)
         if parsed:
