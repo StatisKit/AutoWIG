@@ -14,7 +14,6 @@ from .asg import AbstractSemanticGraph, \
                  ComplexLongDoubleTypeProxy, \
                  EnumeratorProxy, \
                  ClassTemplatePartialSpecializationProxy, \
-                 ComplexDoubleTypeProxy, \
                  FilesystemProxy, \
                  UnsignedShortIntegerTypeProxy, \
                  UnsignedCharTypeProxy, \
@@ -61,7 +60,7 @@ from .plugin_manager import node_path, node_rename, documenter, visitor
 from .proxy_manager import ProxyManager
 from .node_rename import PYTHON_OPERATOR
 from .plugin_manager import PluginManager
-from .tools import camel_case_to_lower, camel_case_to_upper
+from .tools import camel_case_to_lower
 from .generator import iterator_range
 
 __all__ = ['boost_python_call_policy', 'boost_python_export_factory', 'boost_python_module_factory', 'boost_python_decorator_factory']
