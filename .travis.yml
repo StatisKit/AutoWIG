@@ -1,6 +1,5 @@
-os:
-    - linux
-
+os: linux
+dist: trusty
 language: python
 
 python: "2.7"
@@ -31,6 +30,7 @@ script:
   - nosetests test -v --with-coverage --cover-package=autowig
 
 after_success:
+  - clang++ -x c++ -v -E /dev/null
   - coveralls
   - coveralls debug
   - if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
