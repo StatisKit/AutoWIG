@@ -10,7 +10,7 @@ class TestBasic(unittest.TestCase):
     def setUpClass(cls):
         cls.directory = os.path.abspath(os.path.join('doc', 'basic'))
 
-    def test_wrappers(self):
+    def test_binomial(self):
         asg = autowig.AbstractSemanticGraph()
         autowig.parser.plugin = 'pyclanglite'
         autowig.parser(asg, [os.path.join(self.directory, 'binomial.h')], ['-x', 'c++', '-std=c++11', '-I' + os.path.abspath(self.directory)])
@@ -26,4 +26,4 @@ class TestBasic(unittest.TestCase):
         wrappers = sorted(wrappers, key=lambda wrapper: wrapper.globalname)
         for wrapper in wrappers:
             with open(wrapper.globalname, 'r') as filehandler:
-                self.assertEqual(wrapper.content, filehandler.readlines())
+                self.assertEqual(wrapper.content, filehandler.read())
