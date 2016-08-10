@@ -114,8 +114,6 @@ def doxygen_parser(node):
     else:
         raise ValueError('\'node\' parameter: attribute \'comment\' not formatted as expected')
     curr = 0
-    key = ''
-    value = ''
     asg = node._asg
     while curr < len(lines):
         if lines[curr].startswith(r'\brief'):
@@ -175,7 +173,6 @@ def desc_parser(asg, text):
                 curr += 1
             env = text[prev:curr]
             curr += 1
-            math = ""
             if text[curr] == '{':
                 curr += 1
             prev = curr
