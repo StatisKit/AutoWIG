@@ -1,4 +1,4 @@
-from .asg import *
+from .asg import AbstractSemanticGraph
 
 __all__ = ['refactoring', 'cleaning']
 
