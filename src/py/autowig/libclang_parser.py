@@ -2,7 +2,6 @@
 """
 
 from path import path
-from ConfigParser import ConfigParser
 from clang.cindex import Config, conf, Cursor, Index, TranslationUnit, CursorKind, Type, TypeKind
 from tempfile import NamedTemporaryFile
 import os
