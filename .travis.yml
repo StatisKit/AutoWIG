@@ -1,4 +1,3 @@
-
 os: linux
 dist: trusty
 language: python
@@ -20,6 +19,8 @@ before_install:
     - conda install conda-build
     - pip install coverage
     - pip install coveralls
+    - conda install libclang -c statiskit
+    - clang++ -x c++ -v -E /dev/null
 
 
 script:
