@@ -1,0 +1,28 @@
+import os
+from distutils import sysconfig
+
+SConsignFile()
+
+env = Environment()
+
+env.AppendUnique(CXXFLAGS = ['-x', 'c++',
+                             '-std=c++0x',
+                             '-Wwrite-strings'])
+
+
+Alias("build", env.SharedLibrary('test', 'binomial.cpp'))
+
+python_inc = sysconfig.get_python_inc()
+env.AppendUnique(CPPPATH = ['.',
+                            python_inc,
+                            os.path.abspath(os.path.join(python_inc, os.path.pardir))])
+
+Alias("build", env.LoadableModule('_module', env.Glob('wrapper_*.cpp') + ['module.cpp'],
+                                   CPPPATH = env['CPPPATH'],
+                                   CXXFLAGS= env['CXXFLAGS'],
+                                   CPPDEFINES = ['BOOST_PYTHON_DYNAMIC_LIB'],
+                                   LIBPATH = [sysconfig.get_config_var('LIBDIR'), os.path.abspath('.')],
+                                   LIBS = ['test', 'boost_python', 'python' + sysconfig.get_config_var('VERSION')],
+                                   LIBPREFIX = ''))
+
+Default("build")
