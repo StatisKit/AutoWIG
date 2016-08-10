@@ -6,7 +6,7 @@ from .asg import AbstractSemanticGraph, \
                  ConstructorProxy, \
                  ClassProxy, \
                  ClassTemplateSpecializationProxy, \
-                 ClassTemplateProxy, \
+                 ClassTemplateProxy
 
 __all__ = ['refactoring', 'cleaning']
 
