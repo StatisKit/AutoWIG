@@ -1,6 +1,5 @@
 os: linux
-dist: trusty
-language: python
+language: statiskit/ubuntu
 
 python: "2.7"
 
