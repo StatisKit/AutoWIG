@@ -4,7 +4,7 @@ services:
   - docker
 
 before_install:
-    - docker pull statiskit/ubuntu
+    - docker pull statiskit/ubuntu:trusty
     - docker run -it statiskit/ubuntu
     - ls
     - cd ~
