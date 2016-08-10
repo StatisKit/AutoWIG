@@ -1562,7 +1562,7 @@ class NamespaceProxy(DeclarationProxy):
 
 class AbstractSemanticGraph(object):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self._nodes = dict()
         self._syntax_edges = dict()
         self._base_edges = dict()
