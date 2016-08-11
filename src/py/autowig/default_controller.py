@@ -1,14 +1,13 @@
-from .asg import AbstractSemanticGraph, \
-                 HeaderProxy, \
-                 TypedefProxy, \
-                 EnumerationProxy, \
-                 FunctionProxy, \
-                 ConstructorProxy, \
-                 ClassProxy, \
-                 ClassTemplateSpecializationProxy, \
-                 ClassTemplateProxy, \
-                 VariableProxy, \
-                 ClassTemplatePartialSpecializationProxy
+from .asg import (HeaderProxy,
+                  TypedefProxy,
+                  EnumerationProxy,
+                  FunctionProxy,
+                  ConstructorProxy,
+                  ClassProxy,
+                  ClassTemplateSpecializationProxy,
+                  ClassTemplateProxy,
+                  VariableProxy,
+                  ClassTemplatePartialSpecializationProxy)
 
 __all__ = ['refactoring', 'cleaning']
 
@@ -69,28 +68,12 @@ def cleaning(asg):
     """
     from boost_python_generator import BoostPythonExportFileProxy
 
-    if 'class ::std::fpos< __mbstate_t >' in asg and not isinstance(asg['class ::std::fpos< __mbstate_t >'].boost_python_export, (bool, BoostPythonExportFileProxy)):
-        import ipdb
-        ipdb.set_trace()
-
-    if '/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp' in asg and asg['/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp'].clean:
-        import ipdb
-        ipdb.set_trace()
-
     temp = []
     for node in asg.nodes():
         if node.clean:
             node.clean = True
         else:
             temp.append(node._node)
-
-    if 'class ::std::fpos< __mbstate_t >' in asg and not isinstance(asg['class ::std::fpos< __mbstate_t >'].boost_python_export, (bool, BoostPythonExportFileProxy)):
-        import ipdb
-        ipdb.set_trace()
-
-    if '/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp' in asg and asg['/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp'].clean:
-        import ipdb
-        ipdb.set_trace()
 
     while len(temp) > 0:
         node = asg[temp.pop()]
@@ -172,28 +155,12 @@ def cleaning(asg):
         elif isinstance(node, ClassTemplateProxy):
             pass
 
-    if 'class ::std::fpos< __mbstate_t >' in asg and not isinstance(asg['class ::std::fpos< __mbstate_t >'].boost_python_export, (bool, BoostPythonExportFileProxy)):
-        import ipdb
-        ipdb.set_trace()
-
-    if '/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp' in asg and asg['/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp'].clean:
-        import ipdb
-        ipdb.set_trace()
-
     nodes = [node for node in asg.nodes() if node.clean]
     for node in nodes:
         if not node._node in ['::', '/']:
             asg._syntax_edges[node.parent._node].remove(node._node)
             if isinstance(node, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy)):
                 asg._specialization_edges[node.specialize._node].remove(node._node)
-
-    if 'class ::std::fpos< __mbstate_t >' in asg and not isinstance(asg['class ::std::fpos< __mbstate_t >'].boost_python_export, (bool, BoostPythonExportFileProxy)):
-        import ipdb
-        ipdb.set_trace()
-
-    if '/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp' in asg and asg['/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp'].clean:
-        import ipdb
-        ipdb.set_trace()
 
     nodes = set([node._node for node in nodes])
 
@@ -206,24 +173,8 @@ def cleaning(asg):
         asg._parameter_edges.pop(node, None)
         asg._specialization_edges.pop(node, None)
 
-    if 'class ::std::fpos< __mbstate_t >' in asg and not isinstance(asg['class ::std::fpos< __mbstate_t >'].boost_python_export, (bool, BoostPythonExportFileProxy)):
-        import ipdb
-        ipdb.set_trace()
-
-    if '/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp' in asg and asg['/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp'].clean:
-        import ipdb
-        ipdb.set_trace()
-
     for node in asg.nodes():
         if isinstance(node, ClassProxy):
             asg._base_edges[node._node] = [base for base in asg._base_edges[node._node] if not base['base'] in nodes]
-
-    if 'class ::std::fpos< __mbstate_t >' in asg and not isinstance(asg['class ::std::fpos< __mbstate_t >'].boost_python_export, (bool, BoostPythonExportFileProxy)):
-        import ipdb
-        ipdb.set_trace()
-
-    if '/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp' in asg and asg['/home/pfernique/Desktop/StructureAnalysis/stat_tool/src/wrapper/wrapper_c62bcafb31b250e8bb3f63626536f4b4.cpp'].clean:
-        import ipdb
-        ipdb.set_trace()
 
     return asg
