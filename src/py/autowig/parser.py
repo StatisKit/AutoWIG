@@ -15,14 +15,22 @@ __all__ = ['pre_processing', 'post_processing']
 def pre_processing(asg, headers, flags, **kwargs):
     """Pre-processing step of an AutoWIG front-end
 
-    During this step, files are added into the Abstract Semantic Graph (ASG) and a string corresponding to the content of a temporary header including all these files is returned.
-    The attribute :attr:`is_primary` of nodes corresponding to these files is set to `True` (see :func:`autowig.controller.clean` for a detailed explanation of this operation).
-    Nodes corresponding to the C++ global scope and C/C++ fundamental types (:class:`autowig.asg.FundamentalTypeProxy`) are also added to the ASG if not present.
+    During this step, files are added into the Abstract Semantic Graph (ASG)
+    and a string corresponding to the content of a temporary header including
+    all these files is returned. The attribute :attr:`is_primary` of nodes
+    corresponding to these files is set to `True` (see
+    :func:`autowig.controller.clean` for a detailed explanation of this operation).
+    Nodes corresponding to the C++ global scope and C/C++ fundamental types 
+    (:class:`autowig.asg.FundamentalTypeProxy`) are also added to the ASG if 
+    not present.
 
     :Parameters:
-     - `asg` (:class:'autowig.asg.AbstractSemanticGraph') - The ASG in which the files are added.
-     - `headers` ([basestring|path]) - Paths to the source code. Note that a path can be relative or absolute.
-     - `flags` ([basestring]) - Flags needed to perform the syntaxic analysis of source code.
+     - `asg` (:class:'autowig.asg.AbstractSemanticGraph') - The ASG in which the 
+                                                            files are added.
+     - `headers` ([basestring|path]) - Paths to the source code. Note that a path
+                                       can be relative or absolute.
+     - `flags` ([basestring]) - Flags needed to perform the syntaxic analysis 
+                                of source code.
 
 
     :Returns:
