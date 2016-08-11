@@ -66,8 +66,6 @@ def refactoring(asg):
 def cleaning(asg):
     """
     """
-    from boost_python_generator import BoostPythonExportFileProxy
-
     temp = []
     for node in asg.nodes():
         if node.clean:
