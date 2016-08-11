@@ -7,6 +7,15 @@ from tempfile import NamedTemporaryFile
 import os
 import warnings
 
+from .asg import (NamespaceProxy,
+                  FundamentalTypeProxy,
+                  HeaderProxy,
+                  VariableProxy,
+                  FunctionProxy,
+                  ConstructorProxy,
+                  ClassProxy,
+                  ClassTemplateSpecializationProxy,
+                  ClassTemplateProxy)
 from .tools import subclasses
 from .plugin_manager import parser
 
@@ -102,9 +111,9 @@ def pre_processing(asg, headers, flags, **kwargs):
 
     for fundamental in subclasses(FundamentalTypeProxy):
         if hasattr(fundamental, '_node'):
-            if not fundamental._node in asg._nodes:
+            if fundamental._node not in asg._nodes:
                 asg._nodes[fundamental._node] = dict(_proxy = fundamental)
-            if not fundamental._node in asg._syntax_edges['::']:
+            if fundamental._node not in asg._syntax_edges['::']:
                 asg._syntax_edges['::'].append(fundamental._node)
 
     headers = [path(header) if not isinstance(header, path) else header for header in headers]
