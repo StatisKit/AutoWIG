@@ -15,7 +15,8 @@ from .asg import (NamespaceProxy,
                   ConstructorProxy,
                   ClassProxy,
                   ClassTemplateSpecializationProxy,
-                  ClassTemplateProxy)
+                  ClassTemplateProxy,
+                  TypedefProxy)
 from .tools import subclasses
 from .plugin_manager import parser
 
@@ -171,7 +172,7 @@ def bootstrap(asg, flags, **kwargs):
                         black.add(return_type._node)
                     for parameter in node.parameters:
                         target = parameter.qualified_type.desugared_type.unqualified_type
-                        if not target._node in black:
+                        if target._node not in black:
                             white.append(target)
                             black.add(target._node)
                 elif isinstance(node, ConstructorProxy):
@@ -198,7 +199,7 @@ def bootstrap(asg, flags, **kwargs):
                         if not node.is_complete:
                             gray.add(node._node)
                         specialize = node.specialize
-                        if not specialize._node in black:
+                        if specialize._node not in black:
                             white.append(node.specialize)
                             black.add(node.specialize._node)
                     elif not node.is_complete:
@@ -216,7 +217,7 @@ def bootstrap(asg, flags, **kwargs):
                 headers.append("")
                 headers.append("int main(void)")
                 headers.append("{")
-                for _index, spc in enumerate(gray):
+                for spc in gray:
                     if spc not in forbidden:
                         headers.append("\tsizeof(" + spc + ");")
                 headers.append("\treturn 0;")
@@ -278,7 +279,7 @@ def suppress_forward_declaration(asg, **kwargs):
             for cls in cls.classes():
                 blacklist(cls, black)
     for cls in asg.classes(templated=False):
-        if not cls._node in black and not cls._node.startswith('union '):
+        if cls._node not in black and not cls._node.startswith('union '):
             if cls.is_complete:
                 complete = cls
                 if cls._node.startswith('class '):
@@ -307,26 +308,26 @@ def suppress_forward_declaration(asg, **kwargs):
                         complete = None
                 else:
                     complete = None
-            if not duplicate is None:
+            if duplicate is not None:
                 if isinstance(duplicate, ClassTemplateProxy) and not complete is None:
                     blacklist(complete, black)
                 elif isinstance(complete, ClassTemplateProxy):
                     blacklist(duplicate, black)
                 elif complete is None or not complete.is_complete or duplicate.is_complete:
                     blacklist(duplicate, black)
-                    if not complete is None:
+                    if complete is not None:
                         blacklist(complete, black)
                 else:
                     complete = complete._node
                     duplicate = duplicate._node
-                    for node, edge in asg._type_edges.iteritems():
+                    for edge in asg._type_edges.itervalues():
                         if edge['target'] == duplicate:
                             edge['target'] = complete
-                    for node, edges in asg._base_edges.iteritems():
+                    for edges in asg._base_edges.itervalues():
                         for index, edge in enumerate(edges):
                             if edge['base'] == duplicate:
                                 edges[index]['base'] = complete
-                    for node, edges in asg._template_edges.iteritems():
+                    for  edges in asg._template_edges.itervalues():
                         for index, edge in enumerate(edges):
                             if edge['target'] == duplicate:
                                 edges[index]['target'] = complete
@@ -339,7 +340,7 @@ def suppress_forward_declaration(asg, **kwargs):
         change = False
         for cls in asg.classes(specialized=True, templated=False):
             # TODO templated=None
-            if not cls._node in black:
+            if cls._node not in black:
                 templates = [tpl.unqualified_type for tpl in cls.templates]
                 while not(len(templates) == 0 or any(tpl._node in black for tpl in templates)):
                     _templates = templates
@@ -369,10 +370,10 @@ def suppress_forward_declaration(asg, **kwargs):
             asg._type_edges.pop(fct._node)
             asg._nodes.pop(fct._node)
     for parent, children in asg._syntax_edges.items():
-        asg._syntax_edges[parent] = [child for child in children if not child in gray]
+        asg._syntax_edges[parent] = [child for child in children if child not in gray]
     gray = set()
     for cls in asg.classes(templated=False):
-        if not cls._node in black:
+        if cls._node not in black:
             for ctr in cls.constructors():
                 if any(prm.qualified_type.unqualified_type._node in black for prm in ctr.parameters):
                     gray.add(ctr._node)
@@ -389,7 +390,7 @@ def suppress_forward_declaration(asg, **kwargs):
             for enm in enumerators:
                 gray.add(enm._node)
                 asg._nodes.pop(enm._node)
-            if not dtr is None:
+            if dtr is not None:
                 asg._nodes.pop(dtr._node)
             for ctr in constructors:
                 gray.add(ctr._node)
@@ -409,9 +410,9 @@ def suppress_forward_declaration(asg, **kwargs):
                 asg._type_edges.pop(mtd._node)
                 asg._nodes.pop(mtd._node)
     for parent, children in asg._syntax_edges.items():
-        asg._syntax_edges[parent] = [child for child in children if not child in gray]
+        asg._syntax_edges[parent] = [child for child in children if child not in gray]
     for cls in asg.classes(templated=True, specialized=False):
-        asg._specialization_edges[cls._node] = {spec for spec in asg._specialization_edges[cls._node] if not spec in black}
+        asg._specialization_edges[cls._node] = {spec for spec in asg._specialization_edges[cls._node] if spec not in black}
     for cls in black:
         asg._nodes.pop(cls)
         asg._syntax_edges.pop(cls, None)
