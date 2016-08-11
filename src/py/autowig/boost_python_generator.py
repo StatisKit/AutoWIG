@@ -24,7 +24,6 @@ from .asg import (AbstractSemanticGraph,
                   DestructorProxy,
                   NamespaceProxy,
                   TypedefProxy,
-                  DirectoryProxy,
                   EnumerationProxy,
                   FunctionProxy,
                   ConstructorProxy,
@@ -816,8 +815,10 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
     IGNORE = {"class ::std::shared_ptr", "class ::std::unique_ptr"}
 
     def get_content(self):
-        content = self.HEADER.render(headers = [self._asg[header] for header in self._asg._headers])#[header for header in self._asg.files(header=True) if header.is_self_contained])#self._asg.includes(*self.declarations))
-#content = self.HEADER.render(headers = self._asg.includes(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
+        content = self.HEADER.render(headers = [self._asg[header] for header in self._asg._headers])
+        #[header for header in self._asg.files(header=True) if header.is_self_contained])
+        #self._asg.includes(*self.declarations))
+        #content = self.HEADER.render(headers = self._asg.includes(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
         if any(declaration for declaration in self.declarations if isinstance(declaration, ClassProxy)):
             content += '\n\n' + self.HELDTYPE
         for arg in self.declarations:
@@ -846,7 +847,7 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                         documenter = documenter,
                         call_policy = boost_python_call_policy)
             elif isinstance(arg, ClassTemplateSpecializationProxy):
-                if not arg.globalname in self.IGNORE and not arg.specialize.globalname in self.IGNORE:
+                if arg.globalname not in self.IGNORE and arg.specialize.globalname not in self.IGNORE:
                     content += '\n' + self.CLASS.render(cls = arg,
                             node_rename = node_rename,
                             documenter = documenter,
@@ -861,7 +862,7 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                 elif arg.globalname in self.FROM:
                     content += '\n' + self.FROM[arg.globalname].render(cls = arg)
             elif isinstance(arg, ClassProxy):
-                if not arg.globalname in self.IGNORE:
+                if arg.globalname not in self.IGNORE:
                     content += '\n' + self.CLASS.render(cls = arg,
                             node_rename = node_rename,
                             documenter = documenter,
@@ -968,25 +969,25 @@ BOOST_PYTHON_MODULE(_${module.prefix})
             declaration = temp.pop()
             if isinstance(declaration, FunctionProxy):
                 export = declaration.return_type.desugared_type.unqualified_type.boost_python_export
-                if export and not export is True:
+                if export and export is not True:
                     module = export.module
                     if not module is None:
                         modules.add(module.globalname)
                 for prm in declaration.parameters:
                     export = prm.qualified_type.desugared_type.unqualified_type.boost_python_export
-                    if export and not export is True:
+                    if export and export is not True:
                         module = export.module
                         if not module is None:
                             modules.add(module.globalname)
             elif isinstance(declaration, (VariableProxy, TypedefProxy)):
                 export = declaration.qualified_type.desugared_type.unqualified_type.boost_python_export
-                if export and not export is True:
+                if export and export is not True:
                     module = export.module
                     if not module is None:
                         modules.add(module.globalname)
             elif isinstance(declaration, ClassProxy):
                 export = declaration.boost_python_export
-                if export and not export is True:
+                if export and export is not True:
                     module = export.module
                     if not module is None:
                         modules.add(module.globalname)
@@ -994,7 +995,7 @@ BOOST_PYTHON_MODULE(_${module.prefix})
                 temp.extend([dcl for dcl in declaration.declarations() if dcl.access == 'public'])
             elif isinstance(declaration, ClassTemplateProxy):
                 export = declaration.boost_python_export
-                if export and not export is True:
+                if export and export is not True:
                     module = export.module
                     if module is None:
                         modules.add(module.globalname)
@@ -1079,7 +1080,7 @@ class BoostPythonDecoratorFileProxy(FileProxy):
     def package(self):
         modules = []
         parent = self.parent
-        while not parent is None and os.path.exists(parent.globalname + '__init__.py'):
+        while parent is not None and os.path.exists(parent.globalname + '__init__.py'):
             modules.append(parent.localname.strip(os.sep))
             parent = parent.parent
         return '.'.join(reversed(modules))
@@ -1164,10 +1165,10 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
         typedefs = []
         for export in self.module.exports:
             for declaration in export.declarations:
-                if isinstance(declaration, TypedefProxy) and declaration.qualified_type.desugared_type.unqualified_type.boost_python_export and not declaration.qualified_type.desugared_type.unqualified_type.boost_python_export is True:
+                if isinstance(declaration, TypedefProxy) and declaration.qualified_type.desugared_type.unqualified_type.boost_python_export and declaration.qualified_type.desugared_type.unqualified_type.boost_python_export is not True:
                     typedefs.append(declaration)
                 elif isinstance(declaration, ClassProxy):
-                    typedefs.extend([tdf for tdf in declaration.typedefs() if tdf.boost_python_export and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export and not tdf.qualified_type.desugared_type.unqualified_type.boost_python_export is True])
+                    typedefs.extend([tdf for tdf in declaration.typedefs() if tdf.boost_python_export and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export is not True])
         content.append(self.TYPEDEFS.render(decorator = self, module = self.module, typedefs = typedefs, node_rename=node_rename))
         return "\n".join(content)
 
@@ -1248,9 +1249,6 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         visitor.plugin = plugin
 
     _nodes = set([node._node for node in nodes])
-    if 'class ::sequence_analysis::Sequences' in _nodes and not 'class ::std::vector< enum ::sequence_analysis::segment_model, class ::std::allocator< enum ::sequence_analysis::segment_model > >' in _nodes:
-        import ipdb
-        ipdb.set_trace()
 
     exports = set()
     for node in nodes:
@@ -1289,4 +1287,6 @@ def boost_python_pattern_generator(asg, pattern=None, **kwargs):
 def boost_python_internal_generator(asg, pattern=None, **kwargs):
     """
     """
-    return boost_python_generator(asg, [node for node in asg.declarations(pattern=pattern) if not getattr(node.header, 'is_external_dependency', True)], **kwargs)
+    return boost_python_generator(asg,
+                                  [node for node in asg.declarations(pattern=pattern) if not getattr(node.header, 'is_external_dependency', True)],
+                                  **kwargs)
