@@ -7,6 +7,7 @@ import os
 import parse
 
 from .asg import (AbstractSemanticGraph,
+                  NodeProxy,
                   ClassTemplateSpecializationProxy,
                   EnumeratorProxy,
                   ClassTemplatePartialSpecializationProxy,
