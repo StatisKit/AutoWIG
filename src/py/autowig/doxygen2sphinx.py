@@ -2,26 +2,6 @@ from mako.template import Template
 import pypandoc
 import re
 
-from .asg import (AbstractSemanticGraph,
-                  NodeProxy,
-                  ClassTemplateSpecializationProxy,
-                  EnumeratorProxy,
-                  FilesystemProxy,
-                  DeclarationProxy,
-                  ClassProxy,
-                  FileProxy,
-                  FieldProxy,
-                  HeaderProxy,
-                  FundamentalTypeProxy,
-                  ClassTemplateProxy,
-                  VariableProxy,
-                  MethodProxy,
-                  NamespaceProxy,
-                  TypedefProxy,
-                  EnumerationProxy,
-                  FunctionProxy,
-                  ConstructorProxy,
-                  ParameterProxy)
 from .plugin_manager import node_rename
 
 FORMATTER = Template(text=r"""\
