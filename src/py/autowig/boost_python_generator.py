@@ -6,56 +6,30 @@ from operator import attrgetter
 import os
 import parse
 
-from .asg import AbstractSemanticGraph, \
-                 ClassTemplateSpecializationProxy, \
-                 SignedFloatingPointTypeProxy, \
-                 SignedLongDoubleTypeProxy, \
-                 WCharTypeProxy, \
-                 ComplexLongDoubleTypeProxy, \
-                 EnumeratorProxy, \
-                 ClassTemplatePartialSpecializationProxy, \
-                 FilesystemProxy, \
-                 UnsignedShortIntegerTypeProxy, \
-                 UnsignedCharTypeProxy, \
-                 DeclarationProxy, \
-                 NodeProxy, \
-                 CharTypeProxy, \
-                 ClassProxy, \
-                 Char32TypeProxy, \
-                 FileProxy, \
-                 SignedCharTypeProxy, \
-                 FieldProxy, \
-                 HeaderProxy, \
-                 UnsignedLongLongIntegerTypeProxy, \
-                 FundamentalTypeProxy, \
-                 ClassTemplateProxy, \
-                 NullPtrTypeProxy, \
-                 SignedLongIntegerTypeProxy, \
-                 SignedDoubleTypeProxy, \
-                 CharacterFundamentalTypeProxy, \
-                 SignedIntegerTypeProxy, \
-                 VariableProxy, \
-                 VoidTypeProxy, \
-                 UnsignedLongIntegerTypeProxy, \
-                 BoolTypeProxy, \
-                 MethodProxy, \
-                 SignedShortIntegerTypeProxy, \
-                 ComplexTypeProxy, \
-                 SignedFloatTypeProxy, \
-                 UnsignedIntegerTypeProxy, \
-                 Char16TypeProxy, \
-                 SignedLongLongIntegerTypeProxy, \
-                 DestructorProxy, \
-                 NamespaceProxy, \
-                 TypedefProxy, \
-                 DirectoryProxy, \
-                 EnumerationProxy, \
-                 FunctionProxy, \
-                 ComplexFloatTypeProxy, \
-                 ConstructorProxy, \
-                 EdgeProxy, \
-                 QualifiedTypeProxy, \
-                 ParameterProxy
+from .asg import (AbstractSemanticGraph,
+                  ClassTemplateSpecializationProxy,
+                  EnumeratorProxy,
+                  ClassTemplatePartialSpecializationProxy,
+                  FilesystemProxy,
+                  DeclarationProxy,
+                  ClassProxy,
+                  FileProxy,
+                  FieldProxy,
+                  HeaderProxy,
+                  FundamentalTypeProxy,
+                  ClassTemplateProxy,
+                  VariableProxy,
+                  MethodProxy,
+                  DestructorProxy,
+                  NamespaceProxy,
+                  TypedefProxy,
+                  DirectoryProxy,
+                  EnumerationProxy,
+                  FunctionProxy,
+                  ConstructorProxy,
+                  EdgeProxy,
+                  QualifiedTypeProxy,
+                  ParameterProxy)
 from .plugin_manager import node_path, node_rename, documenter, visitor
 from .proxy_manager import ProxyManager
 from .node_rename import PYTHON_OPERATOR
