@@ -13,15 +13,19 @@ The usage and extension of **AutoWIG** is also illustrated on a set of statistic
 
 .. sidebar:: Summary
 
-    :License: |LICENSELINK| (see `LICENSE.rst <LICENSE.rst>`_ file)
+    :License: |LICENSELINK|
     :Version: |VERSION|
     :Status: |TRAVIS| |COVERALLS| |LANDSCAPE| |READTHEDOCS|
-    :Authors: see `AUTHORS.rst <AUTHORS.rst>`_ file
+    :Authors: 
+     - Pierre Fernique
+     - Christophe Pradal
 
 
 .. |VERSION| replace:: 0.1.0
 
-.. |LICENSELINK| replace:: CeCILL-C license
+.. |LICENSELINK| replace:: `CeCILL-C license <LICENSE.rst>`
+
+.. |AUTHORS| replace:: see `AUTHORS.rst <AUTHORS.rst>`_
 
 .. |VERSION| replace:: 0.1.0
 
