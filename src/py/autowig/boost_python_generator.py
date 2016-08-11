@@ -639,8 +639,8 @@ ${field.globalname}, "${documenter(field)}");
         if row is None:
             return '\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False"
                              for declaration in self.declarations
-                             if isinstance(declaration, ClassProxy))
-                    + "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n"
+                             if isinstance(declaration, ClassProxy)) + \
+                    "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n"
         if row <= 0:
             raise ValueError()
         if not self.on_disk:
