@@ -7,7 +7,38 @@ from tempfile import NamedTemporaryFile
 import os
 import warnings
 
-from .asg import *
+from .asg import (CharTypeProxy, 
+                 UnsignedCharTypeProxy,
+                 SignedCharTypeProxy,
+                 Char16TypeProxy,
+                 Char32TypeProxy,
+                 WCharTypeProxy,
+                 SignedShortIntegerTypeProxy,
+                 SignedIntegerTypeProxy,
+                 SignedLongIntegerTypeProxy,
+                 SignedLongLongIntegerTypeProxy,
+                 UnsignedShortIntegerTypeProxy,
+                 UnsignedIntegerTypeProxy,
+                 UnsignedLongIntegerTypeProxy,
+                 UnsignedLongLongIntegerTypeProxy,
+                 SignedFloatTypeProxy,
+                 SignedDoubleTypeProxy,
+                 SignedLongDoubleTypeProxy,
+                 BoolTypeProxy, 
+                 ComplexTypeProxy,
+                 VoidTypeProxy,
+                 HeaderProxy,
+                 EnumerationProxy,
+                 EnumeratorProxy, 
+                 TypedefProxy,
+                 VariableProxy,
+                 FunctionProxy,
+                 MethodProxy,
+                 ConstructorProxy,
+                 DestructorProxy,
+                 FieldProxy,
+                 ClassProxy,
+                 NamespaceProxy)
 from .tools import subclasses
 from .plugin_manager import parser
 
