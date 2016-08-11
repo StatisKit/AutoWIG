@@ -79,21 +79,21 @@ def cleaning(asg):
         node = asg[temp.pop()]
         node.clean = False
         parent = node.parent
-        if not parent is None:
+        if parent is not None:
             if parent.clean:
                 temp.append(parent._node)
             else:
                 parent.clean = False
         if hasattr(node, 'header'):
             header = node.header
-            if not header is None:
+            if header is not None:
                 if header.clean:
                     temp.append(header._node)
                 else:
                     header.clean = False
         if isinstance(node, HeaderProxy):
             include = node.include
-            if not include is None:
+            if include is not None:
                 if include.clean:
                     temp.append(include._node)
                 else:
@@ -157,7 +157,7 @@ def cleaning(asg):
 
     nodes = [node for node in asg.nodes() if node.clean]
     for node in nodes:
-        if not node._node in ['::', '/']:
+        if node._node not in ['::', '/']:
             asg._syntax_edges[node.parent._node].remove(node._node)
             if isinstance(node, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy)):
                 asg._specialization_edges[node.specialize._node].remove(node._node)
