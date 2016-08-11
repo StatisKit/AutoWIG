@@ -28,14 +28,12 @@ from .asg import (AbstractSemanticGraph,
                   EnumerationProxy,
                   FunctionProxy,
                   ConstructorProxy,
-                  EdgeProxy,
                   QualifiedTypeProxy,
                   ParameterProxy)
 from .plugin_manager import node_path, node_rename, documenter, visitor
 from .proxy_manager import ProxyManager
 from .node_rename import PYTHON_OPERATOR
 from .plugin_manager import PluginManager
-from .tools import camel_case_to_lower
 from .generator import iterator_range
 
 __all__ = ['boost_python_call_policy', 'boost_python_export_factory', 'boost_python_module_factory', 'boost_python_decorator_factory']
@@ -255,7 +253,8 @@ ConstructorProxy._valid_boost_python_export = property(_valid_boost_python_expor
 del _valid_boost_python_export
 
 def _valid_boost_python_export(self):
-    if boost_python_call_policy(self) in ['boost::python::return_internal_reference<>()', 'boost::python::return_value_policy< boost::python::reference_existing_object >()']:
+    if boost_python_call_policy(self) in ['boost::python::return_internal_reference<>()',
+                                          'boost::python::return_value_policy< boost::python::reference_existing_object >()']:
         if not isinstance(self.return_type.desugared_type.unqualified_type, ClassProxy):
             return False
     if self.access == 'public' and self.return_type.boost_python_export and all(bool(parameter.boost_python_export) for parameter in self.parameters):
@@ -265,14 +264,6 @@ def _valid_boost_python_export(self):
 
 MethodProxy._valid_boost_python_export = property(_valid_boost_python_export)
 del _valid_boost_python_export
-
-#def _default_boost_python_export(self):
-#    return self.parent.boost_python_export
-#    #if self.is_virtual:
-#    #    signature = self.signature
-#    #    return any(mtd.localname == self.localname and mtd.signature == signature and mtd.boost_python_export for mtd in self.parent.methods(inherited=True, access='public'))
-#    #else:
-#    #    return True
 
 MethodProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
@@ -291,7 +282,9 @@ class BoostPythonExportFileProxy(FileProxy):
     @property
     def declarations(self):
         declarations = [self._asg[declaration] for declaration in self._declarations]
-        return [declaration for declaration in declarations if not isinstance(declaration, ClassProxy)] + sorted([declaration for declaration in declarations if isinstance(declaration, ClassProxy)], key = lambda cls: cls.depth)
+        return [declaration for declaration in declarations if not isinstance(declaration, ClassProxy)]
+               + sorted([declaration for declaration in declarations if isinstance(declaration, ClassProxy)],
+                        key = lambda cls: cls.depth)
 
     @property
     def depth(self):
@@ -405,7 +398,8 @@ extern "C" {
 
     FUNCTION = Template(text=r"""\
     % if function.is_overloaded:
-    ${function.return_type.globalname} (*function_pointer_${function.hash})(${", ".join(parameter.qualified_type.globalname for parameter in function.parameters)}) = ${function.globalname};
+    ${function.return_type.globalname} (*function_pointer_${function.hash})\
+(${", ".join(parameter.qualified_type.globalname for parameter in function.parameters)}) = ${function.globalname};
     % endif
     boost::python::def("${node_rename(function)}", \
     % if function.is_overloaded:
@@ -433,8 +427,11 @@ namespace autowig
 {
     % for method in cls.methods(access='public'):
         % if method.boost_python_export and method.return_type.is_reference and not method.return_type.is_const and method.return_type.unqualified_type.is_assignable:
-    void method_decorator_${method.hash}(${cls.globalname + " const" * bool(method.is_const) + " & instance, " + ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0) + 'const ' + method.return_type.globalname + ' param_out'})
-    { instance.${method.localname}(${", ".join('param_in_' + str(parameter.index) for parameter in method.parameters)}) = param_out; }
+    void method_decorator_${method.hash}\
+(${cls.globalname + " const" * bool(method.is_const) + " & instance, " 
+   + ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0) + 'const ' + method.return_type.globalname + ' param_out'})
+    { instance.${method.localname}\
+(${", ".join('param_in_' + str(parameter.index) for parameter in method.parameters)}) = param_out; }
         % endif
     % endfor
 }
@@ -464,7 +461,8 @@ ${method.globalname};
     {
         % for function in cls.functions():
             % if function.boost_python_export:
-        static ${function.return_type.globalname} function_${function.hash}(${", ".join(parameter.qualified_type.globalname + " parameter_" + str(index) for index, parameter in enumerate(function.parameters))})
+        static ${function.return_type.globalname} function_${function.hash}\
+(${", ".join(parameter.qualified_type.globalname + " parameter_" + str(index) for index, parameter in enumerate(function.parameters))})
         { \
             % if not function.return_type.globalname == 'void':
 return \
@@ -490,7 +488,8 @@ ${function.globalname}\
     % if not cls.is_abstract and cls.is_instantiable:
         % for constructor in cls.constructors(access = 'public'):
             % if constructor.boost_python_export:
-    class_${cls.hash}.def(boost::python::init< ${", ".join(parameter.qualified_type.globalname for parameter in constructor.parameters)} >("${documenter(constructor)}"));
+    class_${cls.hash}.def(\
+boost::python::init< ${", ".join(parameter.qualified_type.globalname for parameter in constructor.parameters)} >("${documenter(constructor)}"));
             % endif
         % endfor
     % endif
@@ -511,7 +510,7 @@ ${call_policy(method)}, \
                 % endif
         % endif
     % endfor
-    % for methodname in set([node_rename(method) for method in cls.methods() if method.access == 'public' and method.is_static and method.boost_python_export]):
+    % for methodname in {node_rename(method) for method in cls.methods() if method.access == 'public' and method.is_static and method.boost_python_export}:
     class_${cls.hash}.staticmethod("${methodname}");
     % endfor
     % for function in cls.functions():
@@ -591,7 +590,8 @@ ${field.globalname}, "${documenter(field)}");
 
     @property
     def _content(self):
-        content = self.HEADER.render(headers = [self._asg[header] for header in self._asg._headers])#[header for header in self._asg.files(header=True) if header.is_self_contained])
+        content = self.HEADER.render(headers = [self._asg[header] for header in self._asg._headers])
+        #[header for header in self._asg.files(header=True) if header.is_self_contained])
         if any(declaration for declaration in self.declarations if isinstance(declaration, ClassProxy)):
             content += '\n\n' + self.HELDTYPE
         for arg in self.declarations:
@@ -637,7 +637,10 @@ ${field.globalname}, "${documenter(field)}");
 
     def _feedback(self, row):
         if row is None:
-            return '\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False" for declaration in self.declarations if isinstance(declaration, ClassProxy)) + "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n"
+            return '\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False"
+                             for declaration in self.declarations
+                             if isinstance(declaration, ClassProxy))
+                    + "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n"
         if row <= 0:
             raise ValueError()
         if not self.on_disk:
