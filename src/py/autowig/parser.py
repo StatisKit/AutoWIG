@@ -309,7 +309,7 @@ def suppress_forward_declaration(asg, **kwargs):
                 else:
                     complete = None
             if duplicate is not None:
-                if isinstance(duplicate, ClassTemplateProxy) and not complete is None:
+                if isinstance(duplicate, ClassTemplateProxy) and complete is not None:
                     blacklist(complete, black)
                 elif isinstance(complete, ClassTemplateProxy):
                     blacklist(duplicate, black)
@@ -379,7 +379,11 @@ def suppress_forward_declaration(asg, **kwargs):
                     gray.add(ctr._node)
                     asg._parameter_edges.pop(ctr._node)
                     asg._nodes.pop(ctr._node)
-            asg._base_edges[cls._node] = [dict(base = base['base'], _access = base['_access'], _is_virtual = base['_is_virtual']) for base in asg._base_edges[cls._node] if not base['base'] in black]
+            asg._base_edges[cls._node] = [dict(base = base['base'],
+                                               _access = base['_access'],
+                                               _is_virtual = base['_is_virtual'])
+                                          for base in asg._base_edges[cls._node]
+                                          if not base['base'] in black]
         else:
             enumerators = cls.enumerators()
             dtr = cls.destructor
