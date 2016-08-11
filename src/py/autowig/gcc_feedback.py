@@ -30,7 +30,7 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
                 row = int(parsed['row'])
                 node = directory + parsed['filename']
                 if node in asg:
-                    if not node in wrappers:
+                    if node not in wrappers:
                         wrappers[node] = [row]
                     else:
                         wrappers[node].append(row)
