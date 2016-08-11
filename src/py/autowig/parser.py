@@ -119,9 +119,9 @@ def pre_processing(asg, headers, flags, **kwargs):
                 for sysinclude in sysincludes:
                     asg.add_directory(sysinclude).is_searchpath = True
 
-    if not '::' in asg._nodes:
+    if '::' not in asg._nodes:
         asg._nodes['::'] = dict(_proxy = NamespaceProxy)
-    if not '::' in asg._syntax_edges:
+    if '::' not in asg._syntax_edges:
         asg._syntax_edges['::'] = []
 
     for fundamental in subclasses(FundamentalTypeProxy):
@@ -176,12 +176,12 @@ def bootstrap(asg, flags, **kwargs):
                 node = white.pop()
                 if isinstance(node, (TypedefProxy, VariableProxy)):
                     target = node.qualified_type.desugared_type.unqualified_type
-                    if not target._node in black:
+                    if target._node not in black:
                         white.append(target)
                         black.add(target._node)
                 elif isinstance(node, FunctionProxy):
                     return_type = node.return_type.desugared_type.unqualified_type
-                    if not return_type._node in black:
+                    if return_type._node not in black:
                         white.append(return_type)
                         black.add(return_type._node)
                     for parameter in node.parameters:
@@ -192,19 +192,19 @@ def bootstrap(asg, flags, **kwargs):
                 elif isinstance(node, ConstructorProxy):
                     for parameter in node.parameters:
                         target = parameter.qualified_type.desugared_type.unqualified_type
-                        if not target._node in black:
+                        if target._node not in black:
                             white.append(target)
                             black.add(target._node)
                 elif isinstance(node, ClassProxy):
                     for base in node.bases():
                         if base.access == 'public':
-                            if not base._node in black:
+                            if base._node not in black:
                                 white.append(base)
                                 black.add(base._node)
                     for dcl in node.declarations():
                         try:
                             if dcl.access == 'public':
-                                if not dcl._node in black:
+                                if dcl._node not in black:
                                     white.append(dcl)
                                     black.add(dcl._node)
                         except:
@@ -220,7 +220,7 @@ def bootstrap(asg, flags, **kwargs):
                         gray.add(node._node)
                 elif isinstance(node, ClassTemplateProxy):
                     for specialization in node.specializations():
-                        if not specialization._node in black:
+                        if specialization._node not in black:
                             white.append(specialization)
                             black.add(specialization._node)
             gray = list(gray)
@@ -232,7 +232,7 @@ def bootstrap(asg, flags, **kwargs):
                 headers.append("int main(void)")
                 headers.append("{")
                 for _index, spc in enumerate(gray):
-                    if not spc in forbidden:
+                    if spc not in forbidden:
                         headers.append("\tsizeof(" + spc + ");")
                 headers.append("\treturn 0;")
                 headers.append("}")
@@ -277,38 +277,9 @@ def update_overload(asg, overload='none', **kwargs):
         raise ValueError('\'overload\' parameter')
     for fct in asg.functions(free=None):
         del fct.is_overloaded
-    #if overload == 'none':
     for fct in asg.functions(free=None):
         fct.is_overloaded = True
-    #elif free is None:
-    #    for fct in asg.functions(free=None):
-    #        if not fct.is_overloaded:
-    #            overloads = fct.overloads
-    #            if len(overloads) > 1:
-    #                for overload in overloads:
-    #                    overload.is_overloaded = True
-    #            else:
-    #    	    fct.is_overloaded = False
-    #        else:
-    #            fct.is_overloaded = False
-    #elif free:
-    #    for fct in asg.functions(free=None):
-    #        if not fct.is_overloaded and not isinstance(fct, MethodProxy):
-    #            overloads = fct.overloads
-    #            if len(overloads) > 1:
-    #                for overload in overloads:
-    #                    overload.is_overloaded = True
-    #        else:
-    #            fct.is_overloaded = True
-    #else:
-    #    for fct in asg.functions(free=None):
-    #        if not fct.is_overloaded and isinstance(fct, MethodProxy):
-    #            overloads = fct.overloads
-    #            if len(overloads) > 1:
-    #                for overload in overloads:
-    #                    overload.is_overloaded = True
-    #        else:
-    #            fct.is_overloaded = True
+
 
 def suppress_forward_declaration(asg, **kwargs):
     """
