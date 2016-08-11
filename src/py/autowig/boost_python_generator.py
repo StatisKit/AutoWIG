@@ -282,9 +282,9 @@ class BoostPythonExportFileProxy(FileProxy):
     @property
     def declarations(self):
         declarations = [self._asg[declaration] for declaration in self._declarations]
-        return [declaration for declaration in declarations if not isinstance(declaration, ClassProxy)]
-               + sorted([declaration for declaration in declarations if isinstance(declaration, ClassProxy)],
-                        key = lambda cls: cls.depth)
+        return [declaration for declaration in declarations if not isinstance(declaration, ClassProxy)] + \
+               sorted([declaration for declaration in declarations if isinstance(declaration, ClassProxy)],
+                       key = lambda cls: cls.depth)
 
     @property
     def depth(self):
