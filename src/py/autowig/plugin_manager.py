@@ -81,7 +81,7 @@ class PluginManager(object):
         if callable(implementation):
             self._cache[plugin] = implementation
         elif isinstance(implementation, basestring):
-            if not implementation in self:
+            if implementation not in self:
                 raise ValueError('\'implementation\' parameter must be an existing plugin')
             if plugin == implementation:
                 raise ValueError('\'plugin\' and \'implementation\' parameters cannot have the same value')
