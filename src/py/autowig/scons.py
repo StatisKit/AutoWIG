@@ -5,9 +5,7 @@ from pygments import highlight
 from pygments.lexers import BashSessionLexer
 from pygments.formatters import HtmlFormatter
 from path import path
-import os
 import subprocess
-import parse
 
 __all__ = ['scons']
 
@@ -68,8 +66,9 @@ def boost_python_action(target, source, env, **kwargs):
 
     if 'autowig_parser' in env:
         parser.plugin = env['autowig_parser']
-    print env.subst('$CPPFLAGS $CFLAGS $CCFLAGS $CXXFLAGS').split() + ['-I' + cpppath.strip() for cpppath in env.subst('$CPPPATH').split()]
-    parser(asg, [str(src) for src in source], flags=env.subst('$CPPFLAGS $CFLAGS $CCFLAGS $CXXFLAGS').split() + ['-I' + cpppath.strip() for cpppath in env.subst('$CPPPATH').split()], env=env) # KWARGS
+    parser(asg, [str(src) for src in source],
+           flags=env.subst('$CPPFLAGS $CFLAGS $CCFLAGS $CXXFLAGS').split() + ['-I' + cpppath.strip() for cpppath in env.subst('$CPPPATH').split()],
+           env=env) # KWARGS
     parsing = time.time()
 
     if 'autowig_controller' in env:
@@ -106,7 +105,7 @@ def boost_python_action(target, source, env, **kwargs):
                 for dcl in wrapper.declarations:
                     counts[dcl.__class__.__name__] += 1
 
-        from .tools import camel_case_to_lower, strdiff
+        from .tools import camel_case_to_lower
         summary = []
         for count in counts:
             if counts[count] > 0:
