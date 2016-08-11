@@ -23,7 +23,6 @@ from .asg import (AbstractSemanticGraph,
                   EnumerationProxy,
                   FunctionProxy,
                   ConstructorProxy,
-                  QualifiedTypeProxy,
                   ParameterProxy)
 from .plugin_manager import node_rename
 
@@ -242,8 +241,8 @@ def desc_parser(asg, text):
             else:
                 nodes = asg.nodes(node + '::[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}')
                 if len(nodes) > 0:
-                    if any(node.boost_python_export and not node.boost_python_export is True for node in nodes):
-                        node = [node for node in nodes if node.boost_python_export and not node.boost_python_export is True]
+                    if any(node.boost_python_export and node.boost_python_export is not True for node in nodes):
+                        node = [node for node in nodes if node.boost_python_export and node.boost_python_export is not True]
                     node = nodes.pop()
                 else:
                     node = ':cpp:any:`' + node + '`'
@@ -315,7 +314,7 @@ def name_formatter(node):
             node = node.templates[0].desugared_type.unqualified_type
     elif isinstance(node, TypedefProxy):
         node = node.qualified_type.desugared_type.unqualified_type
-    if node.boost_python_export and not node.boost_python_export is True:
+    if node.boost_python_export and node.boost_python_export is not True:
         module = node.boost_python_export.module
         parent = node.parent
         name = '`' + module.package + '.' + '.'.join(node_rename(ancestor, scope=True) for ancestor in parent.ancestors[1:])
