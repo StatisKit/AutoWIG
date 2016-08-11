@@ -427,8 +427,8 @@ namespace autowig
     % for method in cls.methods(access='public'):
         % if method.boost_python_export and method.return_type.is_reference and not method.return_type.is_const and method.return_type.unqualified_type.is_assignable:
     void method_decorator_${method.hash}\
-(${cls.globalname + " const" * bool(method.is_const) + " & instance, " 
-   + ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0) + 'const ' + method.return_type.globalname + ' param_out'})
+(${cls.globalname + " const" * bool(method.is_const) + " & instance, " + \
+   ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0) + 'const ' + method.return_type.globalname + ' param_out'})
     { instance.${method.localname}\
 (${", ".join('param_in_' + str(parameter.index) for parameter in method.parameters)}) = param_out; }
         % endif
