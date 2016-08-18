@@ -35,7 +35,7 @@ from .node_rename import PYTHON_OPERATOR
 from .plugin_manager import PluginManager
 from .generator import iterator_range
 
-__all__ = ['boost_python_call_policy', 'boost_python_export_factory', 'boost_python_module_factory', 'boost_python_decorator_factory']
+__all__ = ['boost_python_call_policy', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
 
 def get_boost_python_call_policy(self):
     if hasattr(self, '_boost_python_call_policy'):
@@ -960,7 +960,7 @@ def boost_python_exports(self, *args, **kwargs):
 AbstractSemanticGraph.boost_python_exports = boost_python_exports
 del boost_python_exports
 
-boost_python_export_factory = ProxyManager('autowig.boost_python_export', BoostPythonExportFileProxy, brief="",
+boost_python_export = ProxyManager('autowig.boost_python_export', BoostPythonExportFileProxy, brief="",
         details="")
 
 class BoostPythonModuleFileProxy(FileProxy):
@@ -1118,7 +1118,7 @@ def boost_python_modules(self, **kwargs):
 AbstractSemanticGraph.boost_python_modules = boost_python_modules
 del boost_python_modules
 
-boost_python_module_factory = ProxyManager('autowig.boost_python_module', BoostPythonModuleFileProxy, brief="",
+boost_python_module = ProxyManager('autowig.boost_python_module', BoostPythonModuleFileProxy, brief="",
         details="")
 
 class BoostPythonDecoratorFileProxy(FileProxy):
@@ -1248,7 +1248,7 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
 
 BoostPythonDecoratorDefaultFileProxy._content = property(BoostPythonDecoratorDefaultFileProxy.get_content)
 
-boost_python_decorator_factory = ProxyManager('autowig.boost_python_decorator', BoostPythonDecoratorFileProxy, brief="",
+boost_python_decorator = ProxyManager('autowig.boost_python_decorator', BoostPythonDecoratorFileProxy, brief="",
         details="")
 
 def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **kwargs):
@@ -1266,7 +1266,7 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
     if module in asg:
         module = asg[module]
     else:
-        module = asg.add_file(module, proxy=boost_python_module_factory())
+        module = asg.add_file(module, proxy=boost_python_module())
 
     if kwargs.pop('cache', True):
         asg._headers = [header.globalname for header in asg.files(header=True) if not header.is_external_dependency and header.is_self_contained]
@@ -1333,7 +1333,7 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
                 if export in asg:
                     export = asg[export]
                 else:
-                    export = asg.add_file(export, proxy=boost_python_export_factory())
+                    export = asg.add_file(export, proxy=boost_python_export())
                 node.boost_python_export = export
                 exports.add(export._node)
 
@@ -1345,7 +1345,7 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         if decorator in asg:
             decorator = asg[decorator]
         else:
-            decorator = asg.add_file(decorator, proxy=boost_python_decorator_factory())
+            decorator = asg.add_file(decorator, proxy=boost_python_decorator())
         decorator.module = module
         return [module] + exports + [decorator]
     else:

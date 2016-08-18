@@ -1,5 +1,8 @@
 import os
 import unittest
+from path import path
+from git import Repo
+import sys
 
 from autowig import autowig
 
@@ -75,35 +78,30 @@ def pyclanglite_controller(asg):
 class TestSubset(unittest.TestCase):
     """Test the wrapping of a library subset"""
 
-    #@classmethod
-    #def setUpClass(cls):
-    #    cls.directory = os.path.abspath(os.path.join('doc', 'basic'))
-
-    def subset(self):
-        import sys
-        from path import path
+    @classmethod
+    def setUpClass(cls):
+        autowig.parser.plugin = 'libclang'
         srcdir = path('PyClangLite')
-        from git import Repo
         repo = Repo.clone_from('https://github.com/StatisKit/PyClangLite.git', srcdir.relpath('.'))
-        srcdir = srcdir/'src'/'py'
-        for wrapper in srcdir.walkfiles('*.cpp'):
+        cls.srcdir = srcdir/'src'/'py'
+
+    def test_libclang_parser(self):
+        """Test `libclang` parser"""
+
+        for wrapper in self.srcdir.walkfiles('*.cpp'):
             wrapper.unlink()
             
         prefix = path(sys.prefix)
 
-        autowig.scons(srcdir.parent.parent, 'cpp', '--prefix=' + prefix, '-j6')
-
-        headers = [prefix/'include'/'clanglite'/'tool.h']
+        headers = [self.srcdir.parent/'cpp'/'tool.h']
 
         asg = autowig.AbstractSemanticGraph()
         asg = autowig.parser(asg, headers,
                flags = ['-x', 'c++', '-std=c++11',
                         '-D__STDC_LIMIT_MACROS', '-D__STDC_CONSTANT_MACROS',
                         '-I' + str((prefix/'include').abspath())],
-               libpath = prefix/'lib'/'libclang.so',
                bootstrap = False,
                silent = True)
-        autowig.parser(asg, [os.path.join(self.directory, 'binomial.h')], ['-x', 'c++', '-std=c++11', '-I' + os.path.abspath(self.directory)])
 
         autowig.controller['pyclanglite'] = pyclanglite_controller
         autowig.controller.plugin = 'pyclanglite'
@@ -111,9 +109,13 @@ class TestSubset(unittest.TestCase):
 
         autowig.generator.plugin = 'boost_python_internal'
         wrappers = autowig.generator(asg,
-                                     module = srcdir/'_clanglite.cpp',
-                                     decorator = srcdir/'clanglite'/'_clanglite.py',
+                                     module = self.srcdir/'_clanglite.cpp',
+                                     decorator = self.srcdir/'clanglite'/'_clanglite.py',
                                      closure = False)
-    def test_libclang(self):
-        autowig.parser.plugin = 'libclang'
-        self.subset()
+
+    def test_pyclanglite_parser(self):
+        """Test `pyclanglite` parser"""
+        plugin = autowig.parser.plugin
+        autowig.parser.plugin = 'pyclanglite'
+        self.test_libclang_parser()
+        autowig.parser.plugin = plugin

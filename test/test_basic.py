@@ -8,18 +8,21 @@ class TestBasic(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        autowig.parser.plugin = 'libclang'
+        autowig.generator.plugin = 'boost_python_internal'
         cls.directory = os.path.abspath(os.path.join('doc', 'basic'))
 
-    def test_binomial(self):
+    def test_mapping_export(self):
+        """Test `mapping` export"""
         asg = autowig.AbstractSemanticGraph()
-        autowig.parser.plugin = 'pyclanglite'
-        autowig.parser(asg, [os.path.join(self.directory, 'binomial.h')], ['-x', 'c++', '-std=c++11', '-I' + os.path.abspath(self.directory)])
+
+        asg = autowig.parser(asg, [os.path.join(self.directory, 'binomial.h')],
+                                  ['-x', 'c++', '-std=c++11', '-I' + os.path.abspath(self.directory)])
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
-        autowig.generator.plugin = 'boost_python_internal'
-        wrappers = autowig.generator(asg, module=os.path.join(self.directory, 'module.cpp'),
+        wrappers = autowig.generator(asg, module=os.path.join(directory, 'module.cpp'),
                         decorator=None,
                         prefix='wrapper_')
 
@@ -27,3 +30,24 @@ class TestBasic(unittest.TestCase):
         for wrapper in wrappers:
             with open(wrapper.globalname, 'r') as filehandler:
                 self.assertEqual(wrapper.content, filehandler.read())
+
+    def test_basic_export(self):
+        """Test `basic` export"""
+        proxy = autowig.boost_python_export.proxy
+        autowig.boost_python_export.proxy = 'basic'
+        self.test_mapping_export()
+        autowig.boost_python_export.proxy = proxy
+
+    def test_libclang_parser(self):
+        """Test `libclang` parser"""
+        plugin = autowig.parser.plugin
+        autowig.parser.plugin = 'libclang'
+        self.test_mapping_export()
+        autowig.parser.plugin = plugin
+
+    def test_boost_python_pattern_generator(self):
+        """Test `boost_python_pattern` generator"""
+        plugin = autowig.generator.plugin
+        autowig.generator.plugin = 'pattern'
+        self.test_mapping_export()
+        autowig.generator.plugin = plugin
