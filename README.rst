@@ -18,17 +18,17 @@ The usage and extension of **AutoWIG** is also illustrated on a set of statistic
     :License: |LICENSE|
     :Authors: |AUTHORS|
 
-.. |LICENSE| replace:: see `LICENSE.rst <LICENSE.rst>`_ file
+.. |LICENSE| replace:: see |LICENSELINK|_
 
-.. |AUTHORS| replace:: see `LICENSE.rst <LICENSE.rst>`_ file
-
-.. |VERSION| replace:: 0.1.0
-
-.. |LICENSELINK| replace:: CeCILL-C license
+.. |AUTHORS| replace:: see |LICENSELINK|_
 
 .. |VERSION| replace:: 0.1.0
 
 .. |LICENSELINK| replace:: CeCILL-C license
+
+.. LICENSELINK : LICENSE.rst
+
+.. |VERSION| replace:: 0.1.0
 
 .. |TRAVIS| image:: https://travis-ci.org/StatisKit/AutoWIG.svg?branch=master
            :target: https://travis-ci.org/StatisKit/AutoWIG
