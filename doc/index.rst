@@ -52,10 +52,10 @@ License
 
 .. _LICENSELINK : license.html
 
-.. |LICENSE| replace:: see `LICENSE`_ section
+.. |LICENSE| replace:: see `License`_ section
 
-.. _LICENSE : LICENSE.rst
+.. _LICENSE : 
 
-.. |AUTHORS| replace:: see `AUTHORS`_ section
+.. |AUTHORS| replace:: see `Authors`_ section
 
-.. _AUTHORS : AUTHORS.rst
+.. _AUTHORS : 
