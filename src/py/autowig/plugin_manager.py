@@ -28,7 +28,11 @@ class PluginManagerImplementationDescriptor(object):
             if callable(plugin):
                 return plugin
             else:
-                return pkg_resources.iter_entry_points(obj._group, plugin).next().load()
+                try:
+                    return pkg_resources.iter_entry_points(obj._group, plugin).next().load()
+                except:
+                    print obj._group, plugin
+                    raise
         else:
             def __call__(self, *args, **kwargs):
                 """No plugin selected"""
