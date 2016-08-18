@@ -1,0 +1,33 @@
+package:
+  name: python-clang
+  version: "3.8.0"
+
+source:
+  git_url: https://github.com/llvm-mirror/clang.git
+
+build:
+  number: 0
+  script :
+    - sed -i.bak -e '3000,3015d;3024,3027d;3609,3613d' $SRC_DIR/bindings/python/clang/cindex.py
+    - rm $SRC_DIR/bindings/python/clang/cindex.py.bak
+    - cp -rf $SRC_DIR/bindings/python/clang $SP_DIR
+
+about:
+  home: http://www.llwm.org/
+  license: The University of Illinois/NCSA Open Source License
+
+requirements:
+  build:
+    - python
+    - libclang
+  run:
+    - python
+    - libclang
+
+test:
+  requires:
+    - nose
+  commands:
+    - env PYTHONPATH=$(echo {{ SRC_DIR }}/bindings/python/) \
+        LD_LIBRARY_PATH=$(llvm-config --libdir) \
+    #- nosetests {{ SRC_DIR }}/bindings/python/tests -v

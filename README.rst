@@ -17,17 +17,17 @@ Our approach is automatic, extensible, and applies to very complex *C++* librari
     :License: |LICENSE|
     :Authors: |AUTHORS|
 
-.. |LICENSE| replace:: see |LICENSELINK|_
+.. |LICENSE| replace:: see |LICENSELINK|_ file
 
-.. |AUTHORS| replace:: see |AUTHORSLINK|_
+.. |AUTHORS| replace:: see |AUTHORSLINK|_ file
 
 .. |VERSION| replace:: 0.1.0
 
-.. |LICENSELINK| replace:: LICENSE.rst file
+.. |LICENSELINK| replace:: LICENSE.rst
 
 .. _LICENSELINK : LICENSE.rst
 
-.. |AUTHORSLINK| replace:: AUTHORS.rst file
+.. |AUTHORSLINK| replace:: AUTHORS.rst
 
 .. _AUTHORSLINK : AUTHORS.rst
 

@@ -25,7 +25,7 @@ requirements:
     - pygments
     - pypandoc
     - path.py
-    - libclang
+    - python-clang
 
 test:
    requires:

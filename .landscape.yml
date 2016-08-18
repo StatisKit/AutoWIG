@@ -1,3 +1,6 @@
 pylint:
   disable:
     - protected-access
+mccabe:
+  disable:
+    - MC0001

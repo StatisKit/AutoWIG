@@ -413,6 +413,12 @@ def suppress_forward_declaration(asg, **kwargs):
                 asg._parameter_edges.pop(mtd._node)
                 asg._type_edges.pop(mtd._node)
                 asg._nodes.pop(mtd._node)
+    for enm in asg.enumerations():
+        if enm._node in black:
+            enumerators = enm.enumerators
+            for enm in enumerators:
+                gray.add(enm._node)
+                asg._nodes.pop(enm._node)
     for parent, children in asg._syntax_edges.items():
         asg._syntax_edges[parent] = [child for child in children if child not in gray]
     for cls in asg.classes(templated=True, specialized=False):

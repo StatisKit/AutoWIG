@@ -385,7 +385,7 @@ extern "C" {
         % for enumerator in enumeration.enumerators:
             % if enumerator.boost_python_export:
 
-        .value("${node_rename(enumerator)}", ${enumerator.globalname.replace(enumeration.localname + '::', '')})\
+        .value("${node_rename(enumerator)}", ${enumerator.globalname[::-1].replace((enumeration.localname + '::')[::-1], '', 1)[::-1]})\
             % endif
         % endfor
     % endif
@@ -428,7 +428,7 @@ namespace autowig
         % if method.boost_python_export and method.return_type.is_reference and not method.return_type.is_const and method.return_type.unqualified_type.is_assignable:
     void method_decorator_${method.hash}\
 (${cls.globalname + " const" * bool(method.is_const) + " & instance, " + \
-   ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0) + 'const ' + method.return_type.globalname + ' param_out'})
+   ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0) + method.return_type.globalname + ' param_out'})
     { instance.${method.localname}\
 (${", ".join('param_in_' + str(parameter.index) for parameter in method.parameters)}) = param_out; }
         % endif
@@ -578,7 +578,11 @@ ${field.globalname}, "${documenter(field)}");
     @property
     def scope(self):
         if len(self._declarations) > 0:
-            return self._asg[self.declarations[0]._node].parent
+            declaration = self.declarations[0]
+            if isinstance(declaration, (ClassProxy, EnumerationProxy, NamespaceProxy)):
+                return declaration
+            else:
+                return declaration.parent
 
     @property
     def scopes(self):
@@ -812,8 +816,75 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
 
     set_${cls.hash}_from_python();""")}
 
-    IGNORE = {"class ::std::shared_ptr", "class ::std::unique_ptr"}
-
+    IGNORE = {"class ::std::shared_ptr",
+              "class ::boost::python::scope",
+              "struct ::boost::python::default_call_policies",
+              "struct ::boost::python::type_info",
+              "class ::boost::python::slice",
+              "class ::boost::python::list",
+              "class ::boost::python::tuple",
+              "class ::boost::python::docstring_options",
+              "class ::boost::python::str",
+              "struct ::boost::python::instance_holder",
+              "class ::boost::python::override",
+              "class ::boost::python::dict",
+              "struct ::boost::python::pickle_suite",
+              "class ::boost::python::long_",
+              "struct ::boost::python::error_already_set",
+              "class ::boost::python::numeric::array",
+              "struct ::boost::python::objects::py_function",
+              "struct ::boost::python::objects::stl_input_iterator_impl",
+              "struct ::boost::python::objects::class_base",
+              "struct ::boost::python::objects::py_function_impl_base",
+              "struct ::boost::python::objects::function",
+              "struct ::boost::python::objects::enum_base",
+              "class ::boost::python::detail::kwds_proxy",
+              "struct ::boost::python::detail::str_base",
+              "struct ::boost::python::detail::overloads_base",
+              "struct ::boost::python::detail::signature_element",
+              "struct ::boost::python::detail::list_base",
+              "class ::boost::python::detail::call_proxy",
+              "struct ::boost::python::detail::keyword",
+              "struct ::boost::python::detail::void_return",
+              "struct ::boost::python::detail::decref_guard",
+              "struct ::boost::python::detail::tuple_base",
+              "struct ::boost::python::detail::pickle_suite_registration",
+              "class ::boost::python::detail::wrapper_base",
+              "struct ::boost::python::detail::dict_base",
+              "struct ::boost::python::detail::write_type_id",
+              "struct ::boost::python::detail::exception_handler",
+              "struct ::boost::python::detail::py_func_sig_info",
+              "class ::boost::python::detail::args_proxy",
+              "struct ::boost::python::detail::builtin_to_python",
+              "class ::boost::python::detail::method_result",
+              "class ::boost::python::detail::slice_base",
+              "struct ::boost::python::detail::long_base",
+              "struct ::boost::python::converter::shared_ptr_deleter",
+              "struct ::boost::python::converter::registration",
+              "struct ::boost::python::converter::lvalue_from_python_chain",
+              "struct ::boost::python::converter::rvalue_from_python_stage1_data",
+              "struct ::boost::python::converter::rvalue_from_python_chain",
+              "struct ::boost::python::converter::arg_lvalue_from_python_base",
+              "struct ::boost::python::api::item_policies",
+              "struct ::boost::python::api::object_base",
+              "struct ::boost::python::api::const_attribute_policies",
+              "class ::boost::python::api::slice_nil",
+              "class ::boost::python::api::object",
+              "struct ::boost::python::api::slice_policies",
+              "struct ::boost::python::api::objattribute_policies",
+              "struct ::boost::python::api::attribute_policies",
+              "struct ::boost::python::api::const_slice_policies",
+              "struct ::boost::python::api::const_item_policies",
+              "struct ::boost::python::api::const_objattribute_policies",
+              "struct ::boost::python::numeric::aux::array_base",
+              "struct ::boost::python::numeric::aux::array_object_manager_traits",
+              "struct ::boost::python::converter::detail::unwind_type_id_helper",
+              "struct ::boost::python::converter::detail::arg_to_python_base",
+              "enum ::boost::python::no_init_t",
+              "enum ::boost::python::tag_t",
+              "enum ::boost::python::detail::operator_id",
+              "class ::std::unique_ptr"}
+            
     def get_content(self):
         content = self.HEADER.render(headers = [self._asg[header] for header in self._asg._headers])
         #[header for header in self._asg.files(header=True) if header.is_self_contained])
@@ -826,7 +897,8 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                 content += '\n\n' + self.ERROR.render(error = arg)
         for arg in self.declarations:
             if isinstance(arg, ClassProxy):
-                content += '\n\n' + self.DECORATOR.render(cls = arg)
+                if arg.globalname not in self.IGNORE:
+                    content += '\n\n' + self.DECORATOR.render(cls = arg)
         content += '\n\nvoid ' + self.prefix + '()\n{\n' + self.SCOPE.render(scopes = self.scopes, node_rename = node_rename, documenter = documenter)
         for arg in self.declarations:
             if isinstance(arg, EnumeratorProxy):
@@ -834,9 +906,10 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                         node_rename = node_rename,
                         documenter = documenter)
             elif isinstance(arg, EnumerationProxy):
-                content += '\n' + self.ENUMERATION.render(enumeration = arg,
-                        node_rename = node_rename,
-                        documenter = documenter)
+                if arg.globalname not in self.IGNORE:
+                    content += '\n' + self.ENUMERATION.render(enumeration = arg,
+                                            node_rename = node_rename,
+                                            documenter = documenter)
             elif isinstance(arg, VariableProxy):
                 content += '\n' + self.VARIABLE.render(variable = arg,
                         node_rename = node_rename,
@@ -1253,7 +1326,7 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
     exports = set()
     for node in nodes:
         if node.boost_python_export is True:
-            if isinstance(node, EnumeratorProxy) and isinstance(node.parent, EnumerationProxy) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)) or isinstance(node, FunctionProxy) and isinstance(node.parent, ClassProxy):
+            if isinstance(node, EnumeratorProxy) and isinstance(node.parent, (EnumerationProxy, ClassProxy)) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)) or isinstance(node, FunctionProxy) and isinstance(node.parent, ClassProxy):
                 continue
             else:
                 export = directory.globalname + node_path(node, prefix=prefix, suffix=suffix).strip('./')
