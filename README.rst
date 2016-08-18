@@ -20,7 +20,7 @@ The usage and extension of **AutoWIG** is also illustrated on a set of statistic
 
 .. |LICENSE| replace:: see |LICENSELINK|_
 
-.. |AUTHORS| replace:: see |AUTHORS|_
+.. |AUTHORS| replace:: see |AUTHORSLINK|_
 
 .. |VERSION| replace:: 0.1.0
 
