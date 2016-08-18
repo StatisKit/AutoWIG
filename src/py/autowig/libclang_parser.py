@@ -102,7 +102,9 @@ def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, cache=Non
                     raise ValueError('\'libpath\' parameter: should be a path to a directory or a file')
         else:
             if not Config.loaded:
-                raise ValueError('\'libpath\' parameter: should not be set to \'None\'')
+                import sys
+                Config.set_library_path(os.path.join(sys.prefix, 'lib'))
+                #raise ValueError('\'libpath\' parameter: should not be set to \'None\'')
         index = Index.create()
         tempfilehandler = NamedTemporaryFile(delete=False)
         tempfilehandler.write(content)

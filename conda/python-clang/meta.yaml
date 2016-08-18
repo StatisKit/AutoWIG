@@ -13,7 +13,7 @@ build:
     - cp -rf $SRC_DIR/bindings/python/clang $SP_DIR
 
 about:
-  home: http://www.llwm.org/
+  home: http://www.llvm.org/
   license: The University of Illinois/NCSA Open Source License
 
 requirements:
