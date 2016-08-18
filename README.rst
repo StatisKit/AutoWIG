@@ -20,13 +20,17 @@ The usage and extension of **AutoWIG** is also illustrated on a set of statistic
 
 .. |LICENSE| replace:: see |LICENSELINK|_
 
-.. |AUTHORS| replace:: see |LICENSELINK|_
+.. |AUTHORS| replace:: see |AUTHORS|_
 
 .. |VERSION| replace:: 0.1.0
 
-.. |LICENSELINK| replace:: CeCILL-C license
+.. |LICENSELINK| replace:: LICENSE.rst file
 
 .. _LICENSELINK : LICENSE.rst
+
+.. |AUTHORSLINK| replace:: AUTHORS.rst file
+
+.. _AUTHORSLINK : AUTHORS.rst
 
 .. |VERSION| replace:: 0.1.0
 
