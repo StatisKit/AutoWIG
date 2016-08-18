@@ -35,15 +35,6 @@ Exemples
 
     simple-library.ipynb
 
-.. _Authors :
-
-Authors
-=======
-
-.. include:: ../AUTHORS.rst
-
-.. _License : 
-
 License
 =======
 
@@ -52,6 +43,15 @@ License
 .. note:: 
 
     |LICENSELINK| is a LGPL compatible license.
+    
+Authors
+=======
+
+.. include:: ../AUTHORS.rst
+
+.. |LICENSE| replace:: see `License`_ section
+
+.. |AUTHORS| replace:: see `Authors`_ section
 
 .. _LICENSELINK : license.html
 
