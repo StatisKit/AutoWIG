@@ -51,3 +51,11 @@ License
     |LICENSELINK| is a LGPL compatible license.
 
 .. _LICENSELINK : license.html
+
+.. |LICENSE| replace:: see `LICENSE`_ section
+
+.. _LICENSE : LICENSE.rst
+
+.. |AUTHORS| replace:: see `AUTHORS`_ section
+
+.. _AUTHORS : AUTHORS.rst
