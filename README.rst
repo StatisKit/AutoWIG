@@ -18,9 +18,9 @@ The usage and extension of **AutoWIG** is also illustrated on a set of statistic
     :License: |LICENSE|
     :Authors: |AUTHORS|
 
-.. |LICENSE| replace:: see `LICENSE.rst <LICENSE.rst>` file
+.. |LICENSE| replace:: see `LICENSE.rst <LICENSE.rst>`_ file
 
-.. |AUTHORS| replace:: see `LICENSE.rst <LICENSE.rst>` file
+.. |AUTHORS| replace:: see `LICENSE.rst <LICENSE.rst>`_ file
 
 .. |VERSION| replace:: 0.1.0
 
