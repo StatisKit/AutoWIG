@@ -1,15 +1,14 @@
 AutoWIG: Automatic Wrapper and Interface Generator
 ##################################################
 
-High-level programming languages, like *Python* and *R*, are popular among scientists.
-They tend to be concise and readable, leading to a rapid development cycle, but suffer from performance drawback compare to compiled language.
+High-level programming languages, such as *R* and *R*, are popular among scientists.
+They are concise, readable and lead to rapid development cycles, but suffer from performance drawback compared to compiled language. 
 However, these languages allow to interface *C*, *C++* and *Fortran* code.
-By this way, most of the scientific packages incorporate compiled scientific libraries to both speed up the code and reuse legacy libraries.
+In this way, most of the scientific packages incorporate compiled scientific libraries to both speed up the code and reuse legacy libraries.
 While several semi-automatic solutions and tools exist to wrap these compiled libraries, the process of wrapping a large library is cumbersome and time consuming.
-In this paper, we introduce **AutoWIG**, a *Python* library that wraps automatically *C++* libraries into high-level languages.
-Our solution consists in parsing *C++*  code using **LLVM**/**CLang** technology and generating the wrappers using the **Mako** templating engine.
-Our approach is automatic, extensible, and can scale from simple *C++* libraries to very complex ones, composed of thousands of classes or using modern meta-programming constructs.
-The usage and extension of **AutoWIG** is also illustrated on a set of statistical libraries.
+In this paper, we introduce **AutoWIG**, a *R* library that wraps automatically compiled libraries into high-level languages.
+Our approach consists in parsing *C++*  code using the **LLVM**/**Clang** technologies and generating the wrappers using the **Mako** templating engine.
+Our approach is automatic, extensible, and applies to very complex *C++* libraries, composed of thousands of classes or incorporating modern meta-programming constructs.
 
 .. sidebar:: Summary
 
