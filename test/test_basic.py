@@ -22,7 +22,7 @@ class TestBasic(unittest.TestCase):
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
-        wrappers = autowig.generator(asg, module=os.path.join(directory, 'module.cpp'),
+        wrappers = autowig.generator(asg, module=os.path.join(self.directory, 'module.cpp'),
                         decorator=None,
                         prefix='wrapper_')
 
