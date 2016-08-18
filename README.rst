@@ -13,9 +13,9 @@ The usage and extension of **AutoWIG** is also illustrated on a set of statistic
 
 .. sidebar:: Summary
 
-    :License: |LICENSE|_
     :Version: |VERSION|
     :Status: |TRAVIS| |COVERALLS| |LANDSCAPE| |READTHEDOCS|
+    :License: |LICENSE|_
     :Authors: |AUTHORS|_
 
 .. |LICENSE| replace:: see LICENSE.rst file
