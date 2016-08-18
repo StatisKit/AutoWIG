@@ -35,14 +35,14 @@ Exemples
 
     simple-library.ipynb
 
-.. _AUTHORS :
+.. _Authors :
 
 Authors
 =======
 
 .. include:: ../AUTHORS.rst
 
-.. _LICENSE : 
+.. _License : 
 
 License
 =======
@@ -55,6 +55,6 @@ License
 
 .. _LICENSELINK : license.html
 
-.. |LICENSE| replace:: see `LICENSE`_ section
+.. |LICENSE| replace:: see `License`_ section
 
-.. |AUTHORS| replace:: see `LICENSE`_ section
+.. |AUTHORS| replace:: see `Authors`_ section
