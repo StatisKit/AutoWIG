@@ -17,7 +17,8 @@ class TestBasic(unittest.TestCase):
         asg = autowig.AbstractSemanticGraph()
 
         asg = autowig.parser(asg, [os.path.join(self.directory, 'binomial.h')],
-                                  ['-x', 'c++', '-std=c++11', '-I' + os.path.abspath(self.directory)])
+                                  ['-x', 'c++', '-std=c++11', '-I' + os.path.abspath(self.directory)],
+                                  silent = True)
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
@@ -48,6 +49,6 @@ class TestBasic(unittest.TestCase):
     def test_boost_python_pattern_generator(self):
         """Test `boost_python_pattern` generator"""
         plugin = autowig.generator.plugin
-        autowig.generator.plugin = 'pattern'
+        autowig.generator.plugin = 'boost_python_pattern'
         self.test_mapping_export()
         autowig.generator.plugin = plugin
