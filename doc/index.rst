@@ -53,6 +53,8 @@ Authors
 
 .. |AUTHORS| replace:: see `Authors`_ section
 
+.. |LICENSELINK| replace:: CeCILL-C license
+
 .. _LICENSELINK : license.html
 
 .. |LICENSE| replace:: see `License`_ section
