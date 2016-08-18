@@ -15,16 +15,12 @@ The usage and extension of **AutoWIG** is also illustrated on a set of statistic
 
     :Version: |VERSION|
     :Status: |TRAVIS| |COVERALLS| |LANDSCAPE| |READTHEDOCS|
-    :License: |LICENSE|_
-    :Authors: |AUTHORS|_
+    :License: |LICENSE|
+    :Authors: |AUTHORS|
 
-.. |LICENSE| replace:: see LICENSE.rst file
+.. |LICENSE| replace:: see `LICENSE.rst <LICENSE.rst>` file
 
-.. _LICENSE : LICENSE.rst
-
-.. |AUTHORS| replace:: see AUHORS.rst file
-
-.. _AUTHORS : AUTHORS.rst
+.. |AUTHORS| replace:: see `LICENSE.rst <LICENSE.rst>` file
 
 .. |VERSION| replace:: 0.1.0
 
