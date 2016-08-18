@@ -26,7 +26,7 @@ The usage and extension of **AutoWIG** is also illustrated on a set of statistic
 
 .. |LICENSELINK| replace:: CeCILL-C license
 
-.. LICENSELINK : LICENSE.rst
+.. _LICENSELINK : LICENSE.rst
 
 .. |VERSION| replace:: 0.1.0
 
