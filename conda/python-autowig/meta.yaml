@@ -36,4 +36,5 @@ test:
      - python-clanglite
      - gitpython
    commands:
-     - nosetests {{ SRC_DIR }} -v --with-coverage --cover-package=autowig
+     - cd {{ SRC_DIR }} 
+     - nosetests -v --with-coverage --cover-package=autowig
