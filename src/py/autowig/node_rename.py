@@ -5,7 +5,8 @@ from .asg import (FunctionProxy,
                   ClassTemplateSpecializationProxy,
                   ClassTemplateProxy,
                   ClassProxy,
-                  NamespaceProxy)
+                  NamespaceProxy,
+                  TypedefProxy)
 
 __all__ = []
 
