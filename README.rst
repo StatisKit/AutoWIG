@@ -17,6 +17,11 @@ Our approach is automatic, extensible, and applies to very complex *C++* librari
     :License: |LICENSE|
     :Authors: |AUTHORS|
 
+.. warning::
+
+    Coverage is underestimated since code executed in **Mako** templates is not covered
+    
+    
 .. |LICENSE| replace:: see |LICENSELINK|_ file
 
 .. |AUTHORS| replace:: see |AUTHORSLINK|_ file
