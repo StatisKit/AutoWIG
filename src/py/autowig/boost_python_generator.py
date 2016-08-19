@@ -33,7 +33,6 @@ from .plugin_manager import node_path, node_rename, documenter, visitor
 from .proxy_manager import ProxyManager
 from .node_rename import PYTHON_OPERATOR
 from .plugin_manager import PluginManager
-from .generator import iterator_range
 
 __all__ = ['boost_python_call_policy', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
 
@@ -629,8 +628,7 @@ ${field.globalname}, "${documenter(field)}");
                 content += '\n' + self.CLASS.render(cls = arg,
                         node_rename = node_rename,
                         documenter = documenter,
-                        call_policy = boost_python_call_policy,
-                        iterator_range = iterator_range)
+                        call_policy = boost_python_call_policy)
             elif isinstance(arg, TypedefProxy):
                 continue
             else:
@@ -924,8 +922,7 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                     content += '\n' + self.CLASS.render(cls = arg,
                             node_rename = node_rename,
                             documenter = documenter,
-                            call_policy = boost_python_call_policy,
-                            iterator_range = iterator_range)
+                            call_policy = boost_python_call_policy)
                 if arg.specialize.globalname in self.TO:
                     content += '\n' + self.TO[arg.specialize.globalname].render(cls = arg)
                 elif arg.globalname in self.TO:
@@ -939,8 +936,7 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                     content += '\n' + self.CLASS.render(cls = arg,
                             node_rename = node_rename,
                             documenter = documenter,
-                            call_policy = boost_python_call_policy,
-                            iterator_range = iterator_range)
+                            call_policy = boost_python_call_policy)
                 if arg.globalname in self.TO:
                     content += '\n' + self.TO[arg.globalname].render(cls = arg)
                 if arg.globalname in self.FROM:
