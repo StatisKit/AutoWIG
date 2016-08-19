@@ -4,6 +4,18 @@ import sys
 
 from autowig import autowig
 
+class TemplateRender(object):
+
+    def __get__(self, obj, **kwargs):
+        def call(self, **kwargs):
+            print "yop"
+            return "yop"
+        return __call__
+
+from autowig.boost_python_generator import Template
+
+Template.render = TemplateRender()
+
 class TestBasic(unittest.TestCase):
     """Test the wrapping of a basic library"""
 
@@ -29,6 +41,9 @@ class TestBasic(unittest.TestCase):
         wrappers = autowig.generator(asg, module=os.path.join(self.directory, 'module.cpp'),
                         decorator=None,
                         prefix='wrapper_')
+
+        for wrapper in wrappers:
+            wrapper.write()
 
         # wrappers = sorted(wrappers, key=lambda wrapper: wrapper.globalname)
         # for wrapper in wrappers:
