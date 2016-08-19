@@ -2,6 +2,7 @@ import os
 import unittest
 from path import path
 from git import Repo
+import subprocess
 import sys
 
 from autowig import autowig
