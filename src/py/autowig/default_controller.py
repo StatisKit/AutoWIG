@@ -49,18 +49,19 @@ def default_controller(asg, **kwargs):
 
 def refactoring(asg):
     for function in asg.functions(free=True):
-        if function.localname == 'operator<<':
-            parameters = [parameter.qualified_type.desugared_type for parameter in function.parameters]
-            if len(parameters) == 2 and parameters[0].unqualified_type.globalname == 'class ::std::basic_ostream< char, struct ::std::char_traits< char > >' and parameters[1].is_class:
-                function.parent = parameters[1].unqualified_type
-            else:
+        if len(function.parameters) > 1:
+            if function.localname == 'operator<<':
+                parameters = [parameter.qualified_type.desugared_type for parameter in function.parameters]
+                if len(parameters) == 2 and parameters[0].unqualified_type.globalname == 'class ::std::basic_ostream< char, struct ::std::char_traits< char > >' and parameters[1].is_class:
+                    function.parent = parameters[1].unqualified_type
+                else:
+                    parameter = function.parameters[0].qualified_type.desugared_type
+                    if parameter.is_class:
+                        function.parent = parameter.unqualified_type
+            elif function.localname.startswith('operator'):
                 parameter = function.parameters[0].qualified_type.desugared_type
                 if parameter.is_class:
                     function.parent = parameter.unqualified_type
-        elif function.localname.startswith('operator'):
-            parameter = function.parameters[0].qualified_type.desugared_type
-            if parameter.is_class:
-                function.parent = parameter.unqualified_type
     return asg
 
 def cleaning(asg):

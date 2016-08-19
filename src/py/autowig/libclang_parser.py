@@ -2,8 +2,10 @@
 """
 
 from path import path
-from clang.cindex import Config, conf, Cursor, Index, TranslationUnit, CursorKind, TypeKind
+from clang.cindex import Config, conf, Cursor, Index, TranslationUnit, CursorKind, TypeKind, AccessSpecifier
+import pickle
 from tempfile import NamedTemporaryFile
+import numpy
 import os
 import warnings
 import uuid
@@ -42,7 +44,7 @@ from .asg import (CharTypeProxy,
                  NamespaceProxy)
                  
                  
-from .parser import preprocessing
+from .parser import pre_processing, post_processing
 
 def is_virtual_method(self):
     """Returns True if the cursor refers to a C++ member function that
@@ -82,7 +84,7 @@ del is_copyable_record
 
 def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, cache=None, force=False, **kwargs):
     warnings.warn('The libclang parser is no more maintened', DeprecationWarning)
-    content = preprocessing(asg, filepaths, flags, cache, force)
+    content = pre_processing(asg, filepaths, flags, **kwargs)
     if content:
         if not libpath is None:
             if Config.loaded:
@@ -100,7 +102,9 @@ def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, cache=Non
                     raise ValueError('\'libpath\' parameter: should be a path to a directory or a file')
         else:
             if not Config.loaded:
-                raise ValueError('\'libpath\' parameter: should not be set to \'None\'')
+                import sys
+                Config.set_library_path(os.path.join(sys.prefix, 'lib'))
+                #raise ValueError('\'libpath\' parameter: should not be set to \'None\'')
         index = Index.create()
         tempfilehandler = NamedTemporaryFile(delete=False)
         tempfilehandler.write(content)
@@ -113,7 +117,39 @@ def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, cache=Non
             else:
                 warnings.simplefilter('always')
             read_translation_unit(asg, tu)
-    #postprocessing(asg, filepaths, cache=cache, **kwargs)
+    for node in asg._syntax_edges.keys():
+        asg._syntax_edges[node] = list(set(asg._syntax_edges[node]))
+    post_processing(asg, flags, **kwargs)
+    filehandler = NamedTemporaryFile(delete=False)
+    pickle.dump(asg, filehandler, 0)
+    filehandler.close()
+    with open(filehandler.name, 'r') as filehandler:
+        _asg = filehandler.read()
+        for fct in asg.functions():
+            _asg.replace(fct._node,  fct.globalname + '::' + str(uuid.uuid5(uuid.NAMESPACE_X500, fct.prototype)))
+        for cls in asg.classes():
+            for ctr in cls.constructors():
+                _asg.replace(ctr._node,  ctr.globalname + '::' + str(uuid.uuid5(uuid.NAMESPACE_X500, ctr.prototype)))
+    with open(filehandler.name, 'w') as filehandler:
+        filehandler.write(_asg)
+    with open(filehandler.name, 'r') as filehandler:
+        asg = pickle.load(filehandler)
+    for node, edges in asg._syntax_edges.items():
+        if edges:
+            asg._syntax_edges[node] = numpy.unique(edges).tolist()
+    os.unlink(filehandler.name)
+    return asg
+
+def read_access(asg, access, *args):
+    if access is AccessSpecifier.PUBLIC:
+        for arg in args:
+            asg._nodes[arg]['_access'] = 'public'
+    elif access is AccessSpecifier.PROTECTED:
+        for arg in args:
+            asg._nodes[arg]['_access'] = 'protected'
+    elif access is AccessSpecifier.PRIVATE:
+        for arg in args:
+            asg._nodes[arg]['_access'] = 'private'
 
 def read_translation_unit(asg, tu):
     for child in tu.cursor.get_children():
@@ -132,8 +168,12 @@ def read_translation_unit(asg, tu):
 def read_qualified_type(asg, qtype):
     specifiers = ''
     while True:
+        if qtype.is_const_qualified() and not specifiers.startswith(' const'):
+            specifiers = ' const' + specifiers
+        if qtype.is_volatile_qualified() and not specifiers.startswith(' volatile'):
+            specifiers = ' volatile' + specifiers
         if qtype.kind is TypeKind.POINTER:
-            specifiers = ' *' + ' const' * qtype.is_const_qualified() + specifiers
+            specifiers = ' *' + specifiers
             qtype = qtype.get_pointee()
         elif qtype.kind is TypeKind.LVALUEREFERENCE:
             specifiers = ' &' + specifiers
@@ -149,153 +189,87 @@ def read_qualified_type(asg, qtype):
                 spelling = '::' + cursor.type.spelling
                 if cursor.kind is CursorKind.ENUM_DECL:
                     spelling = 'enum ' + spelling
-                if qtype.is_const_qualified():
-                    specifiers = ' const' + specifiers
-                if qtype.is_volatile_qualified():
-                    specifiers = ' volatile' + specifiers
+                elif cursor.kind is CursorKind.STRUCT_DECL:
+                    spelling = 'struct ' + spelling
+                elif cursor.kind is CursorKind.UNION_DECL:
+                    spelling = 'union ' + spelling
+                elif cursor.kind is CursorKind.CLASS_DECL:
+                    spelling = 'class ' + spelling
                 try:
-                    return asg[spelling].node, specifiers
+                    if spelling == '::':
+                        raise Exception
+                    return asg[spelling]._node, specifiers
                 except:
                     warnings.warn('record not found')
                     break
         else:
-            target, _specifiers = read_builtin_type(asg, qtype)
-            return target, _specifiers + specifiers
+            target = read_builtin_type(asg, qtype)
+            return target, specifiers
 
 def read_builtin_type(asg, btype):
     if btype.kind in [TypeKind.CHAR_U, TypeKind.CHAR_S]:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return CharTypeProxy.node, specifiers
+        return CharTypeProxy._node
     elif btype.kind is TypeKind.UCHAR:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return UnsignedCharTypeProxy.node, specifiers
+        return UnsignedCharTypeProxy._node
     elif btype.kind is TypeKind.SCHAR:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return SignedCharTypeProxy.node, specifiers
+        return SignedCharTypeProxy._node
     elif btype.kind is TypeKind.CHAR16:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return Char16TypeProxy.node, specifiers
+        return Char16TypeProxy._node
     elif btype.kind is TypeKind.CHAR32:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return Char32TypeProxy.node, specifiers
+        return Char32TypeProxy._node
     elif btype.kind is TypeKind.WCHAR:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return WCharTypeProxy.node, specifiers
+        return WCharTypeProxy._node
     elif btype.kind is TypeKind.SHORT:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return SignedShortIntegerTypeProxy.node, specifiers
+        return SignedShortIntegerTypeProxy._node
     elif btype.kind is TypeKind.INT:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return SignedIntegerTypeProxy.node, specifiers
+        return SignedIntegerTypeProxy._node
     elif btype.kind is TypeKind.LONG:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return SignedLongIntegerTypeProxy.node, specifiers
+        return SignedLongIntegerTypeProxy._node
     elif btype.kind is TypeKind.LONGLONG:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return SignedLongLongIntegerTypeProxy.node, specifiers
+        return SignedLongLongIntegerTypeProxy._node
     elif btype.kind is TypeKind.USHORT:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return UnsignedShortIntegerTypeProxy.node, specifiers
+        return UnsignedShortIntegerTypeProxy._node
     elif btype.kind is TypeKind.UINT:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return UnsignedIntegerTypeProxy.node, specifiers
+        return UnsignedIntegerTypeProxy._node
     elif btype.kind is TypeKind.ULONG:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return UnsignedLongIntegerTypeProxy.node, specifiers
+        return UnsignedLongIntegerTypeProxy._node
     elif btype.kind is TypeKind.ULONGLONG:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return UnsignedLongLongIntegerTypeProxy.node, specifiers
+        return UnsignedLongLongIntegerTypeProxy._node
     elif btype.kind is TypeKind.FLOAT:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return SignedFloatTypeProxy.node, specifiers
+        return SignedFloatTypeProxy._node
     elif btype.kind is TypeKind.DOUBLE:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return SignedDoubleTypeProxy.node, specifiers
+        return SignedDoubleTypeProxy._node
     elif btype.kind is TypeKind.LONGDOUBLE:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return SignedLongDoubleTypeProxy.node, specifiers
+        return SignedLongDoubleTypeProxy._node
     elif btype.kind is TypeKind.BOOL:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return BoolTypeProxy.node, specifiers
+        return BoolTypeProxy._node
     elif btype.kind is TypeKind.COMPLEX:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return ComplexTypeProxy.node, specifiers
+        return ComplexTypeProxy._node
     elif btype.kind is TypeKind.VOID:
-        if btype.is_const_qualified():
-            specifiers = ' const'
-        else:
-            specifiers = ''
-        return VoidTypeProxy.node, specifiers
+        return VoidTypeProxy._node
     else:
         warnings.warn('\'' + str(btype.kind) + '\'', Warning)
 
 def read_enum(asg, cursor, scope):
+    spelling = scope
+    if spelling.startswith('enum '):
+        spelling = spelling[5:]
+    elif spelling.startswith('class '):
+        spelling = spelling[6:]
+    elif spelling.startswith('union '):
+        spelling = spelling[6:]
+    elif spelling.startswith('struct '):
+        spelling = spelling[7:]
     if not scope.endswith('::'):
-        spelling = scope + "::" + cursor.spelling
+        spelling = spelling + "::" + cursor.spelling
     else:
-        spelling = scope + cursor.spelling
+        spelling = spelling + cursor.spelling
     if cursor.spelling == '':
         children = []
         decls = []
-        if not spelling == '::':
-            spelling = spelling[:-2]
+        #if not spelling == '::':
+        #    spelling = spelling[:-2]
+        spelling = scope
         for child in cursor.get_children():
             if child.kind is CursorKind.ENUM_CONSTANT_DECL:
                 children.extend(read_enum_constant(asg, child, spelling))
@@ -304,42 +278,62 @@ def read_enum(asg, cursor, scope):
         asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
         for childspelling, child in zip(children, decls):
             asg._nodes[childspelling]['_header'] = filename
-            asg._nodes[spelling]['cursor'] = child
+        read_access(asg, cursor.access_specifier, *children)
         return children
     else:
         spelling = 'enum ' + spelling
         if not spelling in asg:
             asg._syntax_edges[spelling] = []
-            asg._nodes[spelling] = dict(proxy=EnumerationProxy)
+            asg._nodes[spelling] = dict(_proxy = EnumerationProxy,
+                                        _comment = "",
+                                        _is_scoped = False) # TODO
+            read_access(asg, cursor.access_specifier, spelling)
             asg._syntax_edges[scope].append(spelling)
         elif not asg[spelling].is_complete:
             asg._syntax_edges[scope].remove(spelling)
             asg._syntax_edges[scope].append(spelling)
         if not asg[spelling].is_complete:
+            read_access(asg, cursor.access_specifier, spelling)
             for child in cursor.get_children():
                 read_enum_constant(asg, child, spelling)
         if asg[spelling].is_complete:
             filename = str(path(str(cursor.location.file)).abspath())
             asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
             asg._nodes[spelling]['_header'] = filename
-            asg._nodes[spelling]['cursor'] = cursor
         return [spelling]
 
 def read_enum_constant(asg, cursor, scope):
+    spelling = scope
+    if spelling.startswith('enum '):
+        spelling = spelling[5:]
+    elif spelling.startswith('class '):
+        spelling = spelling[6:]
+    elif spelling.startswith('union '):
+        spelling = spelling[6:]
+    elif spelling.startswith('struct '):
+        spelling = spelling[7:]
     if not scope.endswith('::'):
-        spelling = scope + "::" + cursor.spelling
+        spelling = spelling + "::" + cursor.spelling
     else:
-        spelling = scope + cursor.spelling
-    spelling = spelling.replace('enum ', '')
-    asg._nodes[spelling] = dict(proxy=EnumeratorProxy)
+        spelling = spelling + cursor.spelling
+    asg._nodes[spelling] = dict(_proxy=EnumeratorProxy)
     asg._syntax_edges[scope].append(spelling)
     return [spelling]
 
 def read_typedef(asg, typedef, scope):
+    spelling = scope
+    if spelling.startswith('enum '):
+        spelling = spelling[5:]
+    elif spelling.startswith('class '):
+        spelling = spelling[6:]
+    elif spelling.startswith('union '):
+        spelling = spelling[6:]
+    elif spelling.startswith('struct '):
+        spelling = spelling[7:]
     if not scope.endswith('::'):
-        spelling = scope + "::" + typedef.spelling
+        spelling = spelling + "::" + typedef.spelling
     else:
-        spelling = scope + typedef.spelling
+        spelling = spelling + typedef.spelling
     if not spelling in asg:
         try:
             with warnings.catch_warnings():
@@ -349,8 +343,8 @@ def read_typedef(asg, typedef, scope):
             warnings.warn(str(warning) + ' for typedef \'' + spelling + '\'', warning.__class__)
             return []
         else:
-            asg._nodes[spelling] = dict(proxy=TypedefProxy)
-            asg._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+            asg._nodes[spelling] = dict(_proxy=TypedefProxy)
+            asg._type_edges[spelling] = dict(target=target, qualifiers=specifiers)
             asg._syntax_edges[scope].append(spelling)
             filename = str(path(str(typedef.location.file)).abspath())
             asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
@@ -363,57 +357,84 @@ def read_variable(asg, cursor, scope):
     if any(child.kind in [CursorKind.TEMPLATE_NON_TYPE_PARAMETER, CursorKind.TEMPLATE_TYPE_PARAMETER, CursorKind.TEMPLATE_TEMPLATE_PARAMETER] for child in cursor.get_children()):
         return []
     else:
+        spelling = scope
+        if spelling.startswith('enum '):
+            spelling = spelling[5:]
+        elif spelling.startswith('class '):
+            spelling = spelling[6:]
+        elif spelling.startswith('union '):
+            spelling = spelling[6:]
+        elif spelling.startswith('struct '):
+            spelling = spelling[7:]
         if not scope.endswith('::'):
-            spelling = scope + "::" + cursor.spelling
+            spelling = spelling + "::" + cursor.spelling
         else:
-            spelling = scope + cursor.spelling
+            spelling = spelling + cursor.spelling
         try:
             with warnings.catch_warnings() as warning:
                 warnings.simplefilter("error")
                 target, specifiers = read_qualified_type(asg, cursor.type)
-                asg._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+                asg._type_edges[spelling] = dict(target=target, qualifiers=specifiers)
         except Warning as warning:
             warnings.warn(str(warning) + ' for variable \'' + spelling + '\'', warning.__class__)
             return []
         else:
-            asg._nodes[spelling] = dict(proxy=VariableProxy)
+            if isinstance(asg[scope], ClassProxy):
+                asg._nodes[spelling] = dict(_proxy=FieldProxy,
+                                            _is_mutable=False,
+                                            _is_static=True,
+                                            _is_bit_field=False)
+            else:
+                asg._nodes[spelling] = dict(_proxy=VariableProxy)
             filename = str(path(str(cursor.location.file)).abspath())
             asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
+            read_access(asg, cursor.access_specifier, spelling)
             asg._nodes[spelling]['_header'] = filename
-            asg._nodes[spelling]['cursor'] = cursor
             asg._syntax_edges[scope].append(spelling)
             return [spelling]
 
 def read_function(asg, cursor, scope):
+    spelling = scope
+    if spelling.startswith('enum '):
+        spelling = spelling[5:]
+    elif spelling.startswith('class '):
+        spelling = spelling[6:]
+    elif spelling.startswith('union '):
+        spelling = spelling[6:]
+    elif spelling.startswith('struct '):
+        spelling = spelling[7:]
     if not scope.endswith('::'):
-        spelling = scope + "::" + cursor.spelling
+        spelling = spelling + "::" + cursor.spelling
     else:
-        spelling = scope + cursor.spelling
+        spelling = spelling + cursor.spelling
     if cursor.kind in [CursorKind.DESTRUCTOR, CursorKind.CXX_METHOD, CursorKind.CONSTRUCTOR] and cursor.lexical_parent.kind is CursorKind.NAMESPACE:
         return []
     else:
         if not cursor.kind is CursorKind.DESTRUCTOR:
             spelling = spelling + '::' + str(uuid.uuid4())
         if cursor.kind is CursorKind.FUNCTION_DECL:
-            asg._nodes[spelling] = dict(proxy=FunctionProxy, cursor=cursor)
+            asg._nodes[spelling] = dict(_proxy=FunctionProxy,
+                                        _comment="")
             if not cursor.location is None:
                 filename = str(path(str(cursor.location.file)).abspath())
                 asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
                 asg._nodes[spelling]['_header'] = filename
         elif cursor.kind is CursorKind.CXX_METHOD:
-            asg._nodes[spelling] = dict(proxy=MethodProxy,
-                    is_static=cursor.is_static_method(),
-                    is_virtual=True,
-                    is_const=False,
-                    is_pure=True,
-                    cursor=cursor)
+            asg._nodes[spelling] = dict(_proxy=MethodProxy,
+                    _is_static=cursor.is_static_method(),
+                    _is_volatile=False,
+                    _is_virtual=True,
+                    _is_const=cursor.is_const_method(),
+                    _is_pure=True,
+                    _comment="")
         elif cursor.kind is CursorKind.CONSTRUCTOR:
-            asg._nodes[spelling] = dict(proxy=ConstructorProxy,
-                    cursor=cursor)
+            asg._nodes[spelling] = dict(_proxy=ConstructorProxy,
+                     _is_virtual=False, #TODO
+                     _comment="")
         else:
-            asg._nodes[spelling] = dict(proxy=DestructorProxy,
+            asg._nodes[spelling] = dict(_proxy=DestructorProxy,
                     is_virtual=True,
-                    cursor=cursor)
+                    _comment="")
         asg._parameter_edges[spelling] = []
         asg._syntax_edges[scope].append(spelling)
         try:
@@ -421,15 +442,15 @@ def read_function(asg, cursor, scope):
                 warnings.simplefilter("error")
                 if cursor.kind in [CursorKind.FUNCTION_DECL, CursorKind.CXX_METHOD]:
                     target, specifiers = read_qualified_type(asg, cursor.result_type)
-                    asg._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+                    asg._type_edges[spelling] = dict(target=target, qualifiers=specifiers)
                 for index, child in enumerate([child for child in cursor.get_children() if child.kind is CursorKind.PARM_DECL]):
                     #childspelling = spelling + '::' + child.spelling
                     #if childspelling.endswith('::'):
                     #    childspelling += 'parm_' + str(index)
                     target, specifiers = read_qualified_type(asg, child.type)
-                    asg._parameter_edges[spelling].append(dict(name = child.spelling, target=target, specifiers=specifiers))
-                    #asg._type_edges[childspelling] = dict(target=target, specifiers=specifiers)
-                    #asg._nodes[childspelling] = dict(proxy=VariableProxy)
+                    asg._parameter_edges[spelling].append(dict(name = child.spelling, target=target, qualifiers=specifiers))
+                    #asg._type_edges[childspelling] = dict(target=target, qualifiers=specifiers)
+                    #asg._nodes[childspelling] = dict(_proxy=VariableProxy)
                     #asg._syntax_edges[spelling].append(childspelling)
         except Warning as warning:
             asg._syntax_edges[scope].remove(spelling)
@@ -446,6 +467,7 @@ def read_function(asg, cursor, scope):
             warnings.warn(str(warning), warning.__class__)
             return []
         else:
+            read_access(asg, cursor.access_specifier, spelling)
             return [spelling]
 
 def read_field(asg, cursor, scope):
@@ -453,26 +475,36 @@ def read_field(asg, cursor, scope):
         # TODO warning
         return []
     else:
+        spelling = scope
+        if spelling.startswith('enum '):
+            spelling = spelling[5:]
+        elif spelling.startswith('class '):
+            spelling = spelling[6:]
+        elif spelling.startswith('union '):
+            spelling = spelling[6:]
+        elif spelling.startswith('struct '):
+            spelling = spelling[7:]
         if not scope.endswith('::'):
-            spelling = scope + "::" + cursor.spelling
+            spelling = spelling + "::" + cursor.spelling
         else:
-            spelling = scope + cursor.spelling
-        asg._nodes[spelling] = dict(proxy=FieldProxy,
-                is_mutable=False,
-                is_static=False,
-                cursor=cursor)
+            spelling = spelling + cursor.spelling
+        asg._nodes[spelling] = dict(_proxy=FieldProxy,
+                _is_mutable=False,
+                _is_static=False,
+                _is_bit_field=cursor.is_bitfield())
         asg._syntax_edges[scope].append(spelling)
         try:
             with warnings.catch_warnings() as warning:
                 warnings.simplefilter("error")
                 target, specifiers = read_qualified_type(asg, cursor.type)
-                asg._type_edges[spelling] = dict(target=target, specifiers=specifiers)
+                asg._type_edges[spelling] = dict(target=target, qualifiers=specifiers)
         except Exception as error:
             asg._syntax_edges[scope].remove(spelling)
             asg._nodes.pop(spelling)
             warnings.warn(str(error))
             return []
         else:
+            read_access(asg, cursor.access_specifier, spelling)
             return [spelling]
 
 def read_tag(asg, cursor, scope):
@@ -485,29 +517,40 @@ def read_tag(asg, cursor, scope):
         elif not cursor.spelling == cursor.displayname:
             warnings.warn('Class template specialization \'' + scope + '::' + cursor.displayname + '\' not read')
             return []
+        spelling = scope
+        if spelling.startswith('enum '):
+            spelling = spelling[5:]
+        elif spelling.startswith('class '):
+            spelling = spelling[6:]
+        elif spelling.startswith('union '):
+            spelling = spelling[6:]
+        elif spelling.startswith('struct '):
+            spelling = spelling[7:]
         if not scope.endswith('::'):
-            spelling = scope + "::" + cursor.spelling
+            spelling = spelling + "::" + cursor.spelling
         else:
-            spelling = scope + cursor.spelling
-        #if cursor.kind is CursorKind.STRUCT_DECL:
-        #    spelling = 'struct ' + spelling
-        #elif cursor.kind is CursorKind.UNION_DECL:
-        #    spelling = 'union ' + spelling
-        #else:
-        #    spelling = 'class ' + spelling
+            spelling = spelling + cursor.spelling
+        if cursor.kind is CursorKind.STRUCT_DECL:
+            spelling = 'struct ' + spelling
+        elif cursor.kind is CursorKind.UNION_DECL:
+            spelling = 'union ' + spelling
+        else:
+            spelling = 'class ' + spelling
         if not spelling in asg:
             if cursor.kind in [CursorKind.STRUCT_DECL, CursorKind.UNION_DECL]:
-                asg._nodes[spelling] = dict(proxy=ClassProxy,
-                        default_access='public',
-                        is_abstract=True,
+                asg._nodes[spelling] = dict(_proxy=ClassProxy,
+                        _is_abstract=True,
                         _is_copyable=False,
-                        is_complete=False)
+                        _is_complete=False,
+                        _is_explicit=True,
+                        _comment="")
             elif cursor.kind is CursorKind.CLASS_DECL:
-                asg._nodes[spelling] = dict(proxy=ClassProxy,
-                            default_access='private',
-                            is_abstract=True,
+                asg._nodes[spelling] = dict(_proxy=ClassProxy,
+                            _is_abstract=True,
                             _is_copyable=False,
-                            is_complete=False)
+                            _is_complete=False,
+                            _is_explicit=True,
+                            _comment="")
             asg._syntax_edges[spelling] = []
             asg._base_edges[spelling] = []
             asg._syntax_edges[scope].append(spelling)
@@ -517,47 +560,69 @@ def read_tag(asg, cursor, scope):
         if not asg[spelling].is_complete:
             for child in cursor.get_children():
                 if child.kind is CursorKind.CXX_BASE_SPECIFIER:
+                    #if spelling == 'class ::clang::FriendDecl':
+                    #    import pdb
+                    #    pdb.set_trace()
                     childspelling = '::' + child.type.spelling
+                    childcursor = child.type.get_declaration()
+                    if childcursor.kind is CursorKind.STRUCT_DECL:
+                        childspelling = 'struct ' + childspelling
+                    elif childcursor.kind is CursorKind.UNION_DECL:
+                        childspelling = 'union ' + childspelling
+                    elif childcursor.kind is CursorKind.CLASS_DECL:
+                        childspelling = 'class ' + childspelling
                     # TODO
                     if childspelling in asg:
                         access = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
-                        asg._base_edges[spelling].append(dict(base=asg[childspelling].node,
-                            access=access,
-                            is_virtual=False))
+                        asg._base_edges[spelling].append(dict(base=asg[childspelling]._node,
+                            _access=access,
+                            _is_virtual=False))
                     else:
                         warnings.warn('Base not found')
                 else:
                     for childspelling in read_cursor(asg, child, spelling):
                         asg._nodes[childspelling]["access"] = str(child.access_specifier)[str(child.access_specifier).index('.')+1:].lower()
                         dict.pop(asg._nodes[childspelling], "_header", None)
-            asg._nodes[spelling]['is_complete'] = len(asg._base_edges[spelling]) + len(asg._syntax_edges[spelling]) > 0
+            asg._nodes[spelling]['_is_complete'] = len(asg._base_edges[spelling]) + len(asg._syntax_edges[spelling]) > 0
             if asg[spelling].is_complete:
                 filename = str(path(str(cursor.location.file)).abspath())
                 asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
                 asg._nodes[spelling]['_header'] = filename
-                asg._nodes[spelling]['cursor'] = cursor
+        read_access(asg, cursor.access_specifier, spelling)
         return [spelling]
 
 def read_namespace(asg, cursor, scope):
+        spelling = scope
+        if spelling.startswith('enum '):
+            spelling = spelling[5:]
+        elif spelling.startswith('class '):
+            spelling = spelling[6:]
+        elif spelling.startswith('union '):
+            spelling = spelling[6:]
+        elif spelling.startswith('struct '):
+            spelling = spelling[7:]
         if not scope.endswith('::'):
-            spelling = scope + "::" + cursor.spelling
+            spelling = spelling + "::" + cursor.spelling
         else:
-            spelling = scope + cursor.spelling
+            spelling = spelling + cursor.spelling
         if cursor.spelling == '':
             children = []
             if not spelling == '::':
                 spelling = spelling[:-2]
             for child in cursor.get_children():
                 children.extend(read_cursor(asg, child, spelling))
+            read_access(asg, cursor.access_specifier, *children)
             return children
         else:
             if not spelling in asg:
-                asg._nodes[spelling] = dict(proxy=NamespaceProxy)
+                asg._nodes[spelling] = dict(_proxy=NamespaceProxy,
+                                            _is_inline=False) # TODO
                 asg._syntax_edges[spelling] = []
             if not spelling in asg._syntax_edges[scope]:
                 asg._syntax_edges[scope].append(spelling)
             for child in cursor.get_children():
                 read_cursor(asg, child, spelling)
+            read_access(asg, cursor.access_specifier, spelling)
             return [spelling]
 
 def read_cursor(asg, cursor, scope):

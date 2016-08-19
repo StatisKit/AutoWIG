@@ -25,21 +25,8 @@ Documentation
     quick_start
     user_guide
     reference_guide
+    examples
     faq 
-
-Exemples
-========
-
-.. toctree::
-    :maxdepth: 2
-
-    simple-library.ipynb
-
-
-Authors
-=======
-
-.. include:: ../AUTHORS.rst
 
 License
 =======
@@ -49,5 +36,20 @@ License
 .. note:: 
 
     |LICENSELINK| is a LGPL compatible license.
+    
+Authors
+=======
+
+.. include:: ../AUTHORS.rst
+
+.. |LICENSE| replace:: see `License`_ section
+
+.. |AUTHORS| replace:: see `Authors`_ section
+
+.. |LICENSELINK| replace:: CeCILL-C license
 
 .. _LICENSELINK : license.html
+
+.. |LICENSE| replace:: see `License`_ section
+
+.. |AUTHORS| replace:: see `Authors`_ section

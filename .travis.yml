@@ -31,6 +31,7 @@ before_script:
 script:
   - python setup.py develop --user
   - conda install python-clanglite -c statiskit
+  - conda install gitpython -c conda-forge
   - nosetests test -v --with-coverage --cover-package=autowig
 
 after_success:

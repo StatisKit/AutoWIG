@@ -459,10 +459,6 @@ class DeclarationProxy(NodeProxy):
             else:
                 return self.parent.header
         else:
-            if self._header not in self._asg:
-                import pdb
-                pdb.set_trace()
-                return None
             return self._asg[self._header]
 
     @property
@@ -706,6 +702,8 @@ class BoolTypeProxy(FundamentalTypeProxy):
 class ComplexTypeProxy(FundamentalTypeProxy):
     """
     """
+
+    _node = "::_Complex float"
 
 class ComplexFloatTypeProxy(ComplexTypeProxy):
 
@@ -1158,7 +1156,7 @@ class ClassProxy(DeclarationProxy):
 
     @property
     def is_complete(self):
-        return self._is_complete
+        return self._is_complete or len(self.declarations()) > 0
 
     @property
     def is_abstract(self):
@@ -1208,13 +1206,14 @@ class ClassProxy(DeclarationProxy):
             bases = [base for base in bases if base.access in ['public', 'protected']]
         elif not access == 'private':
             raise ValueError('\'access\' parameter')
+        bases = [base.qualified_type.desugared_type.unqualified_type if isinstance(base, TypedefProxy) else base for base in bases]
         if not inherited:
             return bases
         else:
             inheritedbases = []
             for base in bases:
                 if isinstance(base, TypedefProxy):
-                    basebases = base.qualified_type.desugared_type.bases(True, access=access)
+                    basebases = base.qualified_type.desugared_type.unqualified_type.bases(True, access=access)
                 else:
                     basebases = base.bases(True, access=access)
                 if base.access == 'protected':
@@ -1236,7 +1235,7 @@ class ClassProxy(DeclarationProxy):
             return 0
         else:
             if not hasattr(self, '_depth'):
-                depth = max([base.type.target.depth if isinstance(base, TypedefProxy) else base.depth for base in self.bases()]) + 1
+                depth = max([base.depth for base in self.bases()]) + 1
                 self._asg._nodes[self._node]['_depth'] = depth
             return self._depth
 
@@ -1664,7 +1663,7 @@ class AbstractSemanticGraph(object):
     def typedefs(self, **kwargs):
         return [node for node in self.declarations(**kwargs) if isinstance(node, TypedefProxy)]
 
-    def enumarations(self, **kwargs):
+    def enumerations(self, **kwargs):
         return [node for node in self.declarations(**kwargs) if isinstance(node, EnumerationProxy)]
 
     def enumerators(self, anonymous=None, **kwargs):
@@ -1877,9 +1876,6 @@ class AbstractSemanticGraph(object):
         #            header = header.include
         #        if not header is None:
         #            headers.append(header)
-        #if test:
-        #    import pdb
-        #    pdb.set_trace()
         headers = {header.globalname for header in headers}
         headers = sorted([self[header] for header in headers], key = lambda header: header.depth)
         _headers = {header.globalname for header in headers if header.depth == 0}

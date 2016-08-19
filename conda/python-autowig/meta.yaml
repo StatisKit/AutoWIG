@@ -25,7 +25,9 @@ requirements:
     - pygments
     - pypandoc
     - path.py
-    - libclang
+    - python-clang
+    - python-git
+    - numpy
 
 test:
    requires:
