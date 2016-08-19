@@ -1040,25 +1040,25 @@ BOOST_PYTHON_MODULE(_${module.prefix})
                 export = declaration.return_type.desugared_type.unqualified_type.boost_python_export
                 if export and export is not True:
                     module = export.module
-                    if not module is None:
+                    if module is not None:
                         modules.add(module.globalname)
                 for prm in declaration.parameters:
                     export = prm.qualified_type.desugared_type.unqualified_type.boost_python_export
                     if export and export is not True:
                         module = export.module
-                        if not module is None:
+                        if module is not None:
                             modules.add(module.globalname)
             elif isinstance(declaration, (VariableProxy, TypedefProxy)):
                 export = declaration.qualified_type.desugared_type.unqualified_type.boost_python_export
                 if export and export is not True:
                     module = export.module
-                    if not module is None:
+                    if module is not None:
                         modules.add(module.globalname)
             elif isinstance(declaration, ClassProxy):
                 export = declaration.boost_python_export
                 if export and export is not True:
                     module = export.module
-                    if not module is None:
+                    if module is not None:
                         modules.add(module.globalname)
                 temp.extend([bse for bse in declaration.bases() if bse.access == 'public'])
                 temp.extend([dcl for dcl in declaration.declarations() if dcl.access == 'public'])
@@ -1316,8 +1316,6 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         visitor.plugin = 'boost_python'
         nodes += asg.dependencies(*nodes)
         visitor.plugin = plugin
-
-    _nodes = set([node._node for node in nodes])
 
     exports = set()
     for node in nodes:

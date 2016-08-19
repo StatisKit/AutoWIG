@@ -82,11 +82,11 @@ def is_copyable_record(self):
 Cursor.is_copyable_record = is_copyable_record
 del is_copyable_record
 
-def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, cache=None, force=False, **kwargs):
+def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, **kwargs):
     warnings.warn('The libclang parser is no more maintened', DeprecationWarning)
     content = pre_processing(asg, filepaths, flags, **kwargs)
     if content:
-        if not libpath is None:
+        if libpath is not None:
             if Config.loaded:
                 warnings.warn('\'libpath\' parameter not used since libclang config is already loaded', SyntaxWarning)
             else:
@@ -443,27 +443,14 @@ def read_function(asg, cursor, scope):
                 if cursor.kind in [CursorKind.FUNCTION_DECL, CursorKind.CXX_METHOD]:
                     target, specifiers = read_qualified_type(asg, cursor.result_type)
                     asg._type_edges[spelling] = dict(target=target, qualifiers=specifiers)
-                for index, child in enumerate([child for child in cursor.get_children() if child.kind is CursorKind.PARM_DECL]):
-                    #childspelling = spelling + '::' + child.spelling
-                    #if childspelling.endswith('::'):
-                    #    childspelling += 'parm_' + str(index)
+                for child in [child for child in cursor.get_children() if child.kind is CursorKind.PARM_DECL]:
                     target, specifiers = read_qualified_type(asg, child.type)
                     asg._parameter_edges[spelling].append(dict(name = child.spelling, target=target, qualifiers=specifiers))
-                    #asg._type_edges[childspelling] = dict(target=target, qualifiers=specifiers)
-                    #asg._nodes[childspelling] = dict(_proxy=VariableProxy)
-                    #asg._syntax_edges[spelling].append(childspelling)
         except Warning as warning:
             asg._syntax_edges[scope].remove(spelling)
-            #asg._syntax_edges.pop(spelling)
             asg._type_edges.pop(spelling, None)
             asg._parameter_edges.pop(spelling, None)
             asg._nodes.pop(spelling)
-            #for index, child in enumerate([child for child in cursor.get_children() if child.kind is CursorKind.PARM_DECL]):
-            #    childspelling = spelling + '::' + child.spelling
-            #    if childspelling.endswith('::'):
-            #        childspelling += 'parm_' + str(index)
-            #    asg._nodes.pop(childspelling, None)
-            #    asg._type_edges.pop(childspelling, None)
             warnings.warn(str(warning), warning.__class__)
             return []
         else:
