@@ -25,15 +25,8 @@ Documentation
     quick_start
     user_guide
     reference_guide
+    examples
     faq 
-
-Exemples
-========
-
-.. toctree::
-    :maxdepth: 2
-
-    simple-library.ipynb
 
 License
 =======
