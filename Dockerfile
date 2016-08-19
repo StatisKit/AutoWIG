@@ -1,4 +1,4 @@
-FROM statiskit/ubuntu:trusty
+FROM statiskit/ubuntu:pyclanglite
 
 # Clone the repository
 RUN git clone https://github.com/StatisKit/AutoWIG.git $HOME/AutoWIG
