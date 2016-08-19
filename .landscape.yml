@@ -6,6 +6,10 @@ pylint:
     - too-many-statements
     - too-many-locals
     - too-many-arguments
+    - bare-except
 mccabe:
   disable:
     - MC0001
+pyflakes:
+  disable:
+    - F812

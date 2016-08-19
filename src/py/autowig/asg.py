@@ -1787,9 +1787,9 @@ class AbstractSemanticGraph(object):
         headers = []
         for node in self.dependencies(*nodes):
             header = node.header
-            while not header is None and not header.is_self_contained:
+            while header is not None and not header.is_self_contained:
                 header = header.include
-            if not header is None:
+            if header is not None:
                 headers.append(header)
         visitor.plugin = plugin
 
@@ -1798,9 +1798,9 @@ class AbstractSemanticGraph(object):
             node = white.pop()
             if isinstance(node, FunctionProxy):
                 header = node.header
-                while not header is None and not header.is_self_contained:
+                while header is not None and not header.is_self_contained:
                     header = header.include
-                if not header is None:
+                if header is not None:
                     headers.append(header)
             elif isinstance(node, ClassProxy):
                 white.extend(node.functions())
@@ -1881,7 +1881,7 @@ class AbstractSemanticGraph(object):
         _headers = {header.globalname for header in headers if header.depth == 0}
         for header in [header for header in headers if header.depth > 0]:
             include = header.include
-            while not include is None and not include.globalname in _headers:
+            while include inot s None and include.globalname not in _headers:
                 include = include.include
             if include is None:
                 _headers.add(header.globalname)
