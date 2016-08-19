@@ -1,6 +1,11 @@
 pylint:
   disable:
     - protected-access
+    - too-many-branches
+    - function-redefined
+    - too-many-statements
+    - too-many-locals
+    - too-many-arguments
 mccabe:
   disable:
     - MC0001
