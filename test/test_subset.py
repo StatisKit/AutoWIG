@@ -118,6 +118,9 @@ class TestSubset(unittest.TestCase):
                                      decorator = self.srcdir/'clanglite'/'_clanglite.py',
                                      closure = False)
 
+        for wrapper in wrappers:
+            wrapper.write()
+            
     # def test_pyclanglite_parser(self):
     #     """Test `pyclanglite` parser"""
     #     plugin = autowig.parser.plugin
