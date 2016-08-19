@@ -1881,7 +1881,7 @@ class AbstractSemanticGraph(object):
         _headers = {header.globalname for header in headers if header.depth == 0}
         for header in [header for header in headers if header.depth > 0]:
             include = header.include
-            while include inot s None and include.globalname not in _headers:
+            while include is not None and include.globalname not in _headers:
                 include = include.include
             if include is None:
                 _headers.add(header.globalname)
