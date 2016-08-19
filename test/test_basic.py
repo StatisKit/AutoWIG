@@ -1,5 +1,6 @@
 import os
 import unittest
+import sys 
 
 from autowig import autowig
 
@@ -11,6 +12,8 @@ class TestBasic(unittest.TestCase):
         autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
         cls.directory = os.path.abspath(os.path.join('doc', 'basic'))
+        print sys.prefix
+        print cls.directory
 
     def test_mapping_export(self):
         """Test `mapping` export"""

@@ -24,6 +24,7 @@ install:
     - pip install nose
     
 before_script:
+  - conda build conda/python-clang -c statiskit -c conda-forge --no-test
   - conda build conda/python-autowig -c statiskit -c conda-forge --no-test
   - conda install python-autowig -c statiskit -c conda-forge --use-local
   - conda remove python-autowig
@@ -36,9 +37,3 @@ script:
 
 after_success:
   - coveralls
-  - if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
-      conda install anaconda-client;
-      anaconda login --username ${ANACONDA_USERNAME%%} --password ${ANACONDA_PASSWORD%%};
-      CONDA_FILE=`conda build conda/python-autowig --output`; 
-      anaconda upload --user ${ANACONDA_CHANNEL%%} ${CONDA_FILE%%};
-    fi
