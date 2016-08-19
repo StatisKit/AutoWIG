@@ -129,5 +129,5 @@ def to_camel_case(name):
             camelname += name[index]
         index += 1
     if camelname[0].islower():
-       camelname  = camelname[0].upper() + camelname[1:]
+        camelname  = camelname[0].upper() + camelname[1:]
     return camelname

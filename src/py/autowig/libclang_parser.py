@@ -410,12 +410,12 @@ def read_function(asg, cursor, scope):
     if cursor.kind in [CursorKind.DESTRUCTOR, CursorKind.CXX_METHOD, CursorKind.CONSTRUCTOR] and cursor.lexical_parent.kind is CursorKind.NAMESPACE:
         return []
     else:
-        if not cursor.kind is CursorKind.DESTRUCTOR:
+        if cursor.kind is not CursorKind.DESTRUCTOR:
             spelling = spelling + '::' + str(uuid.uuid4())
         if cursor.kind is CursorKind.FUNCTION_DECL:
             asg._nodes[spelling] = dict(_proxy=FunctionProxy,
                                         _comment="")
-            if not cursor.location is None:
+            if cursor.location is not None:
                 filename = str(path(str(cursor.location.file)).abspath())
                 asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
                 asg._nodes[spelling]['_header'] = filename
