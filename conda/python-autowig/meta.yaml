@@ -32,8 +32,7 @@ test:
      - nose
      - coverage
      - python-clanglite
+     - gitpython
    commands:
-     - nosetests {{ SRC_DIR }} -v --with-coverage --cover-package=autowig
-     #- if [[ $TRAVIS_BUILD_DIR ]]; then
-     #    ln -s .coverage $TRAVIS_BUILD_DIR/.coverage;
-     #  fi
+     - cd {{ SRC_DIR }} 
+     - nosetests -v --with-coverage --cover-package=autowig
