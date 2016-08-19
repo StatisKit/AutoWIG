@@ -282,7 +282,7 @@ def read_enum(asg, cursor, scope):
         return children
     else:
         spelling = 'enum ' + spelling
-        if not spelling in asg:
+        if spelling not in asg:
             asg._syntax_edges[spelling] = []
             asg._nodes[spelling] = dict(_proxy = EnumerationProxy,
                                         _comment = "",
@@ -334,7 +334,7 @@ def read_typedef(asg, typedef, scope):
         spelling = spelling + "::" + typedef.spelling
     else:
         spelling = spelling + typedef.spelling
-    if not spelling in asg:
+    if spelling not in asg:
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
@@ -536,7 +536,7 @@ def read_tag(asg, cursor, scope):
             spelling = 'union ' + spelling
         else:
             spelling = 'class ' + spelling
-        if not spelling in asg:
+        if spelling not in asg:
             if cursor.kind in [CursorKind.STRUCT_DECL, CursorKind.UNION_DECL]:
                 asg._nodes[spelling] = dict(_proxy=ClassProxy,
                         _is_abstract=True,
@@ -614,11 +614,11 @@ def read_namespace(asg, cursor, scope):
         read_access(asg, cursor.access_specifier, *children)
         return children
     else:
-        if not spelling in asg:
+        if spelling not in asg:
             asg._nodes[spelling] = dict(_proxy=NamespaceProxy,
                                         _is_inline=False) # TODO
             asg._syntax_edges[spelling] = []
-        if not spelling in asg._syntax_edges[scope]:
+        if spelling not in asg._syntax_edges[scope]:
             asg._syntax_edges[scope].append(spelling)
         for child in cursor.get_children():
             read_cursor(asg, child, spelling)

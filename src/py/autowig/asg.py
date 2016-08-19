@@ -1591,26 +1591,26 @@ class AbstractSemanticGraph(object):
         initname = str(dirname)
         if not initname.endswith(os.sep):
             initname += os.sep
-        if not initname in self._nodes:
+        if initname not in self._nodes:
             idparent = initname
-            if not idparent in self._syntax_edges:
+            if idparent not in self._syntax_edges:
                 self._syntax_edges[idparent] = []
             while not dirname == os.sep:
                 idnode = idparent
                 if not idnode.endswith(os.sep):
                     idnode += os.sep
-                if not idnode in self._nodes:
+                if idnode not in self._nodes:
                     self._nodes[idnode] = dict(_proxy=DirectoryProxy)
                     dirname = dirname.parent
                     idparent = str(dirname)
                     if not idparent.endswith(os.sep):
                         idparent += os.sep
-                    if not idparent in self._syntax_edges:
+                    if idparent not in self._syntax_edges:
                         self._syntax_edges[idparent] = []
                     self._syntax_edges[idparent].append(idnode)
                 else:
                     break
-            if dirname == os.sep and not os.sep in self._nodes:
+            if dirname == os.sep and os.sep not in self._nodes:
                 self._nodes[os.sep] = dict(_proxy=DirectoryProxy)
         return self[initname]
 
@@ -1618,13 +1618,13 @@ class AbstractSemanticGraph(object):
         filename = path(filename).abspath()
         initname = str(filename)
         proxy = kwargs.pop('proxy', FileProxy)
-        if not initname in self._nodes:
+        if initname not in self._nodes:
             idnode = str(filename)
             self._nodes[idnode] = dict(_proxy=proxy, **kwargs)
             idparent = str(filename.parent)
             if not idparent.endswith(os.sep):
                 idparent += os.sep
-            if not idparent in self._syntax_edges:
+            if idparent not in self._syntax_edges:
                 self._syntax_edges[idparent] = []
             self._syntax_edges[idparent].append(idnode)
             self.add_directory(idparent)
@@ -1729,7 +1729,7 @@ class AbstractSemanticGraph(object):
 
         while len(white) > 0:
             node = white.pop()
-            if not node._node in black:
+            if node._node not in black:
                 black.add(node._node)
                 parent = node.parent
                 if not isinstance(parent, NamespaceProxy) and visitor(parent):
