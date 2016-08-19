@@ -592,38 +592,38 @@ def read_tag(asg, cursor, scope):
         return [spelling]
 
 def read_namespace(asg, cursor, scope):
-        spelling = scope
-        if spelling.startswith('enum '):
-            spelling = spelling[5:]
-        elif spelling.startswith('class '):
-            spelling = spelling[6:]
-        elif spelling.startswith('union '):
-            spelling = spelling[6:]
-        elif spelling.startswith('struct '):
-            spelling = spelling[7:]
-        if not scope.endswith('::'):
-            spelling = spelling + "::" + cursor.spelling
-        else:
-            spelling = spelling + cursor.spelling
-        if cursor.spelling == '':
-            children = []
-            if not spelling == '::':
-                spelling = spelling[:-2]
-            for child in cursor.get_children():
-                children.extend(read_cursor(asg, child, spelling))
-            read_access(asg, cursor.access_specifier, *children)
-            return children
-        else:
-            if not spelling in asg:
-                asg._nodes[spelling] = dict(_proxy=NamespaceProxy,
-                                            _is_inline=False) # TODO
-                asg._syntax_edges[spelling] = []
-            if not spelling in asg._syntax_edges[scope]:
-                asg._syntax_edges[scope].append(spelling)
-            for child in cursor.get_children():
-                read_cursor(asg, child, spelling)
-            read_access(asg, cursor.access_specifier, spelling)
-            return [spelling]
+    spelling = scope
+    if spelling.startswith('enum '):
+        spelling = spelling[5:]
+    elif spelling.startswith('class '):
+        spelling = spelling[6:]
+    elif spelling.startswith('union '):
+        spelling = spelling[6:]
+    elif spelling.startswith('struct '):
+        spelling = spelling[7:]
+    if not scope.endswith('::'):
+        spelling = spelling + "::" + cursor.spelling
+    else:
+        spelling = spelling + cursor.spelling
+    if cursor.spelling == '':
+        children = []
+        if not spelling == '::':
+            spelling = spelling[:-2]
+        for child in cursor.get_children():
+            children.extend(read_cursor(asg, child, spelling))
+        read_access(asg, cursor.access_specifier, *children)
+        return children
+    else:
+        if not spelling in asg:
+            asg._nodes[spelling] = dict(_proxy=NamespaceProxy,
+                                        _is_inline=False) # TODO
+            asg._syntax_edges[spelling] = []
+        if not spelling in asg._syntax_edges[scope]:
+            asg._syntax_edges[scope].append(spelling)
+        for child in cursor.get_children():
+            read_cursor(asg, child, spelling)
+        read_access(asg, cursor.access_specifier, spelling)
+        return [spelling]
 
 def read_cursor(asg, cursor, scope):
     if cursor.kind is CursorKind.UNEXPOSED_DECL:

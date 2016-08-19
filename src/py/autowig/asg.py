@@ -1257,7 +1257,7 @@ class ClassProxy(DeclarationProxy):
                         if basedeclaration.access == 'public':
                             basedeclaration.access = 'protected'
                 elif base.access == 'private':
-                   for basedeclaration in basedeclarations:
+                    for basedeclaration in basedeclarations:
                         basedeclaration.access = 'private'
                 declarations += basedeclarations
         else:
@@ -1437,7 +1437,7 @@ class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
         accesses = ['none', 'public', 'protected', 'private']
         access = accesses.index(getattr(self, '_access', self.specialize.access))
         for template in self.templates:
-                access = max(access, accesses.index(template.desugared_type.unqualified_type.access))
+            access = max(access, accesses.index(template.desugared_type.unqualified_type.access))
         return accesses[access]
 
     @access.setter
