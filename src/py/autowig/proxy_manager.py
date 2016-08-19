@@ -74,7 +74,7 @@ class ProxyManager(object):
         if issubclass(cls, self._base):
             self._cache[proxy] = cls
         elif isinstance(cls, basestring):
-            if not cls in self:
+            if cls not in self:
                 raise ValueError('\'cls\' parameter must be an existing proxy')
             if proxy == cls:
                 raise ValueError('\'proxy\' and \'cls\' parameters cannot have the same value')

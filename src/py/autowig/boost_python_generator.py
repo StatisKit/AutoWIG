@@ -674,7 +674,7 @@ ${field.globalname}, "${documenter(field)}");
                             if not parsed:
                                 parsed = parse.parse('    class_{hash}.def({python}, {cpp}, {documentation});', line)
                             if parsed:
-                                if not 'what' in parsed.named:
+                                if 'what' not in parsed.named:
                                     if parsed['cpp'].startswith('method_pointer_'):
                                         pointer = parsed['cpp']
                                         parsed = None
