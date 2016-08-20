@@ -50,11 +50,6 @@ def scons(directory, *args, **kwargs):
     out, err = s.communicate()
     return ShellSession(out, err, lexer=lexer)
 
-def boost_python_emitter(target, source, **kwargs):
-    if kwargs.get('variantdir', False):
-        target = [target.srcnode() for target in target]
-    return target, source
-
 def boost_python_action(target, source, env, **kwargs):
 
     from .autowig import  AbstractSemanticGraph, parser, controller, generator
@@ -89,5 +84,5 @@ def boost_python_string(target, source, env):
 def boost_python_builder(env):
     """
     """
-    boost_python_builder = env.Builder(action=env.Action(boost_python_action, boost_python_string), emitter=boost_python_emitter)
+    boost_python_builder = env.Builder(action=env.Action(boost_python_action, boost_python_string))
     env.Append(BUILDERS = {'BoostPython' : boost_python_builder})
