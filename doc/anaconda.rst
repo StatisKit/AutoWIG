@@ -6,9 +6,12 @@ To install the latest version with Anaconda or conda you should use the followin
 
 .. code-block:: console
 
-    $ conda install -c statiskit python-autowig
+    $ conda install python-autowig -c statiskit -c conda-forge
 
 .. warning::
 
     This installation can fail for compiler compatibility reasons.
-    In such cases we recommand to to follow the :ref:`install-source` section.
+    In such cases refers to :
+    
+    * the :ref:`install-source` section,
+    * the :ref:`use-docker` section.

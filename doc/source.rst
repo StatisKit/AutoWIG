@@ -17,6 +17,7 @@ In order to install **AutoWIG** from source code we recommand to use:
 
         $ git clone https://github.com/StatisKit/PyClangLite.git
         $ conda build PyClangLite/conda/libclang
+        $ conda build PyClangLite/conda/libclanglite
         $ conda build PyClangLite/conda/python-clanglite
         $ conda install python-clanglite
 
@@ -26,6 +27,7 @@ This is done by typing the following commands
 .. code-block:: console
 
     $ git clone https://github.com/StatisKit/AutoWIG.git
+    $ conda build AutoWIG/conda/python-clang
     $ conda build AutoWIG/conda/python-autowig
     $ conda install python-autowig
 
