@@ -6,11 +6,20 @@ from autowig import autowig
 
 class TemplateRender(object):
 
-    def __get__(self, obj, **kwargs):
-        def call(self, **kwargs):
-            print "yop"
-            return "yop"
-        return __call__
+    def __get__(self, obj, objtype, **kwargs):
+        code = obj.code
+        code = code.replace('\n    __M_caller = context.caller_stack._push_frame()', '', 1)
+        code = code.replace('\n    __M_caller = context.caller_stack._push_frame()', '', 1)
+        code = code.replace("        return ''\n    finally:\n        context.caller_stack._pop_frame()\n", "        return __M_string\n    except:\n        return ''", 1)
+        code = code.replace("context,**pageargs", "**context", 1)
+        code = code.replace("\n        __M_locals = __M_dict_builtin(pageargs=pageargs)", "", 1)
+        code = code.replace("__M_writer = context.writer()", "__M_string = u''")
+        code = code.replace("__M_writer(", "__M_string = operator.add(__M_string, ")
+        code = "import operator\n" + code
+        exec code in globals()
+        def __call__(**context):
+            return globals()["render_body"](**context)
+    	return __call__
 
 from autowig.boost_python_generator import Template
 
@@ -42,7 +51,7 @@ class TestBasic(unittest.TestCase):
                         decorator=None,
                         prefix='wrapper_')
 
-        for wrapper in wrappers:
+        for index, wrapper in enumerate(wrappers):
             wrapper.write()
 
         # wrappers = sorted(wrappers, key=lambda wrapper: wrapper.globalname)
