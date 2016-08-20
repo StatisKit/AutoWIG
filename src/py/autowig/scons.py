@@ -58,9 +58,6 @@ def boost_python_emitter(target, source, **kwargs):
 def boost_python_action(target, source, env, **kwargs):
 
     from .autowig import  AbstractSemanticGraph, parser, controller, generator
-    import time
-
-    start = time.time()
 
     asg = AbstractSemanticGraph()
 
@@ -68,54 +65,22 @@ def boost_python_action(target, source, env, **kwargs):
         parser.plugin = env['autowig_parser']
     parser(asg, [str(src) for src in source],
            flags=env.subst('$CPPFLAGS $CFLAGS $CCFLAGS $CXXFLAGS').split() + ['-I' + cpppath.strip() for cpppath in env.subst('$CPPPATH').split()],
-           env=env) # KWARGS
-    parsing = time.time()
+           env=env)
 
     if 'autowig_controller' in env:
         controller.plugin = env['autowig_controller']
     controller(asg)
-    controlling = time.time()
 
     if 'autowig_generator' in env:
         generator.plugin = env['autowig_generator']
     else:
         generator.plugin = 'boost_python_internal'
     wrappers = generator(asg, module=target[1], decorator=target[0], env=env)
-    generating = time.time()
 
-    for wrapper in wrappers: # PATTERN, CLOSURE, PREFIX
-        wrapper.write(**kwargs) # DATABASE
-    writing = time.time()
+    for wrapper in wrappers:
+        wrapper.write(**kwargs)
 
-    if 'autowig_verbose' in env:
-        verbose = env['autowig_verbose']
-    else:
-        verbose = True
-    if verbose:
-        counts = dict()
-        from .asg import NodeProxy
-        from .tools import subclasses, strdiff
-
-        counts = {cls.__name__ : 0 for cls in subclasses(NodeProxy)}
-
-        from .boost_python_generator import BoostPythonExportFileProxy
-
-        for wrapper in wrappers:
-            if isinstance(wrapper, BoostPythonExportFileProxy):
-                for dcl in wrapper.declarations:
-                    counts[dcl.__class__.__name__] += 1
-
-        from .tools import camel_case_to_lower
-        summary = []
-        for count in counts:
-            if counts[count] > 0:
-                summary.append(camel_case_to_lower(count).rstrip('_proxy').replace('_', ' ').capitalize() + ': ' + str(counts[count]))
-        summary.append('Parsing: ' + strdiff(parsing - start))
-        summary.append('Controlling: ' + strdiff(controlling - parsing))
-        summary.append('Generating: ' + strdiff(generating - controlling))
-        summary.append('Writing: ' + strdiff(writing - generating))
-        summary.append('Total: ' + strdiff(writing - start) + 's')
-        print 'autowig: Done generating Boost.Python wrappers\n         ' + '\n         '.join(summary)
+    print 'autowig: Done generating Boost.Python wrappers'
     return 0
 
 def boost_python_string(target, source, env):
