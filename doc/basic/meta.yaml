@@ -1,0 +1,21 @@
+package:
+  name: basic
+  version: "1.0.0"
+
+source:
+  path: .
+
+build:
+  number: 0
+  script: scons --prefix={{ PREFIX }}
+
+about:
+  home: http://autowig.readthedocs.io/
+  license: CeCILL-C
+
+requirements:
+  build:
+    - scons
+    - libboost
+  run:
+    - libboost

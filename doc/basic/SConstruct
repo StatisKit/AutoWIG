@@ -11,11 +11,36 @@ AddOption('--prefix',
   help='installation prefix',
   default=sys.prefix)
 
-SConsignFile()
+AddOption('--parser',
+    dest='parser',
+    type='string',
+    nargs=1,
+    action='store',
+    help='AutoWIG parser plugin',
+    default='libclang')
+
+AddOption('--controller',
+    dest='controller',
+    type='string',
+    nargs=1,
+    action='store',
+    help='AutoWIG controller plugin',
+    default='default')
+
+AddOption('--generator',
+    dest='generator',
+    type='string',
+    nargs=1,
+    action='store',
+    help='AutoWIG generator plugin',
+    default='boost_python_internal')
 
 variables = Variables()
 
-env = Environment(PREFIX = GetOption('prefix'))
+env = Environment(PREFIX = GetOption('prefix'),
+                  autowig_parser = GetOption('parser'),
+                  autowig_controller = GetOption('controller'),
+                  autowig_generator = GetOption('generator'))
 variables.Update(env)
 
 env.AppendUnique(LIBS = ['boost_python', 'python' + sysconfig.get_python_version()])
@@ -30,30 +55,27 @@ env.AppendUnique(CXXFLAGS = ['-x', 'c++',
                              '-Wwrite-strings'])
 
 cppenv = env.Clone()
-
 headers = ['overload.h', 'binomial.h']
 includes = cppenv.Install(os.path.join(cppenv['PREFIX'], "include", "basic"), headers)
 Alias("cpp", includes)
 Alias("build", includes)
-
-from autowig.scons import boost_python_builder
-boost_python_builder(cppenv)
-Alias('wig', cppenv.BoostPython(['_module.py', '_module.cpp'], headers))
-
 sources = ['overload.cpp', 'binomial.cpp']
 lib = cppenv.SharedLibrary(os.path.join(cppenv['PREFIX'], "lib", "basic"), sources)
 Alias("cpp", lib)
 Alias("build", lib)
 
-pyenv = env.Clone()
+wigenv = env.Clone()
+from autowig.scons import boost_python_builder
+boost_python_builder(wigenv)
+Alias('wig', wigenv.BoostPython(['_module.py', '_module.cpp'], headers))
 
+pyenv = env.Clone()
 pyenv.AppendUnique(LIBS = ['basic'])
 pyenv.AppendUnique(CXXFLAGS = ['-ftemplate-depth-100'])
 
 wrap = pyenv.LoadableModule('_module', pyenv.Glob('wrapper_*.cpp') + ['_module.cpp'],
                             LDMODULESUFFIX = '.so',
                             FRAMEWORKSFLAGS = '-flat_namespace -undefined suppress')
-
 Alias("py", wrap)
 Alias("build", wrap)
 

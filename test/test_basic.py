@@ -2,7 +2,10 @@ import os
 import unittest
 import sys 
 from path import path
-from SCons.Script import Main
+from SCons.Script.Main import AddOption, GetOption
+from SCons.Environment import Environment
+from SCons.Script import Variables, Main
+
 from autowig import autowig
 
 class TemplateRender(object):
@@ -39,32 +42,32 @@ class TestBasic(unittest.TestCase):
 
     def test_mapping_export(self):
         """Test `mapping` export"""
-        os.chdir(self.srcdir)
-        try:
-            Main.main()
-        except:
-            pass
-        # for wrapper in self.srcdir.walkfiles('wrapper_*.cpp'):
-        #     wrapper.unlink()
-        # (self.srcdir/'module.cpp').unlink()
 
-        # asg = autowig.AbstractSemanticGraph()
+        for wrapper in self.srcdir.walkfiles('wrapper_*.cpp'):
+            wrapper.unlink()
+        wrapper = self.srcdir/'_module.cpp'
+        if wrapper.exists():
+            wrapper.unlink()
+        wrapper = self.srcdir/'_module.py'
+        if wrapper.exists():
+            wrapper.unlink()
 
-        # asg = autowig.parser(asg, [self.srcdir/'binomial.h'],
-        #                           ['-x', 'c++', '-std=c++11', '-I' + str(self.srcdir)],
-        #                           silent = True)
+        asg = autowig.AbstractSemanticGraph()
 
-        # autowig.controller.plugin = 'default'
-        # autowig.controller(asg)
+        asg = autowig.parser(asg, [self.srcdir/'overload.h', self.srcdir/'binomial.h'],
+                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.srcdir)],
+                                  silent = True)
 
-        # wrappers = autowig.generator(asg, module = self.srcdir/'module.cpp',
-        #                              decorator = None,
-        #                              prefix = 'wrapper_')
+        autowig.controller.plugin = 'default'
+        autowig.controller(asg)
 
-        # for wrapper in wrappers:
-        #     wrapper.write()
+        wrappers = autowig.generator(asg, module = self.srcdir/'_module.cpp',
+                                     decorator = self.srcdir/'_module.py',
+                                     prefix = 'wrapper_')
 
-        os.chdir(self.rootdir)
+        for wrapper in wrappers:
+            wrapper.write()
+
         autowig.scons(self.srcdir, 'build')
 
     def test_basic_export(self):
