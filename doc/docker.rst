@@ -29,11 +29,12 @@ You can therefore use:
     
   This requires to able to run Linux GUI Apps:
   
-    * On Linux, this is done using the following command in place of the previous command:
+  * On Linux, this is done using the following command in place of the previous command:
   
-      ..code-block:: console
+    .. code-block:: console
   
-        $ docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix statiskit/ubuntu:autowig
+      $ docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix statiskit/ubuntu:autowig
     
-    * On Windows refers to this `post <http://manomarks.github.io/2015/12/03/docker-gui-windows.html>`_.
-    * On MacOs refers to this `post <https://github.com/docker/docker/issues/8710>`_.
+  * On Windows refers to this `post <http://manomarks.github.io/2015/12/03/docker-gui-windows.html>`_.
+  
+  * On MacOs refers to this `post <https://github.com/docker/docker/issues/8710>`_.
