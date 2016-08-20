@@ -30,7 +30,7 @@ from autowig.boost_python_generator import Template
 Template.render = TemplateRender()
 
 class TestSubset(unittest.TestCase):
-  """Test the wrapping of a library subset"""
+    """Test the wrapping of a library subset"""
 
     @classmethod
     def setUpClass(cls):
