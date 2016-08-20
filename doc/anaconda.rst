@@ -6,7 +6,7 @@ To install the latest version with Anaconda or conda you should use the followin
 
 .. code-block:: console
 
-    $ conda install python-autowig  -c statiskit -c conda-forge
+    $ conda install python-autowig -c statiskit -c conda-forge
 
 .. warning::
 
