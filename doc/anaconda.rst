@@ -13,5 +13,5 @@ To install the latest version with Anaconda or conda you should use the followin
     This installation can fail for compiler compatibility reasons.
     In such cases refers to :
     
-    * the :ref:`install-source` section.
+    * the :ref:`install-source` section,
     * the :ref:`ìnstall-docker` section.
