@@ -1,6 +1,7 @@
 import os
 import unittest
 import sys 
+from path import path
 
 from autowig import autowig
 
@@ -18,6 +19,7 @@ class TemplateRender(object):
         code = "import operator\n" + code
         exec code in globals()
         def __call__(**context):
+            context['int'] = int
             return globals()["render_body"](**context)
     	return __call__
 
@@ -32,32 +34,32 @@ class TestBasic(unittest.TestCase):
     def setUpClass(cls):
         autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
-        cls.directory = os.path.abspath(os.path.join('doc', 'basic'))
-        print sys.prefix
-        print cls.directory
+        cls.srcdir = (path('doc')/'basic').abspath()
 
     def test_mapping_export(self):
         """Test `mapping` export"""
+
+        for wrapper in self.srcdir.walkfiles('wrapper_*.cpp'):
+            wrapper.unlink()
+        (self.srcdir/'module.cpp').unlink()
+
         asg = autowig.AbstractSemanticGraph()
 
-        asg = autowig.parser(asg, [os.path.join(self.directory, 'binomial.h')],
-                                  ['-x', 'c++', '-std=c++11', '-I' + os.path.abspath(self.directory)],
+        asg = autowig.parser(asg, [self.srcdir/'binomial.h'],
+                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.srcdir)],
                                   silent = True)
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
-        wrappers = autowig.generator(asg, module=os.path.join(self.directory, 'module.cpp'),
-                        decorator=None,
-                        prefix='wrapper_')
+        wrappers = autowig.generator(asg, module = self.srcdir/'module.cpp',
+                                     decorator = None,
+                                     prefix = 'wrapper_')
 
-        for index, wrapper in enumerate(wrappers):
+        for wrapper in wrappers:
             wrapper.write()
 
-        # wrappers = sorted(wrappers, key=lambda wrapper: wrapper.globalname)
-        # for wrapper in wrappers:
-        #     with open(wrapper.globalname, 'r') as filehandler:
-        #         self.assertEqual(wrapper.content, filehandler.read())
+        autowig.scons(self.srcdir)
 
     def test_basic_export(self):
         """Test `basic` export"""

@@ -21,6 +21,7 @@ class TemplateRender(object):
     code = "import operator\n" + code
     exec code in globals()
     def __call__(**context):
+      context['int'] = int
       return globals()["render_body"](**context)
     return __call__
 
