@@ -11,28 +11,13 @@ __all__ = ['scons']
 
 class ShellSession(object):
 
-    def __init__(self, out, err, lexer=None):
+    def __init__(self, out, err, lexer=BashSessionLexer()):
         self.out = out
         self.err = str(err)
-        if lexer is None:
-            self.lexer = BashSessionLexer()
-        else:
-            self.lexer = lexer
-
-    def __iadd__(self, session):
-        self.out += session.out
-        self.err += str(session.err)
-        return self
-
-    @property
-    def has_succeded(self):
-        return self.err == ''
+        self.lexer = lexer
 
     def __str__(self):
-        if self.has_succeded:
-            return self.out
-        else:
-            return self.out + self.err
+        return self.out + self.err
 
     def _repr_html_(self):
         return highlight(str(self), self.lexer, HtmlFormatter(full = True))
@@ -64,7 +49,8 @@ def boost_python_action(target, source, env, **kwargs):
 
     if 'autowig_controller' in env:
         controller.plugin = env['autowig_controller']
-    controller(asg)
+    controller(asg,
+               env=env)
 
     if 'autowig_generator' in env:
         generator.plugin = env['autowig_generator']

@@ -6,7 +6,7 @@ from SCons.Script.Main import AddOption, GetOption
 from SCons.Environment import Environment
 from SCons.Script import Variables, Main
 
-from autowig import autowig
+import autowig
 
 class TemplateRender(object):
 
@@ -77,12 +77,12 @@ class TestBasic(unittest.TestCase):
         self.test_mapping_export()
         autowig.boost_python_export.proxy = proxy
 
-    def test_libclang_parser(self):
-        """Test `libclang` parser"""
-        plugin = autowig.parser.plugin
-        autowig.parser.plugin = 'libclang'
-        self.test_mapping_export()
-        autowig.parser.plugin = plugin
+    # def test_pyclanglite_parser(self):
+    #     """Test `pyclanglite` parser"""
+    #     plugin = autowig.parser.plugin
+    #     autowig.parser.plugin = 'pyclanglite'
+    #     self.test_mapping_export()
+    #     autowig.parser.plugin = plugin
 
     def test_boost_python_pattern_generator(self):
         """Test `boost_python_pattern` generator"""

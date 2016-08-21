@@ -5,7 +5,7 @@ from git import Repo
 import subprocess
 import sys
 
-from autowig import autowig
+import autowig
 
 class TemplateRender(object):
 

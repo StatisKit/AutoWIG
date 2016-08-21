@@ -44,7 +44,7 @@ from .asg import (CharTypeProxy,
                  NamespaceProxy)
                  
                  
-from .parser import pre_processing, post_processing
+from ._parser import pre_processing, post_processing
 
 def is_virtual_method(self):
     """Returns True if the cursor refers to a C++ member function that
@@ -201,7 +201,6 @@ def read_qualified_type(asg, qtype):
                     return asg[spelling]._node, specifiers
                 except:
                     warnings.warn('record not found')
-                    break
         else:
             target = read_builtin_type(asg, qtype)
             return target, specifiers
@@ -252,11 +251,7 @@ def read_builtin_type(asg, btype):
 
 def read_enum(asg, cursor, scope):
     spelling = scope
-    if spelling.startswith('enum '):
-        spelling = spelling[5:]
-    elif spelling.startswith('class '):
-        spelling = spelling[6:]
-    elif spelling.startswith('union '):
+    if spelling.startswith('class '):
         spelling = spelling[6:]
     elif spelling.startswith('struct '):
         spelling = spelling[7:]
@@ -308,8 +303,6 @@ def read_enum_constant(asg, cursor, scope):
         spelling = spelling[5:]
     elif spelling.startswith('class '):
         spelling = spelling[6:]
-    elif spelling.startswith('union '):
-        spelling = spelling[6:]
     elif spelling.startswith('struct '):
         spelling = spelling[7:]
     if not scope.endswith('::'):
@@ -322,9 +315,7 @@ def read_enum_constant(asg, cursor, scope):
 
 def read_typedef(asg, typedef, scope):
     spelling = scope
-    if spelling.startswith('enum '):
-        spelling = spelling[5:]
-    elif spelling.startswith('class '):
+    if spelling.startswith('class '):
         spelling = spelling[6:]
     elif spelling.startswith('union '):
         spelling = spelling[6:]
@@ -358,9 +349,7 @@ def read_variable(asg, cursor, scope):
         return []
     else:
         spelling = scope
-        if spelling.startswith('enum '):
-            spelling = spelling[5:]
-        elif spelling.startswith('class '):
+        if spelling.startswith('class '):
             spelling = spelling[6:]
         elif spelling.startswith('union '):
             spelling = spelling[6:]
@@ -395,9 +384,7 @@ def read_variable(asg, cursor, scope):
 
 def read_function(asg, cursor, scope):
     spelling = scope
-    if spelling.startswith('enum '):
-        spelling = spelling[5:]
-    elif spelling.startswith('class '):
+    if spelling.startswith('class '):
         spelling = spelling[6:]
     elif spelling.startswith('union '):
         spelling = spelling[6:]
@@ -463,9 +450,7 @@ def read_field(asg, cursor, scope):
         return []
     else:
         spelling = scope
-        if spelling.startswith('enum '):
-            spelling = spelling[5:]
-        elif spelling.startswith('class '):
+        if spelling.startswith('class '):
             spelling = spelling[6:]
         elif spelling.startswith('union '):
             spelling = spelling[6:]
@@ -505,9 +490,7 @@ def read_tag(asg, cursor, scope):
             warnings.warn('Class template specialization \'' + scope + '::' + cursor.displayname + '\' not read')
             return []
         spelling = scope
-        if spelling.startswith('enum '):
-            spelling = spelling[5:]
-        elif spelling.startswith('class '):
+        if spelling.startswith('class '):
             spelling = spelling[6:]
         elif spelling.startswith('union '):
             spelling = spelling[6:]
@@ -580,37 +563,20 @@ def read_tag(asg, cursor, scope):
 
 def read_namespace(asg, cursor, scope):
     spelling = scope
-    if spelling.startswith('enum '):
-        spelling = spelling[5:]
-    elif spelling.startswith('class '):
-        spelling = spelling[6:]
-    elif spelling.startswith('union '):
-        spelling = spelling[6:]
-    elif spelling.startswith('struct '):
-        spelling = spelling[7:]
     if not scope.endswith('::'):
         spelling = spelling + "::" + cursor.spelling
     else:
         spelling = spelling + cursor.spelling
-    if cursor.spelling == '':
-        children = []
-        if not spelling == '::':
-            spelling = spelling[:-2]
-        for child in cursor.get_children():
-            children.extend(read_cursor(asg, child, spelling))
-        read_access(asg, cursor.access_specifier, *children)
-        return children
-    else:
-        if spelling not in asg:
-            asg._nodes[spelling] = dict(_proxy=NamespaceProxy,
-                                        _is_inline=False) # TODO
-            asg._syntax_edges[spelling] = []
-        if spelling not in asg._syntax_edges[scope]:
-            asg._syntax_edges[scope].append(spelling)
-        for child in cursor.get_children():
-            read_cursor(asg, child, spelling)
-        read_access(asg, cursor.access_specifier, spelling)
-        return [spelling]
+    if spelling not in asg:
+        asg._nodes[spelling] = dict(_proxy=NamespaceProxy,
+                                    _is_inline=False) # TODO
+        asg._syntax_edges[spelling] = []
+    if spelling not in asg._syntax_edges[scope]:
+        asg._syntax_edges[scope].append(spelling)
+    for child in cursor.get_children():
+        read_cursor(asg, child, spelling)
+    read_access(asg, cursor.access_specifier, spelling)
+    return [spelling]
 
 def read_cursor(asg, cursor, scope):
     if cursor.kind is CursorKind.UNEXPOSED_DECL:
