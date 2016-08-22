@@ -35,7 +35,7 @@ test:
      - coverage
      - python-clanglite
      - gitpython
-     - scons
+     - python-scons
    commands:
      - cd {{ SRC_DIR }} 
      - nosetests -v --pdb --with-coverage --cover-package=autowig
