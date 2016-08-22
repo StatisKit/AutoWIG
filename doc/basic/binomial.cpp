@@ -1,4 +1,4 @@
-#include "binomial.h"
+#include <basic/binomial.h>
 #include <cmath>
 
 const char * ProbabilityError::what() const noexcept

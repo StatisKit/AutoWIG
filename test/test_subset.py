@@ -5,7 +5,29 @@ from git import Repo
 import subprocess
 import sys
 
-from autowig import autowig
+import autowig
+
+class TemplateRender(object):
+
+    def __get__(self, obj, objtype, **kwargs):
+        code = obj.code
+        code = code.replace('\n    __M_caller = context.caller_stack._push_frame()', '', 1)
+        code = code.replace('\n    __M_caller = context.caller_stack._push_frame()', '', 1)
+        code = code.replace("        return ''\n    finally:\n        context.caller_stack._pop_frame()\n", "        return __M_string\n    except:\n        return ''", 1)
+        code = code.replace("context,**pageargs", "**context", 1)
+        code = code.replace("\n        __M_locals = __M_dict_builtin(pageargs=pageargs)", "", 1)
+        code = code.replace("__M_writer = context.writer()", "__M_string = u''")
+        code = code.replace("__M_writer(", "__M_string = operator.add(__M_string, ")
+        code = "import operator\n" + code
+        exec code in globals()
+        def __call__(**context):
+            context['int'] = int
+            return globals()["render_body"](**context)
+        return __call__
+
+from autowig.boost_python_generator import Template
+
+Template.render = TemplateRender()
 
 class TestSubset(unittest.TestCase):
     """Test the wrapping of a library subset"""
@@ -22,8 +44,8 @@ class TestSubset(unittest.TestCase):
         """Test `libclang` parser"""
 
         for wrapper in self.srcdir.walkfiles('*.cpp'):
-            wrapper.unlink()
-            
+          wrapper.unlink()
+                
         prefix = path(sys.prefix)
 
         headers = [prefix/'include'/'clanglite'/'tool.h']
@@ -37,6 +59,9 @@ class TestSubset(unittest.TestCase):
                              silent = True)
 
         def clanglite_controller(asg):
+                
+            from autowig.boost_python_generator import BoostPythonExportBasicFileProxy
+            BoostPythonExportBasicFileProxy.HELDTYPE = "namespace autowig { template<class T> using HeldType = T*; }"
             
             for node in asg['::boost::python'].classes(nested = True):
                 node.is_copyable = True
@@ -121,9 +146,9 @@ class TestSubset(unittest.TestCase):
         for wrapper in wrappers:
             wrapper.write()
             
-    # def test_pyclanglite_parser(self):
-    #     """Test `pyclanglite` parser"""
-    #     plugin = autowig.parser.plugin
-    #     autowig.parser.plugin = 'pyclanglite'
-    #     self.test_libclang_parser()
-    #     autowig.parser.plugin = plugin
+# def test_pyclanglite_parser(self):
+#     """Test `pyclanglite` parser"""
+#     plugin = autowig.parser.plugin
+#     autowig.parser.plugin = 'pyclanglite'
+#     self.test_libclang_parser()
+#     autowig.parser.plugin = plugin

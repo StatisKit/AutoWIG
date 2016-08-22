@@ -37,9 +37,9 @@ def default_controller(asg, **kwargs):
     """
     if 'env' in kwargs:
         env = kwargs.pop('env')
-        if 'autowig_controller_clean' in env and 'clean' not in kwargs:
+        if 'autowig_controller_clean' in env:
             kwargs['clean'] = env['autowig_controller_clean']
-        if 'autowig_controller_refactoring' in env and 'refactoring' not in kwargs:
+        if 'autowig_controller_refactoring' in env:
             kwargs['refactoring'] = env['autowig_controller_refactoring']
     if kwargs.pop('refactoring', True):
         asg = refactoring(asg)

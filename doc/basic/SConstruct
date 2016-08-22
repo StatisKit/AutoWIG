@@ -1,28 +1,82 @@
 import os
 from distutils import sysconfig
+import sys
 
-SConsignFile()
+AddOption('--prefix',
+  dest='prefix',
+  type='string',
+  nargs=1,
+  action='store',
+  metavar='DIR',
+  help='installation prefix',
+  default=sys.prefix)
 
-env = Environment()
+AddOption('--parser',
+    dest='parser',
+    type='string',
+    nargs=1,
+    action='store',
+    help='AutoWIG parser plugin',
+    default='libclang')
+
+AddOption('--controller',
+    dest='controller',
+    type='string',
+    nargs=1,
+    action='store',
+    help='AutoWIG controller plugin',
+    default='default')
+
+AddOption('--generator',
+    dest='generator',
+    type='string',
+    nargs=1,
+    action='store',
+    help='AutoWIG generator plugin',
+    default='boost_python_internal')
+
+variables = Variables()
+
+env = Environment(PREFIX = GetOption('prefix'),
+                  autowig_parser = GetOption('parser'),
+                  autowig_controller = GetOption('controller'),
+                  autowig_generator = GetOption('generator'))
+variables.Update(env)
+
+env.AppendUnique(LIBS = ['boost_python', 'python' + sysconfig.get_python_version()])
+env.AppendUnique(CPPPATH = [sysconfig.get_python_inc()])
+env.AppendUnique(CPPDEFINES = ['BOOST_PYTHON_DYNAMIC_LIB'])
+
+env.Prepend(CPPPATH='$PREFIX/include')
+env.Prepend(LIBPATH='$PREFIX/lib')
 
 env.AppendUnique(CXXFLAGS = ['-x', 'c++',
                              '-std=c++0x',
                              '-Wwrite-strings'])
 
+cppenv = env.Clone()
+headers = ['overload.h', 'binomial.h']
+includes = cppenv.Install(os.path.join(cppenv['PREFIX'], "include", "basic"), headers)
+Alias("cpp", includes)
+Alias("build", includes)
+sources = ['overload.cpp', 'binomial.cpp']
+lib = cppenv.SharedLibrary(os.path.join(cppenv['PREFIX'], "lib", "basic"), sources)
+Alias("cpp", lib)
+Alias("build", lib)
 
-Alias("build", env.SharedLibrary('test', 'binomial.cpp'))
+wigenv = env.Clone()
+from autowig.scons import boost_python_builder
+boost_python_builder(wigenv)
+Alias('wig', wigenv.BoostPython(['_module.py', '_module.cpp'], headers))
 
-python_inc = sysconfig.get_python_inc()
-env.AppendUnique(CPPPATH = ['.',
-                            python_inc,
-                            os.path.abspath(os.path.join(python_inc, os.path.pardir))])
+pyenv = env.Clone()
+pyenv.AppendUnique(LIBS = ['basic'])
+pyenv.AppendUnique(CXXFLAGS = ['-ftemplate-depth-100'])
 
-Alias("build", env.LoadableModule('_module', env.Glob('wrapper_*.cpp') + ['module.cpp'],
-                                   CPPPATH = env['CPPPATH'],
-                                   CXXFLAGS= env['CXXFLAGS'],
-                                   CPPDEFINES = ['BOOST_PYTHON_DYNAMIC_LIB'],
-                                   LIBPATH = [sysconfig.get_config_var('LIBDIR'), os.path.abspath('.')],
-                                   LIBS = ['test', 'boost_python', 'python' + sysconfig.get_config_var('VERSION')],
-                                   LIBPREFIX = ''))
+wrap = pyenv.LoadableModule('_module', pyenv.Glob('wrapper_*.cpp') + ['_module.cpp'],
+                            LDMODULESUFFIX = '.so',
+                            FRAMEWORKSFLAGS = '-flat_namespace -undefined suppress')
+Alias("py", wrap)
+Alias("build", wrap)
 
-Default("build")
+Default("wig")

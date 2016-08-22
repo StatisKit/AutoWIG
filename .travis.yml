@@ -16,9 +16,9 @@ before_install:
     - conda config --set always_yes yes --set changeps1 no
     - conda update -q conda
     - conda info -a
+    - conda install conda-build
 
 install:
-    - conda install conda-build
     - pip install coverage
     - pip install coveralls
     - pip install nose
@@ -33,7 +33,13 @@ script:
   - python setup.py develop --user
   - conda install python-clanglite -c statiskit
   - conda install gitpython -c conda-forge
-  - nosetests test -v --with-coverage --cover-package=autowig
+  - conda install scons -c statiskit
+  - cd doc/basic
+  - P=`python -c 'import autowig; print autowig.__path__[0]'`
+  - coverage run --source=$P $HOME/miniconda/bin/scons
+  - cd ../..
+  - nosetests test -v --with-coverage
+  - coverage combine .coverage doc/basic/.coverage
 
 after_success:
   - coveralls

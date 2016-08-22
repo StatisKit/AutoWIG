@@ -30,7 +30,7 @@ from .asg import (AbstractSemanticGraph,
                   ParameterProxy)
 from .plugin_manager import node_path, node_rename, documenter, visitor
 from .proxy_manager import ProxyManager
-from .node_rename import PYTHON_OPERATOR
+from ._node_rename import PYTHON_OPERATOR
 from .plugin_manager import PluginManager
 
 __all__ = ['boost_python_call_policy', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
@@ -1251,11 +1251,11 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
     """
     if 'env' in kwargs:
         env = kwargs.pop('env')
-        if 'autowig_generator_closure' in env and 'closure'not in kwargs:
+        if 'autowig_generator_closure' in env:
             kwargs['closure'] = env['autowig_generator_closure']
-        if 'autowig_generator_prefix' in env and 'prefix' not in kwargs:
+        if 'autowig_generator_prefix' in env:
             kwargs['prefix'] = env['autowig_generator_prefix']
-        if 'autowig_generator_cache' in env and 'cache' not in kwargs:
+        if 'autowig_generator_cache' in env:
             kwargs['cache'] = env['autowig_generator_cache']
 
     if module in asg:
@@ -1347,12 +1347,20 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
 def boost_python_pattern_generator(asg, pattern=None, **kwargs):
     """
     """
+    if 'env' in kwargs:
+        env = kwargs.get('env')
+        if 'autowig_generator_pattern' in env:
+            pattern = env['autowig_parser_bootstrap']
     return boost_python_generator(asg, asg.declarations(pattern=pattern), **kwargs)
 
 
 def boost_python_internal_generator(asg, pattern=None, **kwargs):
     """
     """
+    if 'env' in kwargs:
+        env = kwargs.get('env')
+        if 'autowig_generator_pattern' in env:
+            pattern = env['autowig_parser_bootstrap']
     return boost_python_generator(asg,
                                   [node for node in asg.declarations(pattern=pattern) if not getattr(node.header, 'is_external_dependency', True)],
                                   **kwargs)

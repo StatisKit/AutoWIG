@@ -264,7 +264,7 @@ class FileProxy(FilesystemProxy):
     #def sloc(self):
     #    return sloc_count(self.content, language=self.language)
 
-    def write(self, database=None, force=False):
+    def write(self, force=False):
         """Write the file and its ancestral directories into the filesystem
 
         :Optional Parameters:
@@ -278,30 +278,14 @@ class FileProxy(FilesystemProxy):
                             Yet, if its current md5 is the same as the one stored in the database,
                             a warning is displayed.
         """
-        if database:
-            if self.on_disk and self.globalname in database:
-                with open(self.globalname, 'r') as filehandler:
-                    if not hashlib.md5(filehandler.read()).hexdigest() == database[self.globalname]:
-                        if force:
-                            warnings.warn('File written to disk while md5 signature was not up to date', UserWarning)
-                        else:
-                            raise IOError('File not written to disk since md5 signature was not up to date')
-            elif not self.on_disk:
-                parent = self.parent
-                if not parent.on_disk:
-                    parent.makedirs()
+        if not self.on_disk:
+            parent = self.parent
+            if not parent.on_disk:
+                parent.makedirs()
+        content = self.content
+        if content:
             with open(self.globalname, 'w') as filehandler:
                 filehandler.write(self.content)
-                database[self.globalname] = hashlib.md5(self.content).hexdigest()
-        else:
-            if not self.on_disk:
-                parent = self.parent
-                if not parent.on_disk:
-                    parent.makedirs()
-            content = self.content
-            if content:
-                with open(self.globalname, 'w') as filehandler:
-                    filehandler.write(self.content)
 
     def remove(self):
         if self.on_disk:
