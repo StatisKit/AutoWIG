@@ -2,9 +2,8 @@ FROM statiskit/pyclanglite:trusty
 
 # Install libraries and packages from AutoWIG
 # Clone the repository
-RUN git clone https://github.com/pfernique/AutoWIG.git $HOME/AutoWIG
+RUN git clone https://github.com/StatisKit/AutoWIG.git $HOME/AutoWIG
 RUN git -C $HOME/AutoWIG pull
-RUN git -C $HOME/AutoWIG checkout remotes/origin/mako_coverage
 
 ## Create a file for anaconda upload
 RUN touch $HOME/upload.sh
