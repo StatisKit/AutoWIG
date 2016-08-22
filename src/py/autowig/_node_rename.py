@@ -1,6 +1,7 @@
 from .tools import camel_case_to_lower, to_camel_case, camel_case_to_upper
 from .asg import (FunctionProxy,
                   VariableProxy,
+                  EnumerationProxy,
                   EnumeratorProxy,
                   ClassTemplateSpecializationProxy,
                   ClassTemplateProxy,
@@ -53,9 +54,8 @@ def pep8_node_rename(node, scope=False):
     elif isinstance(node, FunctionProxy):
         return camel_case_to_lower(node.localname)
     elif isinstance(node, VariableProxy):
-        #if node.type.is_const:
-        #    return camel_case_to_upper(node.localname)
-        #else:
+        return camel_case_to_lower(node.localname)
+    elif isinstance(node, EnumerationProxy):
         return camel_case_to_lower(node.localname)
     elif isinstance(node, EnumeratorProxy):
         return camel_case_to_upper(node.localname)
