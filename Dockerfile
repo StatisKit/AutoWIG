@@ -4,7 +4,7 @@ FROM statiskit/pyclanglite:trusty
 # Clone the repository
 RUN git clone https://github.com/pfernique/AutoWIG.git $HOME/AutoWIG
 RUN git -C $HOME/AutoWIG pull
-RUN git -C $HOME/AutoWIG checkout mako_coverage
+RUN git -C $HOME/AutoWIG checkout remotes/origin/mako_coverage
 
 ## Create a file for anaconda upload
 RUN touch $HOME/upload.sh
