@@ -37,7 +37,7 @@ def scons(directory, *args, **kwargs):
 
 def boost_python_action(target, source, env, **kwargs):
 
-    from .autowig import  AbstractSemanticGraph, parser, controller, generator
+    from autowig import  AbstractSemanticGraph, parser, controller, generator
 
     asg = AbstractSemanticGraph()
 
