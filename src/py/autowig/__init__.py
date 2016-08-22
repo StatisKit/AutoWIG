@@ -18,4 +18,4 @@ boost_python_call_policy.plugin = 'default'
 boost_python_export.proxy = 'mapping'
 boost_python_module.proxy = 'default'
 boost_python_decorator.proxy = 'default'
-from .scons import scons
+from ._scons import scons

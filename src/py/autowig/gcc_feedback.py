@@ -2,7 +2,7 @@ import os
 import parse
 from path import path
 
-from .scons import ShellSession
+from ._scons import ShellSession
 
 def gcc_5_feedback(err, directory, asg, **kwargs):
     if isinstance(err, ShellSession):
