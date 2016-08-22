@@ -60,9 +60,12 @@ class TestSubset(unittest.TestCase):
 
         def clanglite_controller(asg):
                 
+            from autowig.boost_python_generator import BoostPythonExportBasicFileProxy
+            BoostPythonExportBasicFileProxy.HELDTYPE = "namespace autowig { template<class T> using HeldType = T*; }"
+            
             for node in asg['::boost::python'].classes(nested = True):
                 node.is_copyable = True
-                    
+                
             for node in asg.classes():
                 node.boost_python_export = False
             for node in asg.enumerations():
@@ -70,18 +73,18 @@ class TestSubset(unittest.TestCase):
             for node in asg.enumerators():
                 if node.parent.boost_python_export:
                     node.boost_python_export = False
-                        
+                    
             for node in asg.functions(free = True):
                 node.boost_python_export = False
             for node in asg.variables(free = True):
                 node.boost_python_export = False
-                    
+                
             from autowig.default_controller import refactoring
             asg = refactoring(asg)
             for fct in asg['::clanglite'].functions():
                 if not fct.localname == 'build_ast_from_code_with_args':
                     fct.parent = fct.parameters[0].qualified_type.desugared_type.unqualified_type
-                
+            
             subset = []
             classes = [asg['class ::clang::Type'], asg['class ::clang::Decl']]
             subset += classes
@@ -122,12 +125,12 @@ class TestSubset(unittest.TestCase):
                              + asg.nodes('::clang::ASTContext::getObjCEncodingForMethodDecl')
                              + asg.nodes('::clang::ASTContext::getAllocator')):
                     node.boost_python_export = False
-                        
+                    
             import sys
             from path import path
             for header in (path(sys.prefix)/'include'/'clang').walkfiles('*.h'):
                 asg[header.abspath()].is_external_dependency = False
-                
+            
             return asg
 
         autowig.controller['clanglite'] = clanglite_controller

@@ -30,7 +30,7 @@ from .asg import (AbstractSemanticGraph,
                   ParameterProxy)
 from .plugin_manager import node_path, node_rename, documenter, visitor
 from .proxy_manager import ProxyManager
-from .node_rename import PYTHON_OPERATOR
+from ._node_rename import PYTHON_OPERATOR
 from .plugin_manager import PluginManager
 
 __all__ = ['boost_python_call_policy', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
