@@ -1,4 +1,5 @@
 FROM statiskit/pyclanglite:trusty
+FROM statiskit/pyclanglite:trusty
 
 # Install libraries and packages from AutoWIG
 # Clone the repository
