@@ -1,5 +1,7 @@
 FROM statiskit/pyclanglite:trusty
 
+RUN BINDER=`[ -x $HOME/miniconda/bin/conda ] && echo "true" || echo "false"`
+
 # Install miniconda
 RUN wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O \ 
   $HOME/miniconda.sh
