@@ -4,4 +4,4 @@ Examples
 .. toctree::
   :maxdepth: 2
   
-  subset.ipynb <Su>
+  subset.ipynb <subset.ipynb>
