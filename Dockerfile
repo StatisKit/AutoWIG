@@ -34,3 +34,5 @@ RUN echo "$HOME/miniconda/bin/conda clean --all" >> $HOME/upload.sh
 RUN echo "rm -rf $HOME/miniconda/pkgs" >> $HOME/upload.sh
 RUN echo "rm $HOME/upload.sh" >> $HOME/upload.sh
 RUN [ $BUILD = "false" ] && /bin/bash $HOME/upload.sh || [ $BUILD = "true" ]
+
+RUN git clone https://github.com/StatisKit/AutoWIG.git $HOME/AutoWIG
