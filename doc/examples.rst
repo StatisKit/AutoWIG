@@ -4,4 +4,4 @@ Examples
 .. toctree::
   :maxdepth: 2
   
-  subset <subset.ipynb>
+  :download:`this example script <../example.py>`. <subset.ipynb>
