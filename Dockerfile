@@ -6,6 +6,7 @@ RUN BINDER=`[ -x $HOME/miniconda/bin/conda ] && echo "true" || echo "false"`
 # Install miniconda
 RUN [ $BINDER = "true" ] && wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O \ 
   $HOME/miniconda.sh || [ $BINDER = "false" ]
+  
 RUN [ $BINDER = "true" ] && bash $HOME/miniconda.sh -b -p $HOME/miniconda || [ $BINDER = "false" ]
 RUN [ $BINDER = "true" ] && rm $HOME/miniconda.sh || [ $BUILD = "false" ]
 RUN [ $BINDER = "true" ] && echo 'export PATH=$PATH:$HOME/miniconda/bin' >> $HOME/.bashrc || [ $BINDER = "false" ]
