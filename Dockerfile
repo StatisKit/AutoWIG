@@ -2,7 +2,7 @@ FROM statiskit/pyclanglite:trusty
 
 # Test if in Binder
 ARG BINDER=`[ -x $HOME/miniconda/bin/conda ] && echo "true" || echo "false"`
-
+RUN echo $BINDER
 # Build or install
 ARG BUILD="true"
 
