@@ -15,6 +15,7 @@ RUN [ $BINDER = "true" ] && echo 'export PATH=$PATH:$HOME/miniconda/bin' >> $HOM
 RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda config --set always_yes yes --set changeps1 no || [ $BINDER = "false" ]
 RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda update -q conda || [ $BINDER = "false" ]
 RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda info -a || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda install conda-build || [ $BINDER = "false" ]
 
 # Test if build or not
 ARG BUILD="true"
