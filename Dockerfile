@@ -3,6 +3,9 @@ FROM statiskit/pyclanglite:trusty
 # Test if in Binder
 RUN BINDER=`[ -x $HOME/miniconda/bin/conda ] && echo "true" || echo "false"`
 
+# Build or install
+ARG BUILD="true"
+
 # Install miniconda
 RUN BINDER=`[ -x $HOME/miniconda/bin/conda ] && echo "true" || echo "false"`
 RUN [ $BINDER = "true" ] && wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O \ 
