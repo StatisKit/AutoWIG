@@ -43,3 +43,11 @@ script:
 
 after_success:
   - coveralls
+  - if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
+      conda install anaconda-client;
+      anaconda login --username ${ANACONDA_USERNAME%%} --password ${ANACONDA_PASSWORD%%};
+      CONDA_FILE=`conda build conda/python-clanglite --output`; 
+      anaconda upload --user ${ANACONDA_CHANNEL%%} ${CONDA_FILE%%} --force;
+      CONDA_FILE=`conda build conda/python-autowig --output`; 
+      anaconda upload --user ${ANACONDA_CHANNEL%%} ${CONDA_FILE%%} --force;
+    fi
