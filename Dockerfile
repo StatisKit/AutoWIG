@@ -4,6 +4,7 @@ FROM statiskit/pyclanglite:trusty
 RUN BINDER=`[ -x $HOME/miniconda/bin/conda ] && echo "true" || echo "false"`
 
 # Install miniconda
+RUN BINDER=`[ -x $HOME/miniconda/bin/conda ] && echo "true" || echo "false"`
 RUN [ $BINDER = "true" ] && wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O \ 
   $HOME/miniconda.sh || [ $BINDER = "false" ]
 RUN [ $BINDER = "true" ] && bash $HOME/miniconda.sh -b -p $HOME/miniconda || [ $BINDER = "false" ]
