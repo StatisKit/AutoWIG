@@ -4,7 +4,7 @@ FROM statiskit/pyclanglite:trusty
 ARG BINDER="true"
 
 # Build or install
-ARG BUILD="true"
+ARG BUILD="false"
 
 # Install miniconda
 RUN [ $BINDER = "true" ] && wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O \ 
