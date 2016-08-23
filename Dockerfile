@@ -1,6 +1,17 @@
 FROM statiskit/pyclanglite:trusty
 
+# Test if in Binder
 RUN BINDER=`[ -x $HOME/miniconda/bin/conda ] && echo "true" || echo "false"`
+
+# Install miniconda
+RUN [ $BINDER = "true" ] && wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O \ 
+  $HOME/miniconda.sh || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && bash $HOME/miniconda.sh -b -p $HOME/miniconda || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && rm $HOME/miniconda.sh || [ $BUILD = "false" ]
+RUN [ $BINDER = "true" ] && echo 'export PATH=$PATH:$HOME/miniconda/bin' >> $HOME/.bashrc || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda config --set always_yes yes --set changeps1 no || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda update -q conda || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda info -a || [ $BINDER = "false" ]
 
 # Test if build or not
 ARG BUILD="true"
@@ -35,4 +46,4 @@ RUN echo "rm -rf $HOME/miniconda/pkgs" >> $HOME/upload.sh
 RUN echo "rm $HOME/upload.sh" >> $HOME/upload.sh
 RUN [ $BUILD = "false" ] && /bin/bash $HOME/upload.sh || [ $BUILD = "true" ]
 
-RUN git clone https://github.com/StatisKit/AutoWIG.git $HOME/AutoWIG
+RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda install python-clanglite python-scons gitpython -c statiskit -c conda-forge|| [ $BINDER = "false" ]
