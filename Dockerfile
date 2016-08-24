@@ -6,9 +6,6 @@ ARG BINDER="true"
 # Build or install
 ARG BUILD="false"
 
-# Test if build or not
-ARG BUILD="true"
-
 # Install libraries and packages from AutoWIG
 # Clone the repository
 RUN [ $BUILD = "true" ] && git clone https://github.com/StatisKit/AutoWIG.git $HOME/AutoWIG || [ $BUILD = "false" ]
