@@ -39,7 +39,7 @@ script:
   - coverage run --source=$P $HOME/miniconda/bin/scons
   - cd ../..
   - nosetests test -v --with-coverage
-  - coverage combine .coverage doc/basic/.coverage
+  - coverage combine .coverage doc/examples/basic/.coverage
 
 after_success:
   - coveralls
