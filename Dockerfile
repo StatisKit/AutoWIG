@@ -42,4 +42,4 @@ RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda install python-clanglite p
 RUN [ $BINDER = "true" ] && rm $HOME/miniconda || [ $BINDER = "false" ]
 RUN [ $BINDER = "true" ] && ls $HOME || [ $BINDER = "false" ]
 RUN [ $BINDER = "true" ] && ls $HOME/notebooks || [ $BINDER = "false" ]
-RUN [ $BINDER = "true" ] && ln -s $HOME/notebooks/doc/examples/index.ipynb $HOME/notebooks/index.ipynb || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && mv $HOME/notebooks/doc/examples/* $HOME/notebooks/ || [ $BINDER = "false" ]
