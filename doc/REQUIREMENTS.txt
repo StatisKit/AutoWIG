@@ -1,3 +1,4 @@
 nbsphinx
 sphinxcontrib-bibtex
 sphinx-gallery
+jupyter>=1.0.0
