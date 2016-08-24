@@ -31,7 +31,7 @@ RUN $HOME/miniconda/bin/conda install python-autowig -c statiskit -c conda-forge
 ## Finalize file for anaconda upload
 # RUN [ $BUILD = "false" ] && echo "rm -rf $HOME/AutoWIG" >> $HOME/upload.sh || [ $BUILD = "true" ]
 RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/conda remove anaconda-client" >> $HOME/upload.sh || [ $BUILD = "false" ]
-RUN [ $BUILD = "true" ] echo "$HOME/miniconda/bin/conda env remove -n _build" >> $HOME/upload.sh || [ $BUILD = "false" ]
+RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/conda env remove -n _build" >> $HOME/upload.sh || [ $BUILD = "false" ]
 RUN [ $BUILD = "true" ] && echo "conda env remove -n _test" >> $HOME/upload.sh || [ $BUILD = "false" ]
 RUN echo "$HOME/miniconda/bin/conda clean --all" >> $HOME/upload.sh
 RUN echo "rm -rf $HOME/miniconda/pkgs" >> $HOME/upload.sh
