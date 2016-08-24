@@ -16,53 +16,39 @@ In order to install **AutoWIG** from source code we recommand to use:
     .. code-block:: console
 
         $ git clone https://github.com/StatisKit/PyClangLite.git
-        $ conda build PyClangLite/conda/libclang
-        $ conda build PyClangLite/conda/libclanglite
-        $ conda build PyClangLite/conda/python-clanglite
-        $ conda install python-clanglite
-
+        $ conda build PyClangLite/conda/libclang -c statiskit
+        $ conda build PyClangLite/conda/libclanglite -c statiskit
+        $ conda build PyClangLite/conda/python-clanglite -c statiskit
+        $ conda install python-clanglite --use-local -c statiskit
 
 This is done by typing the following commands
 
 .. code-block:: console
 
     $ git clone https://github.com/StatisKit/AutoWIG.git
-    $ conda build AutoWIG/conda/python-clang
-    $ conda build AutoWIG/conda/python-autowig
-    $ conda install python-autowig
-
+    $ conda build AutoWIG/conda/python-clang -c statiskit -c conda-forge
+    $ conda build AutoWIG/conda/python-autowig -c statiskit -c conda-forge
+    $ conda install python-autowig --use-local -c statiskit -c conda-forge
 
 .. warning::
 
     This installation has only been tested on **Ubuntu**.
-    Here is the :code:`Dockerfile` for generating a **Ubuntu 14.04** `Docker <https://www.docker.com/>`_ image
-    that enables an user to install and run **AutoWIG**.
-
-    .. code-block:: docker
-
-
-        FROM ubuntu:14.04
-
-        # Update the OS
-        RUN apt-get update
-
-        # Install useful tools
-        RUN apt-get install -y build-essential git wget
-
-        # Add user for future work
-        RUN useradd -ms /bin/bash conda-user
-
-        # select created user
-        USER conda-user
-
-        # Install miniconda
-        RUN wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O \
-          $HOME/miniconda.sh
-        RUN bash $HOME/miniconda.sh -b -p $HOME/miniconda
-        RUN echo 'export PATH=$PATH:$HOME/miniconda/bin' >> $HOME/.bashrc 
-        RUN $HOME/miniconda/bin/conda config --set always_yes yes --set changeps1 no
-        RUN $HOME/miniconda/bin/conda update -q conda
-        RUN $HOME/miniconda/bin/conda info -a
-
-        # Install conda-build
-        RUN $HOME/miniconda/bin/conda install conda-build
+    
+ .. note::
+ 
+    If you want to install *Python* packages in develop mode, we recommand to remove corresponding targets using **Conda** and re-install the packages using **Pip**.
+    This is done by typing the following commands in a shell:
+    
+    * For **python-clanglite**.
+      
+      .. code-block:: console
+      
+         $ conda remove python-clanglite
+         $ pip install -e PyClangLite
+         
+    * For **python-autowig**.
+    
+      .. code-block:: console
+      
+         $ conda remove python-autowig
+         $ pip install -e AutoWIG
