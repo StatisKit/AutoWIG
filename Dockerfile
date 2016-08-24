@@ -38,7 +38,7 @@ RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/conda env remove -n _test" 
 RUN echo "$HOME/miniconda/bin/conda clean --all" >> $HOME/upload.sh
 RUN echo "rm -rf $HOME/miniconda/pkgs" >> $HOME/upload.sh
 RUN echo "rm $HOME/upload.sh" >> $HOME/upload.sh
-RUN [ $BUILD = "false" ] && /bin/bash $HOME/upload.sh || [ $BUILD = "true" ]
+# RUN [ $BUILD = "false" ] && /bin/bash $HOME/upload.sh || [ $BUILD = "true" ]
 
 RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda install python-clanglite python-scons gitpython -c statiskit -c conda-forge|| [ $BINDER = "false" ]
 RUN [ $BINDER = "true" ] && rm $HOME/miniconda || [ $BINDER = "false" ]
