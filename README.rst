@@ -16,11 +16,6 @@ Our approach is automatic, extensible, and applies to very complex *C++* librari
     :Status: |TRAVIS| |COVERALLS| |LANDSCAPE| |READTHEDOCS|
     :License: |LICENSE|
     :Authors: |AUTHORS|
-
-.. warning::
-
-    Coverage is underestimated since code executed in **Mako** templates is not covered
-    
     
 .. |LICENSE| replace:: see |LICENSELINK|_ file
 
