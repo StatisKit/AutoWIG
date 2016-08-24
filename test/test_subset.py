@@ -55,7 +55,7 @@ class TestSubset(unittest.TestCase):
                              flags = ['-x', 'c++', '-std=c++11',
                                       '-D__STDC_LIMIT_MACROS', '-D__STDC_CONSTANT_MACROS',
                                       '-I' + str((prefix/'include').abspath())],
-                             bootstrap = False,
+                             bootstrap = 1,
                              silent = True)
 
         def clanglite_controller(asg):

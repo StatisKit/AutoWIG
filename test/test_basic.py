@@ -38,7 +38,7 @@ class TestBasic(unittest.TestCase):
         autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
         cls.rootdir = path('.').abspath()
-        cls.srcdir = cls.rootdir/'doc'/'basic'
+        cls.srcdir = cls.rootdir/'doc'/'examples'/'basic'
 
     def test_mapping_export(self):
         """Test `mapping` export"""
