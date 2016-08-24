@@ -1,4 +1,0 @@
-Examples
-========
-
-.. include:: subset.ipynb
