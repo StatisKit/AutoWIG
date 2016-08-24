@@ -19,7 +19,7 @@ RUN echo "set -e" >> $HOME/upload.sh
 RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/conda install anaconda-client" >> $HOME/upload.sh || [ $BUILD = "false" ]
 
 ## Build python-clang recipe
-RUN [ $BUILD = "true" ] && $HOME/miniconda/bin/conda build $HOME/AutoWIG/conda/python-clang -c statiskit -c conda-forge --no-test || [ $BUILD = "false" ]
+RUN [ $BUILD = "true" ] && $HOME/miniconda/bin/conda build $HOME/AutoWIG/conda/python-clang -c statiskit -c conda-forge || [ $BUILD = "false" ]
 RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/anaconda upload \`conda build $HOME/AutoWIG/conda/python-clang --output\` --user statiskit --force" >> $HOME/upload.sh || [ $BUILD = "false" ]
 RUN $HOME/miniconda/bin/conda install python-clang -c statiskit --use-local
 
