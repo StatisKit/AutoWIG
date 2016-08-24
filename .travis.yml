@@ -34,10 +34,10 @@ script:
   - conda install python-clanglite -c statiskit
   - conda install gitpython -c conda-forge
   - conda install scons -c statiskit
-  - cd doc/basic
+  - cd doc/examples/basic
   - P=`python -c 'import autowig; print autowig.__path__[0]'`
   - coverage run --source=$P $HOME/miniconda/bin/scons
-  - cd ../..
+  - cd ../../..
   - nosetests test -v --with-coverage
   - coverage combine .coverage doc/examples/basic/.coverage
 
