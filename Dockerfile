@@ -27,6 +27,8 @@ RUN $HOME/miniconda/bin/conda install python-clang -c statiskit --use-local
 RUN [ $BUILD = "true" ] && $HOME/miniconda/bin/conda build $HOME/AutoWIG/conda/python-autowig -c statiskit -c conda-forge --no-test || [ $BUILD = "false" ]
 RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/anaconda upload \`conda build $HOME/AutoWIG/conda/python-autowig --output\` --user statiskit --force" >> $HOME/upload.sh || [ $BUILD = "false" ]
 RUN $HOME/miniconda/bin/conda install python-autowig -c statiskit -c conda-forge --use-local
+RUN [ $BUILD = "true" ] && $HOME/miniconda/bin/conda remove python-autowig || [ $BUILD = "false" ]
+RUN [ $BUILD = "true" ] && $HOME/miniconda/bin/pip install -e AutoWIG || [ $BUILD = "false" ]
 
 ## Finalize file for anaconda upload
 # RUN [ $BUILD = "false" ] && echo "rm -rf $HOME/AutoWIG" >> $HOME/upload.sh || [ $BUILD = "true" ]
