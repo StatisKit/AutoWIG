@@ -141,7 +141,8 @@ class TestSubset(unittest.TestCase):
         wrappers = autowig.generator(asg,
                                      module = self.srcdir/'_clanglite.cpp',
                                      decorator = self.srcdir/'clanglite'/'_clanglite.py',
-                                     closure = False)
+                                     closure = False,
+                                     bootstrap = False)
 
         for wrapper in wrappers:
             wrapper.write()
