@@ -14,7 +14,6 @@ Yann would like to distribute his libraries and decide to make them available in
 Yet, Yann is not interested in becoming an expert in *C++*/*Python* wrapping, even if it exists classical approaches consisting in writing wrappers with **SWIG** or **Boost.Python**.
 Moreover, he would never complete the wrapping of his libraries into *Python* packages and would have serious difficulties to maintain the wrappers, since this semi-automatic process is time consuming and error prone.
 Instead, he would like to automate the process of generating wrappers in sync with his evolving *C++* libraries.
-%capable of parsing his *C++* code and able to wrap his libraries in *Python* in a reflexive manner.
 That's what the **AutoWIG** software aspires to achieve.
 
 Automating the process
