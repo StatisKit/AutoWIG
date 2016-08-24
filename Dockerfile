@@ -6,7 +6,7 @@ ARG BINDER="true"
 # Build or install
 ARG BUILD="false"
 
-RUN [ $BINDER = "true" ] && ln -s $HOME/miniconda $HOME/miniconda || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && ln -s $HOME/anaconda2 $HOME/miniconda || [ $BINDER = "false" ]
 
 # Install libraries and packages from AutoWIG
 # Clone the repository
