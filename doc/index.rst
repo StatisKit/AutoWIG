@@ -19,7 +19,7 @@ Documentation
     quick_start
     user_guide
     reference_guide
-    examples
+    examples/index.ipynb
     faq 
 
 License
