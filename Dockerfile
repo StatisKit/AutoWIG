@@ -40,3 +40,6 @@ RUN [ $BUILD = "false" ] && /bin/bash $HOME/upload.sh || [ $BUILD = "true" ]
 
 RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda install python-clanglite python-scons gitpython -c statiskit -c conda-forge|| [ $BINDER = "false" ]
 RUN [ $BINDER = "true" ] && rm $HOME/miniconda || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && ls $HOME || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && ls $HOME/notebooks || [ $BINDER = "false" ]
+RUN [ $BINDER = "true" ] && ln -s $HOME/notebooks/doc/examples/index.ipynb $HOME/notebooks/index.ipynb || [ $BINDER = "false" ]
