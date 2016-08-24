@@ -50,7 +50,7 @@ Error management
 Dependency management between components
     The management of multiple dependencies between *C++* libraries with *Python* bindings is required at run-time from *Python*.
     *C++* libraries tends to have dependencies.
-    For instance the *C++* \pkg{Standard Template Library} containers \citep{PLMS00} are used in many *C++* libraries (e.g :code:`std::vector`, :code:`std::set`).
-    For such cases, it doesn't seem relevant that every wrapped *C++* library contains wrappers for usual \pkg{STL} containers (e.g. :code:`std::vector< double >`, :code:`std::set< int >`).
+    For instance the *C++* **Standard Template Library** containers \citep{PLMS00} are used in many *C++* libraries (e.g :code:`std::vector`, :code:`std::set`).
+    For such cases, it doesn't seem relevant that every wrapped *C++* library contains wrappers for usual **STL** containers (e.g. :code:`std::vector< double >`, :code:`std::set< int >`).
     Moreover, loading in the *Python* interpreter multiple compiled libraries sharing different wrappers from same *C++* components could lead to serious side effects.
     It is therefore required that dependencies across different library bindings can be handled automatically.
