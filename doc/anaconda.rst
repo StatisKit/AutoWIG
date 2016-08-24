@@ -14,4 +14,4 @@ To install the latest version with Anaconda or conda you should use the followin
     In such cases refers to :
     
     * the :ref:`install-source` section,
-    * the :ref:`use-docker` section.
+    * the :ref:`using-docker` section.
