@@ -45,9 +45,12 @@ after_success:
   - coveralls
   - if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
       conda install anaconda-client;
-      anaconda login --username ${ANACONDA_USERNAME%%} --password ${ANACONDA_PASSWORD%%};
-      CONDA_FILE=`conda build conda/python-clang --output`; 
-      anaconda upload --user ${ANACONDA_CHANNEL%%} ${CONDA_FILE%%} --force;
-      CONDA_FILE=`conda build conda/python-autowig --output`; 
-      anaconda upload --user ${ANACONDA_CHANNEL%%} ${CONDA_FILE%%} --force;
+      anaconda login --username "$ANACONDA_USERNAME" --password "$ANACONDA_PASSWORD";
+      for CONDA_RECIPE in python-clang python-autowig; do
+          CONDA_FILE=`conda build conda/$CONDA_RECIPE --output`; 
+          anaconda upload --user statiskit ${CONDA_FILE%%} --force;
+      done;
+      docker build --build-arg BINDER="false" -t statiskit/pyclanglite:trusty .;
+      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+      docker push statiskit/pyclanglite:trusty;
     fi
