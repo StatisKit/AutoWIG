@@ -34,7 +34,7 @@ This is done by typing the following commands
 
     This installation has only been tested on **Ubuntu**.
     
- .. note::
+.. note::
  
     If you want to install *Python* packages in develop mode, we recommand to remove corresponding targets using **Conda** and re-install the packages using **Pip**.
     This is done by typing the following commands in a shell:
