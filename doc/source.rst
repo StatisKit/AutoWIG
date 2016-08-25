@@ -11,24 +11,13 @@ In order to install **AutoWIG** from source code we recommand to use:
 .. note::
 
     When installing **AutoWIG** from source code, it is highly recommanded to first install **PyClangLite** from source code.
-    This is done by typing the following commands.
+    This is done by typing the following commands in a shell:
+    
+    .. literal-include:: https://github.com/StatisKit/PyClangLite/master/conda/build.sh
 
-    .. code-block:: console
+This is done by typing the following commands in shell:
 
-        $ git clone https://github.com/StatisKit/PyClangLite.git
-        $ conda build PyClangLite/conda/libclang -c statiskit
-        $ conda build PyClangLite/conda/libclanglite -c statiskit
-        $ conda build PyClangLite/conda/python-clanglite -c statiskit
-        $ conda install python-clanglite --use-local -c statiskit
-
-This is done by typing the following commands
-
-.. code-block:: console
-
-    $ git clone https://github.com/StatisKit/AutoWIG.git
-    $ conda build AutoWIG/conda/python-clang -c statiskit -c conda-forge
-    $ conda build AutoWIG/conda/python-autowig -c statiskit -c conda-forge
-    $ conda install python-autowig --use-local -c statiskit -c conda-forge
+.. literal-include:: ../conda/build.sh
 
 .. warning::
 
@@ -36,19 +25,4 @@ This is done by typing the following commands
     
 .. note::
  
-    If you want to install *Python* packages in develop mode, we recommand to remove corresponding targets using **Conda** and re-install the packages using **Pip**.
-    This is done by typing the following commands in a shell:
-    
-    * For **python-clanglite**.
-      
-      .. code-block:: console
-      
-         $ conda remove python-clanglite
-         $ pip install -e PyClangLite
-         
-    * For **python-autowig**.
-    
-      .. code-block:: console
-      
-         $ conda remove python-autowig
-         $ pip install -e AutoWIG
+    Following this procedure install *Python* packages in develop mode.
