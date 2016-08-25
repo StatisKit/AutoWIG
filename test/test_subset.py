@@ -54,7 +54,8 @@ class TestSubset(unittest.TestCase):
         asg = autowig.parser(asg, headers,
                              flags = ['-x', 'c++', '-std=c++11',
                                       '-D__STDC_LIMIT_MACROS', '-D__STDC_CONSTANT_MACROS',
-                                      '-I' + str((prefix/'include').abspath())],
+                                      '-I' + str((prefix/'include').abspath()),
+                                      '-I' + str((prefix/'include').abspath()/'python2.7')],
                              bootstrap = 1,
                              silent = True)
 
