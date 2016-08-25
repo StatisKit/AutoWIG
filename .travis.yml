@@ -22,7 +22,6 @@ install:
     - pip install coverage
     - pip install coveralls
     - pip install nose
-    - pip install nose-progressive
 
 before_script:
   - conda build conda/python-clang -c statiskit -c conda-forge --no-test
@@ -39,7 +38,7 @@ script:
   - P=`python -c 'import autowig; print autowig.__path__[0]'`
   - coverage run --source=$P $HOME/miniconda/bin/scons
   - cd ../../..
-  - nosetests test -v --with-coverage --with-progessive
+  - nosetests test --with-coverage
   - coverage combine .coverage doc/examples/basic/.coverage
 
 after_success:
