@@ -21,6 +21,5 @@ RUN [ $BUILD = "true" ] && echo "conda remove anaconda-client" >> $HOME/post-lin
 RUN [ $BUILD = "true" ] && echo "conda env remove -n _build" >> $HOME/post-link.sh
 RUN [ $BUILD = "true" ] && echo "conda env remove -n _test" >> $HOME/post-link.sh || [ $BUILD = "true" ]
 RUN echo "conda clean --all" >> $HOME/post-link.sh
-RUN PREFIX=`python -c "import sys; print sys.prefix"` && echo "rm -rf $PREFIX/pkgs" >> $HOME/post-link.sh
 RUN echo "rm $HOME/post-link.sh" >> $HOME/post-link.sh
 RUN [ $BUILD = "false" ] && cd $HOME && /bin/bash post-link.sh || [ $BUILD = "true" ]
