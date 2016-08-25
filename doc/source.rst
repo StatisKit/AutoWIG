@@ -13,11 +13,11 @@ In order to install **AutoWIG** from source code we recommand to use:
     When installing **AutoWIG** from source code, it is highly recommanded to first install **PyClangLite** from source code.
     This is done by typing the following commands in a shell:
     
-    .. literal-include:: https://github.com/StatisKit/PyClangLite/master/conda/build.sh
+    .. literalinclude:: https://github.com/StatisKit/PyClangLite/master/conda/build.sh
 
 This is done by typing the following commands in shell:
 
-.. literal-include:: ../conda/build.sh
+.. literalinclude:: ../conda/build.sh
 
 .. warning::
 
