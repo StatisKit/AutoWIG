@@ -1,48 +1,28 @@
 FROM statiskit/pyclanglite:trusty
 
 # Build or install
-ARG BINDER="true"
-
-# Build or install
 ARG BUILD="false"
 
-RUN [ $BINDER = "true" ] && ln -s $HOME/anaconda2 $HOME/miniconda || [ $BINDER = "false" ]
-
-# Install libraries and packages from AutoWIG
 # Clone the repository
-RUN [ $BUILD = "true" ] && git clone https://github.com/StatisKit/AutoWIG.git $HOME/AutoWIG || [ $BUILD = "false" ]
-RUN [ $BUILD = "true" ] && git -C $HOME/AutoWIG pull || [ $BUILD = "false" ]
+RUN git clone https://github.com/StatisKit/AutoWIG.git $HOME/AutoWIG
 
-## Create a file for anaconda upload
-RUN touch $HOME/upload.sh
-RUN echo "set -e" >> $HOME/upload.sh
-RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/conda install anaconda-client" >> $HOME/upload.sh || [ $BUILD = "false" ]
+# Build libraries and packages from PyClangLite
+RUN [ $BUILD = "true" ] && cd $HOME/AutoWIG && /bin/bash conda/build.sh || [ $BUILD = "false" ] 
 
-## Build python-clang recipe
-RUN [ $BUILD = "true" ] && $HOME/miniconda/bin/conda build $HOME/AutoWIG/conda/python-clang -c statiskit -c conda-forge || [ $BUILD = "false" ]
-RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/anaconda upload \`conda build $HOME/AutoWIG/conda/python-clang --output\` --user statiskit --force" >> $HOME/upload.sh || [ $BUILD = "false" ]
-RUN $HOME/miniconda/bin/conda install python-clang -c statiskit --use-local
+# Install libraries and packages from PyClangLite
+RUN [ $BUILD = "false" ] && cd $HOME/AutoWIG && /bin/bash conda/install.sh || [ $BUILD = "true" ]
 
-## Build python-autowig recipe
-RUN [ $BUILD = "true" ] && $HOME/miniconda/bin/conda build $HOME/AutoWIG/conda/python-autowig -c statiskit -c conda-forge || [ $BUILD = "false" ]
-RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/anaconda upload \`conda build $HOME/AutoWIG/conda/python-autowig --output\` --user statiskit --force" >> $HOME/upload.sh || [ $BUILD = "false" ]
-RUN $HOME/miniconda/bin/conda install python-autowig -c statiskit -c conda-forge --use-local
-RUN [ $BUILD = "true" ] && $HOME/miniconda/bin/conda remove python-autowig || [ $BUILD = "false" ]
-RUN [ $BUILD = "true" ] && $HOME/miniconda/bin/pip install -e AutoWIG || [ $BUILD = "false" ]
+# Create a file for anaconda post-link
+RUN [ -f $HOME/post-link.sh ] && head -n -1 post-link.sh || touch $HOME/post-link.sh && echo "set -e" >> $HOME/post-link.sh
+RUN [ $BUILD = "true" ] && echo "conda install anaconda-client" >> $HOME/post-link.sh || [ $BUILD = "false" ]
+RUN [ $BUILD = "true" ] && for recipe in AutoWIG/conda/*/; do echo "anaconda upload \`conda build" $recipe "--output\` --user statiskit --force" >> $HOME/post-link.sh; done; || [ $BUILD = "false" ]
+RUN [ $BUILD = "false" ] && echo "rm -rf AutoWIG" >> $HOME/post-link.sh || [ $BUILD = "true" ]
+RUN [ $BUILD = "true" ] && echo "conda remove anaconda-client" >> $HOME/post-link.sh || [ $BUILD = "false" ]
+RUN [ $BUILD = "true" ] && echo "conda env remove -n _build" >> $HOME/post-link.sh
+RUN [ $BUILD = "true" ] && echo "conda env remove -n _test" >> $HOME/post-link.sh || [ $BUILD = "true" ]
+RUN echo "conda clean --all" >> $HOME/post-link.sh
+RUN PREFIX=`python -c "import sys; print sys.prefix"` && echo "rm -rf $PREFIX/pkgs" >> $HOME/post-link.sh
+RUN echo "rm $HOME/post-link.sh" >> $HOME/post-link.sh
+RUN [ $BUILD = "false" ] && cd $HOME && /bin/bash post-link.sh || [ $BUILD = "true" ]
 
-## Finalize file for anaconda upload
-# RUN [ $BUILD = "false" ] && echo "rm -rf $HOME/AutoWIG" >> $HOME/upload.sh || [ $BUILD = "true" ]
-RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/conda remove anaconda-client" >> $HOME/upload.sh || [ $BUILD = "false" ]
-RUN [ $BUILD = "true" ] && echo "$HOME/miniconda/bin/conda env remove -n _build" >> $HOME/upload.sh || [ $BUILD = "false" ]
-RUN [ $BUILD = "true" ] && echo "conda env remove -n _test" >> $HOME/upload.sh || [ $BUILD = "false" ]
-RUN echo "$HOME/miniconda/bin/conda clean --all" >> $HOME/upload.sh
-RUN echo "rm -rf $HOME/miniconda/pkgs" >> $HOME/upload.sh
-RUN echo "rm $HOME/upload.sh" >> $HOME/upload.sh
-RUN [ $BUILD = "false" ] && /bin/bash $HOME/upload.sh || [ $BUILD = "true" ]
-
-RUN [ $BINDER = "true" ] && $HOME/miniconda/bin/conda install python-clanglite python-scons gitpython -c statiskit -c conda-forge|| [ $BINDER = "false" ]
-RUN [ $BINDER = "true" ] && rm $HOME/miniconda || [ $BINDER = "false" ]
-RUN [ $BINDER = "true" ] && ls $HOME || [ $BINDER = "false" ]
-RUN [ $BINDER = "true" ] && ls $HOME/notebooks || [ $BINDER = "false" ]
-RUN [ $BINDER = "true" ] && mv $HOME/notebooks/doc/examples/index.ipynb $HOME/notebooks/index.ipynb || [ $BINDER = "false" ]
-RUN [ $BINDER = "true" ] && sed -i 's/\[\(.*\)\](\(.*\)\.ipynb)/[\1](.\/doc\/examples\/\2.ipynb)/g' index.ipynb || [ $BINDER = "false" ]
+for d in conda/*/ ; do; echo "$d"; done;
