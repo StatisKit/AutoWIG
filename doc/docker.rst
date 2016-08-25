@@ -10,7 +10,7 @@ Then, you can use the :code:`statiskit/autowig:trusty` **Docker** image to run *
 
 .. code-block:: console
 
-  $ docker run -it statiskit/ubuntu:autowig
+  $ docker run -it statiskit/autowig:trusty
   
 Note that, for convenience **IPython** and **Jupyter** packages are installed.
 You can therefore use:
