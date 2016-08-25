@@ -56,7 +56,7 @@ class TestSubset(unittest.TestCase):
                                       '-D__STDC_LIMIT_MACROS', '-D__STDC_CONSTANT_MACROS',
                                       '-I' + str((prefix/'include').abspath()),
                                       '-I' + str((prefix/'include').abspath()/'python2.7')],
-                             bootstrap = 1,
+                             bootstrap = False,
                              silent = True)
 
         def clanglite_controller(asg):
@@ -142,8 +142,7 @@ class TestSubset(unittest.TestCase):
         wrappers = autowig.generator(asg,
                                      module = self.srcdir/'_clanglite.cpp',
                                      decorator = self.srcdir/'clanglite'/'_clanglite.py',
-                                     closure = False,
-                                     bootstrap = False)
+                                     closure = False)
 
         for wrapper in wrappers:
             wrapper.write()
