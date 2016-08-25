@@ -5,6 +5,7 @@ Installation from Anaconda Cloud
 To install the latest version with Anaconda or conda you should use the following command (see `conda documentation <http://conda.pydata.org/docs/>`_ for more information).
 
 .. literalinclude:: ../conda/install.sh
+    :language: bash
 
 .. warning::
 
