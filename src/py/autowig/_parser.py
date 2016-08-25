@@ -202,7 +202,7 @@ def bootstrap(asg, flags, **kwargs):
                         if specialize._node not in black:
                             white.append(node.specialize)
                             black.add(node.specialize._node)
-                    elif not node.is_complete:
+                    elif not node.is_complete and node.access in ['none', 'public']:
                         gray.add(node._node)
                 elif isinstance(node, ClassTemplateProxy):
                     for specialization in node.specializations():
