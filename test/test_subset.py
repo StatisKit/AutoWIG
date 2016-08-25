@@ -57,7 +57,7 @@ class TestSubset(unittest.TestCase):
                                       '-I' + str((prefix/'include').abspath()),
                                       '-I' + str((prefix/'include').abspath()/'python2.7')],
                              bootstrap = False,
-                             silent = True)
+                             silent = False)
 
         def clanglite_controller(asg):
                 
