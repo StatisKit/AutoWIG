@@ -1,4 +1,4 @@
-FROM statiskit/pyclanglite:trusty
+FROM statiskit/ubuntu:trusty
 
 # Build or install
 ARG BUILD="false"
@@ -6,10 +6,10 @@ ARG BUILD="false"
 # Clone the repository
 RUN git clone https://github.com/StatisKit/AutoWIG.git $HOME/AutoWIG
 
-# Build libraries and packages from PyClangLite
+# Build libraries and packages from AutoWIG
 RUN [ $BUILD = "true" ] && cd $HOME/AutoWIG && /bin/bash conda/build.sh || [ $BUILD = "false" ] 
 
-# Install libraries and packages from PyClangLite
+# Install libraries and packages from AutoWIG
 RUN [ $BUILD = "false" ] && cd $HOME/AutoWIG && /bin/bash conda/install.sh || [ $BUILD = "true" ]
 
 # Create a file for anaconda post-link
@@ -24,5 +24,3 @@ RUN echo "conda clean --all" >> $HOME/post-link.sh
 RUN PREFIX=`python -c "import sys; print sys.prefix"` && echo "rm -rf $PREFIX/pkgs" >> $HOME/post-link.sh
 RUN echo "rm $HOME/post-link.sh" >> $HOME/post-link.sh
 RUN [ $BUILD = "false" ] && cd $HOME && /bin/bash post-link.sh || [ $BUILD = "true" ]
-
-for d in conda/*/ ; do; echo "$d"; done;
