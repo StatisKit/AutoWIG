@@ -31,4 +31,10 @@ boost_python_export.proxy = 'mapping'
 boost_python_module.proxy = 'default'
 boost_python_decorator.proxy = 'default'
 
+from ._generator import generator
+if 'pyclanglite' in generator:
+    generator.plugin = 'pyclanglite'
+else:
+    generator.plugin = 'libclang'
+    
 from ._scons import scons
