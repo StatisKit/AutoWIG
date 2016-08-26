@@ -98,8 +98,3 @@ parser = PluginManager('autowig.parser', brief="AutoWIG front-end plugin_manager
         details="""AutoWIG front-end plugin_managers are responsible for Abstract Semantic Graph (ASG) completion from C/C++ parsing.
 
 .. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
-
-controller = PluginManager('autowig.controller', brief="AutoWIG middle-end plugin_managers",
-        details="""AutoWIG middle-end plugin_managers are responsible for Abstract Semantic Graph (ASG) modification from Python semantic queries.
-
-.. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
