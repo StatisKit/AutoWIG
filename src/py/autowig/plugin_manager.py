@@ -111,6 +111,3 @@ generator = PluginManager('autowig.generator', brief="AutoWIG back-end plugin_ma
 
 visitor = PluginManager('autowig.visitor', brief="",
         details="""""")
-
-documenter = PluginManager('autowig.documenter', brief="",
-        details="""""")
