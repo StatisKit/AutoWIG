@@ -38,7 +38,7 @@ script:
   - P=`python -c 'import autowig; print autowig.__path__[0]'`
   - coverage run --source=$P $HOME/miniconda/bin/scons
   - cd ../../..
-  - nosetests test -v --with-coverage
+  - nosetests test -s -v --with-coverage
   - coverage combine .coverage doc/examples/basic/.coverage
 
 after_success:

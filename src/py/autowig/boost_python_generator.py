@@ -333,29 +333,18 @@ class BoostPythonExportFileProxy(FileProxy):
             module._exports.remove(self._node)
         self._asg._nodes[self._node].pop('_module', None)
 
+    @property
+    def header(self):
+        module = self.module
+        if module:
+            return module.header
+
     def edit(self, line):
         pass
 
 class BoostPythonExportBasicFileProxy(BoostPythonExportFileProxy):
 
     language = 'c++'
-
-    HEADER = Template(text=r"""\
-#include <type_traits>
-#include <boost/python.hpp>\
-% for header in headers:
-
-    % if header.language == 'c':
-extern "C" {
-    % endif
-#include <${header.searchpath}>\
-    % if header.language == 'c':
-
-}\
-    % endif
-% endfor""")
-
-    HELDTYPE = "namespace autowig { template<class T> using HeldType = std::shared_ptr< T >; }"
 
     SCOPE = Template(text=r"""\
 % for scope in scopes:
@@ -591,10 +580,7 @@ ${field.globalname}, "${documenter(field)}");
 
     @property
     def _content(self):
-        content = self.HEADER.render(headers = [self._asg[header] for header in self._asg._headers])
-        #[header for header in self._asg.files(header=True) if header.is_self_contained])
-        if any(declaration for declaration in self.declarations if isinstance(declaration, ClassProxy)):
-            content += '\n\n' + self.HELDTYPE
+        content = '#include "' + self.header.localname + '"\n'
         for arg in self.declarations:
             if isinstance(arg, ClassProxy) and arg.is_error:
                 content += '\n\n' + self.ERROR.render(error = arg)
@@ -903,12 +889,10 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                 "struct ::boost::python::detail::tuple_base"}
                     
     def get_content(self):
-        content = self.HEADER.render(headers = [self._asg[header] for header in self._asg._headers])
-        #[header for header in self._asg.files(header=True) if header.is_self_contained])
-        #self._asg.includes(*self.declarations))
-        #content = self.HEADER.render(headers = self._asg.includes(*self.declarations), errors = [declaration for declaration in self.declarations if isinstance(declaration, ClassProxy) and declaration.is_error])
-        if any(declaration for declaration in self.declarations if isinstance(declaration, ClassProxy)):
-            content += '\n\n' + self.HELDTYPE
+        #if self.localname == 'wrapper_0f744e8d056f5d469a887c7c78eaf8fe.cpp':
+        #    import pdb
+        #    pdb.set_trace()
+        content = '#include "' + self.header.localname + '"\n'
         for arg in self.declarations:
             if isinstance(arg, ClassProxy) and arg.is_error:
                 content += '\n\n' + self.ERROR.render(error = arg)
@@ -978,6 +962,72 @@ del boost_python_exports
 boost_python_export = ProxyManager('autowig.boost_python_export', BoostPythonExportFileProxy, brief="",
         details="")
 
+class BoostPythonHeaderFileProxy(FileProxy):
+
+    @property
+    def _clean_default(self):
+        return self.module._clean_default
+
+    CONTENT = Template(text=r"""\
+#include <boost/python.hpp>
+#include <type_traits>\
+% for header in headers:
+
+    % if header.language == 'c':
+extern "C" {
+    % endif
+#include <${header.searchpath}>\
+    % if header.language == 'c':
+
+}\
+    % endif
+% endfor
+
+% if held_header:
+#include <${held_header}>
+% endif
+
+namespace autowig { template<class T> using HeldType = ${held_type}; }
+""")
+
+    HELDTYPE = {'raw'               : "T*",
+                'std::shared_ptr'   : "std::shared_ptr< T >",
+                'std::unique_ptr'   : "std::unique_ptr< T >",
+                'boost::shared_ptr' : "boost::shared_ptr< T >"}
+
+    HELDHEADER = {'raw'               : None,
+                  'std::shared_ptr'   : 'memory',
+                  'std::unique_ptr'   : 'memory',
+                  'boost::shared_ptr' : 'boost/shared_ptr'}
+
+    @property
+    def module(self):
+        return self._asg[self.globalname.rstrip(self.suffix) + self._module]
+
+    def get_content(self):
+        return self.CONTENT.render(headers = [header for header in self._asg.files(header=True) if not header.is_external_dependency and header.is_self_contained],
+                                   held_type = self.HELDTYPE[self.helder],
+                                   held_header = self.HELDHEADER[self.helder])
+
+    @property
+    def helder(self):
+        if not hasattr(self, '_helder'):
+            return 'raw'
+        else:
+            return self._helder
+
+    @helder.setter
+    def helder(self, helder):
+        if helder not in self.HELDTYPE or helder not in self.HELDHEADER:
+            raise ValueError('`helder` parameter')
+        self._asg[self._node]['_helder'] = helder
+   
+    @helder.deleter
+    def helder(self, helder):
+        self._asg[self._node].pop('_helder', 'raw')
+
+BoostPythonHeaderFileProxy.content = property(BoostPythonHeaderFileProxy.get_content)
+
 class BoostPythonModuleFileProxy(FileProxy):
 
     @property
@@ -985,7 +1035,7 @@ class BoostPythonModuleFileProxy(FileProxy):
         return len(self._exports) == 0
 
     CONTENT = Template(text=r"""\
-#include <boost/python.hpp>
+#include "${module.header.localname}"
 
 % for export in module.exports:
     % if not export.is_empty:
@@ -1041,6 +1091,10 @@ BOOST_PYTHON_MODULE(_${module.prefix})
     @docstring_cpp_signatures.setter
     def docstring_cpp_signatures(self, docstring_cpp_signatures):
         self._asg._nodes[self._node]['_docstring_cpp_signatures'] = docstring_cpp_signatures
+
+    @property
+    def header(self):
+        return self._asg[self.globalname.rstrip(self.suffix) + '.' + 'h']
 
     @property
     def exports(self):
@@ -1122,6 +1176,15 @@ BOOST_PYTHON_MODULE(_${module.prefix})
         if self.decorator:
             del self.decorator.module
         self._asg._nodes[self._node].pop('_decorator', None)
+
+    def write(self, header=True, exports=True):
+        super(BoostPythonModuleFileProxy, self).write()
+        if header:
+            self.header.write()
+        if exports:
+            for export in self.exports:
+                if not export.is_empty:
+                    export.write()
 
 BoostPythonModuleFileProxy.dependencies = property(BoostPythonModuleFileProxy.get_dependencies)
 
@@ -1282,9 +1345,9 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         module = asg[module]
     else:
         module = asg.add_file(module, proxy=boost_python_module())
-
-    if kwargs.pop('cache', True):
-        asg._headers = [header.globalname for header in asg.files(header=True) if not header.is_external_dependency and header.is_self_contained]
+        header = asg.add_file(module.globalname.rstrip(module.suffix) + '.' + 'h',
+                              _module = module.suffix,
+                              proxy= BoostPythonHeaderFileProxy)
 
     white = [asg['::']]
     while len(white) > 0:
@@ -1360,9 +1423,8 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         else:
             decorator = asg.add_file(decorator, proxy=boost_python_decorator())
         decorator.module = module
-        return [module] + exports + [decorator]
-    else:
-        return [module] + exports
+
+    return module
 
 def boost_python_pattern_generator(asg, pattern=None, **kwargs):
     """

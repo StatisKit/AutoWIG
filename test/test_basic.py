@@ -61,13 +61,11 @@ class TestBasic(unittest.TestCase):
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
-        wrappers = autowig.generator(asg, module = self.srcdir/'_module.cpp',
+        module = autowig.generator(asg, module = self.srcdir/'_module.cpp',
                                      decorator = self.srcdir/'_module.py',
                                      prefix = 'wrapper_')
 
-        for wrapper in wrappers:
-            wrapper.write()
-
+        module.write()
         autowig.scons(self.srcdir, 'build')
 
     def test_basic_export(self):

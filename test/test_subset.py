@@ -139,13 +139,12 @@ class TestSubset(unittest.TestCase):
         asg = autowig.controller(asg)
 
         autowig.generator.plugin = 'boost_python_internal'
-        wrappers = autowig.generator(asg,
+        module = autowig.generator(asg,
                                      module = self.srcdir/'_clanglite.cpp',
                                      decorator = self.srcdir/'clanglite'/'_clanglite.py',
                                      closure = False)
 
-        for wrapper in wrappers:
-            wrapper.write()
+        module.write()
             
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
