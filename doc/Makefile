@@ -6,6 +6,8 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
+NBCONVERT     = jupyter nbconvert
+NOTEBOOKS = $(shell for file in `find . -name "*.ipynb" -not -path '*/.ipynb_checkpoints/*'`;do echo $$file; done)
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -53,6 +55,13 @@ html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
+
+notebooks:
+	for notebook in $(NOTEBOOKS); do \
+		$(NBCONVERT) $$notebook --to rst --execute; \
+	done
+	@echo
+	@echo "Build finished. The RST files are generated"
 
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml

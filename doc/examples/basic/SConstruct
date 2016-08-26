@@ -65,9 +65,6 @@ Alias("cpp", lib)
 Alias("build", lib)
 
 wigenv = env.Clone()
-from autowig._scons import boost_python_builder
-boost_python_builder(wigenv)
-Alias('wig', wigenv.BoostPython(['_module.py', '_module.cpp'], headers))
 
 pyenv = env.Clone()
 pyenv.AppendUnique(LIBS = ['basic'])

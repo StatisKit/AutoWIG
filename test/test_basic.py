@@ -5,6 +5,7 @@ from path import path
 from SCons.Script.Main import AddOption, GetOption
 from SCons.Environment import Environment
 from SCons.Script import Variables, Main
+import __builtin__
 
 import autowig
 
@@ -22,7 +23,9 @@ class TemplateRender(object):
         code = "import operator\n" + code
         exec code in globals()
         def __call__(**context):
-            context['int'] = int
+            for builtin in dir(__builtin__):
+                if not builtin in context:
+                    context['builtin'] = getattr(__builtin__, builtin)
             return globals()["render_body"](**context)
     	return __call__
 
@@ -61,13 +64,11 @@ class TestBasic(unittest.TestCase):
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
-        wrappers = autowig.generator(asg, module = self.srcdir/'_module.cpp',
+        module = autowig.generator(asg, module = self.srcdir/'_module.cpp',
                                      decorator = self.srcdir/'_module.py',
                                      prefix = 'wrapper_')
 
-        for wrapper in wrappers:
-            wrapper.write()
-
+        module.write()
         autowig.scons(self.srcdir, 'build')
 
     def test_basic_export(self):

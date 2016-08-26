@@ -6,6 +6,7 @@ from path import path
 from tempfile import NamedTemporaryFile
 import os
 import warnings
+from pkgtk.plugin import PluginManager
 
 from .asg import (NamespaceProxy,
                   FundamentalTypeProxy,
@@ -18,9 +19,13 @@ from .asg import (NamespaceProxy,
                   ClassTemplateProxy,
                   TypedefProxy)
 from .tools import subclasses
-from .plugin_manager import parser
 
 __all__ = ['pre_processing', 'post_processing']
+
+parser = PluginManager('autowig.parser', brief="AutoWIG front-end plugin_managers",
+        details="""AutoWIG front-end plugin_managers are responsible for Abstract Semantic Graph (ASG) completion from C/C++ parsing.
+
+.. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
 
 def pre_processing(asg, headers, flags, **kwargs):
     """Pre-processing step of an AutoWIG front-end
@@ -202,7 +207,7 @@ def bootstrap(asg, flags, **kwargs):
                         if specialize._node not in black:
                             white.append(node.specialize)
                             black.add(node.specialize._node)
-                    elif not node.is_complete:
+                    elif not node.is_complete and node.access in ['none', 'public']:
                         gray.add(node._node)
                 elif isinstance(node, ClassTemplateProxy):
                     for specialization in node.specializations():

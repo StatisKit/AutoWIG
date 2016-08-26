@@ -1,0 +1,12 @@
+name: python
+channels:
+ - defaults
+ - statiskit
+ - conda-forge
+dependencies:
+ - python-autowig
+ - python-clanglite
+ - jupyter
+ - sphinx
+pip:
+ - nbsphinx

@@ -22,7 +22,7 @@ install:
     - pip install coverage
     - pip install coveralls
     - pip install nose
-    
+
 before_script:
   - conda build conda/python-clang -c statiskit -c conda-forge --no-test
   - conda build conda/python-autowig -c statiskit -c conda-forge --no-test
@@ -34,12 +34,12 @@ script:
   - conda install python-clanglite -c statiskit
   - conda install gitpython -c conda-forge
   - conda install scons -c statiskit
+<<<<<<< HEAD
   - cd doc/examples/basic
   - P=`python -c 'import autowig; print autowig.__path__[0]'`
   - coverage run --source=$P $HOME/miniconda/bin/scons
   - cd ../../..
-  - nosetests test -x -v --with-coverage
-  - coverage combine .coverage doc/examples/basic/.coverage
+  - nosetests test -x -s -v --with-coverage
 
 after_success:
   - coveralls
