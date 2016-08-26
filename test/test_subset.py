@@ -5,6 +5,7 @@ from git import Repo
 import subprocess
 import sys
 import __builtin__
+import sys
 
 import autowig
 
@@ -36,7 +37,8 @@ from functools import wraps
 def wrapper(f):
     @wraps(f)
     def execfunc(self, *args, **kwargs):
-        print('.')
+        sys.stdout.write('.')
+        sys.stdout.flush()
         return f(self, *args, **kwargs)
     return execfunc
 
