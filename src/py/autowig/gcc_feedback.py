@@ -1,11 +1,8 @@
 import os
 import parse
 from path import path
-from pkgtk.plugin import PluginManager
-from ._scons import ShellSession
 
-feedback = PluginManager('autowig.feedback', brief="",
-        details="""""")
+from ._scons import ShellSession
 
 def gcc_5_feedback(err, directory, asg, **kwargs):
     if isinstance(err, ShellSession):
