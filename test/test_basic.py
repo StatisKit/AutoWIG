@@ -22,7 +22,9 @@ class TemplateRender(object):
         code = "import operator\n" + code
         exec code in globals()
         def __call__(**context):
-            context['int'] = int
+            for builtin in dir(__builtin__):
+                if not builtin in context:
+                    context['builtin'] = getattr(__builtin__, builtin)
             return globals()["render_body"](**context)
     	return __call__
 

@@ -21,13 +21,33 @@ class TemplateRender(object):
         code = "import operator\n" + code
         exec code in globals()
         def __call__(**context):
-            context['int'] = int
+            for builtin in dir(__builtin__):
+                if not builtin in context:
+                    context['builtin'] = getattr(__builtin__, builtin)
             return globals()["render_body"](**context)
         return __call__
 
 from autowig.boost_python_generator import Template
 
 Template.render = TemplateRender()
+
+from functools import wraps
+def wrapper(f):
+    @wraps(f):
+    def execfunc(self, *args, **kwargs):
+        print('.')
+        return f(self, *args, **kwargs)
+    return execfunc
+
+from autowig import libclang_parser
+for func in dir(libclang_parser):
+    if func.startswith('read_'):
+        setattr(libclang_parser, 'func', wrapper(getattr(libclang_parser, 'func'))
+
+from clanglite import autowig_parser
+for func in dir(autowig_parser):
+    if func.startswith('read_'):
+        setattr(autowig_parser, 'func', wrapper(getattr(autowig_parser, 'func'))
 
 class TestSubset(unittest.TestCase):
     """Test the wrapping of a library subset"""
