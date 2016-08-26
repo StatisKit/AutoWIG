@@ -108,6 +108,3 @@ generator = PluginManager('autowig.generator', brief="AutoWIG back-end plugin_ma
         details="""AutoWIG back-end plugin_managers are responsible for C/C++ code generation from an Abstract Semantic Graph (ASG) interpretation.
 
 .. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
-
-visitor = PluginManager('autowig.visitor', brief="",
-        details="""""")
