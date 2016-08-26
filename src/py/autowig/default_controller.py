@@ -9,7 +9,7 @@ from .asg import (HeaderProxy,
                   VariableProxy,
                   ClassTemplatePartialSpecializationProxy)
 
-from ._conterller import refactoring, clean
+from ._controller import refactoring, clean
 
 __all__ = []
 
