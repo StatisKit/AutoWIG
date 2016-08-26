@@ -120,6 +120,3 @@ feedback = PluginManager('autowig.feedback', brief="",
 
 node_rename = PluginManager('autowig.node_rename', brief="",
         details="")
-
-node_path = PluginManager('autowig.node_path', brief="",
-        details="")
