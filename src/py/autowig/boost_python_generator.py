@@ -28,10 +28,12 @@ from .asg import (AbstractSemanticGraph,
                   ConstructorProxy,
                   QualifiedTypeProxy,
                   ParameterProxy)
-from .plugin_manager import node_path, node_rename, documenter, visitor
-from .proxy_manager import ProxyManager
+from ._node_path import node_path
+from ._node_rename import node_rename
+from ._docmuneter import documenter
+from .asg import visitor
+from pkgtk.plugin import ProxyManager, PluginManager
 from ._node_rename import PYTHON_OPERATOR
-from .plugin_manager import PluginManager
 
 __all__ = ['boost_python_call_policy', 'boost_python_export', 'boost_python_module', 'boost_python_decorator']
 
