@@ -35,7 +35,6 @@ script:
   - conda install gitpython -c conda-forge
   - conda install scons -c statiskit
   - nosetests test -s -v --with-coverage
-  - coverage combine .coverage doc/examples/basic/.coverage
 
 after_success:
   - coveralls
