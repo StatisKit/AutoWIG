@@ -175,9 +175,9 @@ class TestSubset(unittest.TestCase):
 
         module.write()
             
-    def test_pyclanglite_parser(self):
-        """Test `pyclanglite` parser"""
-        plugin = autowig.parser.plugin
-        autowig.parser.plugin = 'pyclanglite'
-        self.test_libclang_parser()
-        autowig.parser.plugin = plugin
+    #def test_pyclanglite_parser(self):
+    #    """Test `pyclanglite` parser"""
+    #    plugin = autowig.parser.plugin
+    #    autowig.parser.plugin = 'pyclanglite'
+    #    self.test_libclang_parser()
+    #    autowig.parser.plugin = plugin
