@@ -93,8 +93,3 @@ class PluginManager(object):
         else:
             raise TypeError('must be callable or a basestring instance')
         build_plugin_manager_doc(self)
-
-parser = PluginManager('autowig.parser', brief="AutoWIG front-end plugin_managers",
-        details="""AutoWIG front-end plugin_managers are responsible for Abstract Semantic Graph (ASG) completion from C/C++ parsing.
-
-.. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
