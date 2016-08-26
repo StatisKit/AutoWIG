@@ -1,5 +1,4 @@
-
-name: smap_io-docs
+name: autowig
 channels:
  - defaults
  - statiskit
