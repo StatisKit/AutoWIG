@@ -19,7 +19,6 @@ from .asg import (NamespaceProxy,
                   ClassTemplateProxy,
                   TypedefProxy)
 from .tools import subclasses
-from .plugin_manager import parser
 
 __all__ = ['pre_processing', 'post_processing']
 
