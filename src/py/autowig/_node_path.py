@@ -5,6 +5,8 @@ from .asg import DeclarationProxy, EnumeratorProxy
 
 __all__ = []
 
+from pkgtk.plugin import PluginManager
+
 def hash_node_path( node, prefix='', suffix=''):
     if not isinstance(node, DeclarationProxy):
         raise TypeError('\'node\' parameter is not \'autowig.asg.CodeNodeProxy\' instance but a \'' + node.__class__.__name__ + '\' instance')
