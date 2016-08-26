@@ -30,7 +30,7 @@ from .asg import (AbstractSemanticGraph,
                   ParameterProxy)
 from ._node_path import node_path
 from ._node_rename import node_rename
-from ._docmuneter import documenter
+from ._documenter import documenter
 from .asg import visitor
 from pkgtk.plugin import ProxyManager, PluginManager
 from ._node_rename import PYTHON_OPERATOR
