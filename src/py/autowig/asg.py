@@ -8,11 +8,16 @@ import re
 import warnings
 import hashlib
 from path import path
+from pkgtk import PluginManager
 
 from .tools import subclasses
 from .plugin_manager import visitor
 
 __all__ = ['AbstractSemanticGraph']
+
+
+visitor = PluginManager('autowig.visitor', brief="",
+        details="""""")
 
 def all_visitor(node):
     return True
