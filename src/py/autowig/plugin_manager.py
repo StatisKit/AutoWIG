@@ -103,8 +103,3 @@ controller = PluginManager('autowig.controller', brief="AutoWIG middle-end plugi
         details="""AutoWIG middle-end plugin_managers are responsible for Abstract Semantic Graph (ASG) modification from Python semantic queries.
 
 .. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
-
-generator = PluginManager('autowig.generator', brief="AutoWIG back-end plugin_managers",
-        details="""AutoWIG back-end plugin_managers are responsible for C/C++ code generation from an Abstract Semantic Graph (ASG) interpretation.
-
-.. seealso:: :class:`autowig.AbstractSemanticGraph` for more details on ASGs""")
