@@ -37,12 +37,6 @@ def default_controller(asg, **kwargs):
         :func:`autowig.libclang_parser.parser` for an example.
         :func:`compute_overloads`, :func:`discard_forward_declarations` and :func:`resolve_templates` for a more detailed documentatin about AutoWIG front-end post-processing step.
     """
-    if 'env' in kwargs:
-        env = kwargs.pop('env')
-        if 'autowig_controller_clean' in env:
-            kwargs['clean'] = env['autowig_controller_clean']
-        if 'autowig_controller_refactoring' in env:
-            kwargs['refactoring'] = env['autowig_controller_refactoring']
     if kwargs.pop('refactoring', True):
         asg = refactoring(asg)
     if kwargs.pop('clean', True):

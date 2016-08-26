@@ -1338,14 +1338,6 @@ boost_python_decorator = ProxyManager('autowig.boost_python_decorator', brief=""
 def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **kwargs):
     """
     """
-    if 'env' in kwargs:
-        env = kwargs.pop('env')
-        if 'autowig_generator_closure' in env:
-            kwargs['closure'] = env['autowig_generator_closure']
-        if 'autowig_generator_prefix' in env:
-            kwargs['prefix'] = env['autowig_generator_prefix']
-        if 'autowig_generator_cache' in env:
-            kwargs['cache'] = env['autowig_generator_cache']
 
     if module in asg:
         module = asg[module]
@@ -1355,45 +1347,45 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
                               _module = module.suffix,
                               proxy= BoostPythonHeaderFileProxy)
 
-    white = [asg['::']]
-    while len(white) > 0:
-        node = white.pop()
-        export = node.boost_python_export
-        if not export:
-            black = [node]
-            while len(black) > 0:
-                temp = black.pop()
-                if not getattr(temp, '_boost_python_export', False):
-                    temp.boost_python_export = False
-                    if isinstance(temp, NamespaceProxy):
-                        black.extend(temp.declarations())
-                    elif isinstance(temp, EnumerationProxy):
-                        black.extend(temp.enumerators)
-                    elif isinstance(temp, ClassProxy):
-                        black.extend(temp.declarations())
-        else:
-            if isinstance(node, NamespaceProxy):
-                node.boost_python_export = export
-                white.extend(node.declarations())
-            elif isinstance(node, EnumerationProxy):
-                node.boost_python_export = export
-                white.extend(node.enumerators)
-            elif isinstance(node, ClassProxy):
-                node.boost_python_export = export
-                white.extend(node.declarations())
+    # white = [asg['::']]
+    # while len(white) > 0:
+    #     node = white.pop()
+    #     export = node.boost_python_export
+    #     if not export:
+    #         black = [node]
+    #         while len(black) > 0:
+    #             temp = black.pop()
+    #             if not getattr(temp, '_boost_python_export', False):
+    #                 temp.boost_python_export = False
+    #                 if isinstance(temp, NamespaceProxy):
+    #                     black.extend(temp.declarations())
+    #                 elif isinstance(temp, EnumerationProxy):
+    #                     black.extend(temp.enumerators)
+    #                 elif isinstance(temp, ClassProxy):
+    #                     black.extend(temp.declarations())
+    #     else:
+    #         if isinstance(node, NamespaceProxy):
+    #             node.boost_python_export = export
+    #             white.extend(node.declarations())
+    #         elif isinstance(node, EnumerationProxy):
+    #             node.boost_python_export = export
+    #             white.extend(node.enumerators)
+    #         elif isinstance(node, ClassProxy):
+    #             node.boost_python_export = export
+    #             white.extend(node.declarations())
 
-    white = [asg['::']]
-    while len(white) > 0:
-        node = white.pop()
-        export = node.boost_python_export
-        if export:
-            node.boost_python_export = export
-            if isinstance(node, NamespaceProxy):
-                white.extend(node.declarations())
-            elif isinstance(node, EnumerationProxy):
-                white.extend(node.enumerators)
-            elif isinstance(node, ClassProxy):
-                white.extend(node.declarations())
+    # white = [asg['::']]
+    # while len(white) > 0:
+    #     node = white.pop()
+    #     export = node.boost_python_export
+    #     if export:
+    #         node.boost_python_export = export
+    #         if isinstance(node, NamespaceProxy):
+    #             white.extend(node.declarations())
+    #         elif isinstance(node, EnumerationProxy):
+    #             white.extend(node.enumerators)
+    #         elif isinstance(node, ClassProxy):
+    #             white.extend(node.declarations())
 
     directory = module.parent
     suffix = module.suffix
@@ -1435,20 +1427,12 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
 def boost_python_pattern_generator(asg, pattern=None, **kwargs):
     """
     """
-    if 'env' in kwargs:
-        env = kwargs.get('env')
-        if 'autowig_generator_pattern' in env:
-            pattern = env['autowig_parser_bootstrap']
     return boost_python_generator(asg, asg.declarations(pattern=pattern), **kwargs)
 
 
 def boost_python_internal_generator(asg, pattern=None, **kwargs):
     """
     """
-    if 'env' in kwargs:
-        env = kwargs.get('env')
-        if 'autowig_generator_pattern' in env:
-            pattern = env['autowig_parser_bootstrap']
     return boost_python_generator(asg,
                                   [node for node in asg.declarations(pattern=pattern) if not getattr(node.header, 'is_external_dependency', True)],
                                   **kwargs)
