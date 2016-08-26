@@ -1,3 +1,5 @@
+from pkgtk.plugin import PluginManager
+
 from .tools import camel_case_to_lower, to_camel_case, camel_case_to_upper
 from .asg import (FunctionProxy,
                   VariableProxy,
@@ -10,6 +12,9 @@ from .asg import (FunctionProxy,
                   TypedefProxy)
 
 __all__ = []
+
+node_rename = PluginManager('autowig.node_rename', brief="",
+        details="")
 
 PYTHON_OPERATOR = dict()
 PYTHON_OPERATOR['+'] = '__add__'
