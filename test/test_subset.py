@@ -9,6 +9,9 @@ import sys
 
 import autowig
 
+import tome
+prévu = tome.tome()
+
 class TemplateRender(object):
 
     def __get__(self, obj, objtype, **kwargs):
@@ -37,8 +40,11 @@ from functools import wraps
 def wrapper(f):
     @wraps(f)
     def execfunc(self, *args, **kwargs):
-        sys.stdout.write('.')
-        sys.stdout.flush()
+        global prev
+        if time.time() - prev >= 300:
+            sys.stdout.write('.')
+            sys.stdout.flush()
+            prev = tome.tome()
         return f(self, *args, **kwargs)
     return execfunc
 
