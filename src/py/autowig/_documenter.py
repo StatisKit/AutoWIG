@@ -1,4 +1,4 @@
-from pkgtk import PluginManager
+from pkgtk.plugin import PluginManager
 
 documenter = PluginManager('autowig.documenter', brief="",
         details="""""")
