@@ -114,6 +114,3 @@ visitor = PluginManager('autowig.visitor', brief="",
 
 documenter = PluginManager('autowig.documenter', brief="",
         details="""""")
-
-feedback = PluginManager('autowig.feedback', brief="",
-        details="""""")
