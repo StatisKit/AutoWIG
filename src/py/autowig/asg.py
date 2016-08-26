@@ -8,10 +8,9 @@ import re
 import warnings
 import hashlib
 from path import path
-from pkgtk import PluginManager
+from pkgtk.plugin import PluginManager
 
 from .tools import subclasses
-from .plugin_manager import visitor
 
 __all__ = ['AbstractSemanticGraph']
 
