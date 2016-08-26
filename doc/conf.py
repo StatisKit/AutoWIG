@@ -301,22 +301,22 @@ rst_epilog = """
 
 """
 
-if on_rtd:
-    warn('debug -syspath -edit: %s'%os.path.abspath('../..'))
-    sys.path.insert(0, os.path.abspath('../..'))
+# if on_rtd:
+#     warn('debug -syspath -edit: %s'%os.path.abspath('../..'))
+#     sys.path.insert(0, os.path.abspath('../..'))
 
-    class Mock(MagicMock):
+#     class Mock(MagicMock):
 
-        @classmethod
-        def __getattr__(cls, name):
-            return Mock()
+#         @classmethod
+#         def __getattr__(cls, name):
+#             return Mock()
 
-        @classmethod
-        def __getitem__(cls, name):
-            return Mock()
+#         @classmethod
+#         def __getitem__(cls, name):
+#             return Mock()
 
 
-    MOCK_MODULES = []
+#     MOCK_MODULES = []
 
-    for mod_name in MOCK_MODULES:
-        sys.modules.update({mod_name: Mock()})
+#     for mod_name in MOCK_MODULES:
+#         sys.modules.update({mod_name: Mock()})
