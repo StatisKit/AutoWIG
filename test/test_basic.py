@@ -5,6 +5,7 @@ from path import path
 from SCons.Script.Main import AddOption, GetOption
 from SCons.Environment import Environment
 from SCons.Script import Variables, Main
+import __builtin__
 
 import autowig
 

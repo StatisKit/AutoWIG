@@ -4,6 +4,7 @@ from path import path
 from git import Repo
 import subprocess
 import sys
+import __builtin__
 
 import autowig
 
