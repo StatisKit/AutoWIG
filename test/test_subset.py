@@ -43,12 +43,12 @@ def wrapper(f):
 from autowig import libclang_parser
 for func in dir(libclang_parser):
     if func.startswith('read_'):
-        setattr(libclang_parser, 'func', wrapper(getattr(libclang_parser, func)))
+        setattr(libclang_parser, func, wrapper(getattr(libclang_parser, func)))
 
 from clanglite import autowig_parser
 for func in dir(autowig_parser):
     if func.startswith('read_'):
-        setattr(autowig_parser, 'func', wrapper(getattr(autowig_parser, func)))
+        setattr(autowig_parser, func, wrapper(getattr(autowig_parser, func)))
 
 class TestSubset(unittest.TestCase):
     """Test the wrapping of a library subset"""
