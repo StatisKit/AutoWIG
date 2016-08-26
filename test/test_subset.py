@@ -34,7 +34,7 @@ Template.render = TemplateRender()
 
 from functools import wraps
 def wrapper(f):
-    @wraps(f):
+    @wraps(f)
     def execfunc(self, *args, **kwargs):
         print('.')
         return f(self, *args, **kwargs)
