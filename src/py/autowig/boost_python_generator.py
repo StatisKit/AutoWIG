@@ -961,7 +961,7 @@ def boost_python_exports(self, *args, **kwargs):
 AbstractSemanticGraph.boost_python_exports = boost_python_exports
 del boost_python_exports
 
-boost_python_export = ProxyManager('autowig.boost_python_export', BoostPythonExportFileProxy, brief="",
+boost_python_export = ProxyManager('autowig.boost_python_export', brief="",
         details="")
 
 class BoostPythonHeaderFileProxy(FileProxy):
@@ -1202,7 +1202,7 @@ def boost_python_modules(self, **kwargs):
 AbstractSemanticGraph.boost_python_modules = boost_python_modules
 del boost_python_modules
 
-boost_python_module = ProxyManager('autowig.boost_python_module', BoostPythonModuleFileProxy, brief="",
+boost_python_module = ProxyManager('autowig.boost_python_module', brief="",
         details="")
 
 class BoostPythonDecoratorFileProxy(FileProxy):
@@ -1332,7 +1332,7 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
 
 BoostPythonDecoratorDefaultFileProxy._content = property(BoostPythonDecoratorDefaultFileProxy.get_content)
 
-boost_python_decorator = ProxyManager('autowig.boost_python_decorator', BoostPythonDecoratorFileProxy, brief="",
+boost_python_decorator = ProxyManager('autowig.boost_python_decorator', brief="",
         details="")
 
 def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **kwargs):
