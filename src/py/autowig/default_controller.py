@@ -9,7 +9,9 @@ from .asg import (HeaderProxy,
                   VariableProxy,
                   ClassTemplatePartialSpecializationProxy)
 
-__all__ = ['refactoring', 'cleaning']
+from ._conterller import refactoring, clean
+
+__all__ = []
 
 def default_controller(asg, **kwargs):
     """Post-processing step of an AutoWIG front-end
