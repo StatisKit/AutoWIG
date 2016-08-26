@@ -9,8 +9,8 @@ import sys
 
 import autowig
 
-import tome
-prévu = tome.tome()
+import time
+prev = time.time()
 
 class TemplateRender(object):
 
@@ -44,7 +44,7 @@ def wrapper(f):
         if time.time() - prev >= 300:
             sys.stdout.write('.')
             sys.stdout.flush()
-            prev = tome.tome()
+            prev = time.time()
         return f(self, *args, **kwargs)
     return execfunc
 
