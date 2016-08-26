@@ -1,4 +1,4 @@
-name: autowig
+name: python
 channels:
  - defaults
  - statiskit
