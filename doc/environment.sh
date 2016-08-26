@@ -1,4 +1,5 @@
 set -v
+rm environment.yml
 conda create -n sphinx-autowig python
 source activate sphinx-autowig
 bash ../conda/install.sh

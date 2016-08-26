@@ -1177,7 +1177,7 @@ BOOST_PYTHON_MODULE(_${module.prefix})
             del self.decorator.module
         self._asg._nodes[self._node].pop('_decorator', None)
 
-    def write(self, header=True, exports=True):
+    def write(self, header=True, exports=True, decorator=True):
         super(BoostPythonModuleFileProxy, self).write()
         if header:
             self.header.write()
@@ -1185,6 +1185,10 @@ BOOST_PYTHON_MODULE(_${module.prefix})
             for export in self.exports:
                 if not export.is_empty:
                     export.write()
+        if decorator:
+            decorator = self.decorator
+        if decorator:
+            decorator.write()
 
 BoostPythonModuleFileProxy.dependencies = property(BoostPythonModuleFileProxy.get_dependencies)
 

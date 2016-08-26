@@ -1,8 +1,126 @@
-name: autowig-docs
-channels:
-- defaults
+name: sphinx-autowig
 dependencies:
-- h5py=2.6.0
-- python=2.7
+- _nb_ext_conf=0.3.0=py27_0
+- alabaster=0.7.8=py27_0
+- anaconda-client=1.5.1=py27_0
+- babel=2.3.3=py27_0
+- backports=1.0=py27_0
+- backports_abc=0.4=py27_0
+- cairo=1.12.18=6
+- clyent=1.2.2=py27_0
+- conda-forge::mako=1.0.4=py27_0
+- conda-forge::markupsafe=0.23=py27_0
+- conda-forge::pandoc=1.17.2=0
+- conda-forge::path.py=8.2.1=py27_0
+- conda-forge::pygments=2.1.3=py27_1
+- conda-forge::pypandoc=1.2.0=py27_0
+- conda-forge::six=1.10.0=py27_0
+- configparser=3.5.0=py27_0
+- dateutil=2.4.1=py27_0
+- decorator=4.0.10=py27_0
+- docutils=0.12=py27_2
+- entrypoints=0.2.2=py27_0
+- fontconfig=2.11.1=6
+- freetype=2.5.5=1
+- functools32=3.2.3.2=py27_0
+- get_terminal_size=1.0.0=py27_0
+- glib=2.43.0=1
+- harfbuzz=0.9.39=1
+- icu=54.1=0
+- imagesize=0.7.1=py27_0
+- ipykernel=4.4.1=py27_0
+- ipython=5.1.0=py27_0
+- ipython_genutils=0.1.0=py27_0
+- ipywidgets=5.2.2=py27_0
+- jinja2=2.8=py27_1
+- jsonschema=2.5.1=py27_0
+- jupyter=1.0.0=py27_3
+- jupyter_client=4.3.0=py27_0
+- jupyter_console=5.0.0=py27_0
+- jupyter_core=4.1.1=py27_0
+- libffi=3.2.1=0
+- libpng=1.6.22=0
+- libsodium=1.0.10=0
+- libxml2=2.9.2=0
+- mistune=0.7.2=py27_0
+- mkl=11.3.3=0
+- nb_anacondacloud=1.2.0=py27_0
+- nb_conda=2.0.0=py27_0
+- nb_conda_kernels=2.0.0=py27_0
+- nbconvert=4.2.0=py27_0
+- nbformat=4.1.0=py27_0
+- nbpresent=3.0.2=py27_0
+- notebook=4.2.2=py27_0
+- numpy=1.11.1=py27_0
+- openssl=1.0.2h=1
+- pango=1.39.0=1
+- pathlib2=2.1.0=py27_0
+- pexpect=4.0.1=py27_0
+- pickleshare=0.7.3=py27_0
+- pip=8.1.2=py27_0
+- pixman=0.32.6=0
+- prompt_toolkit=1.0.3=py27_0
+- ptyprocess=0.5.1=py27_0
+- pyqt=4.11.4=py27_4
+- python=2.7.12=1
+- python-dateutil=2.5.3=py27_0
+- pytz=2016.6.1=py27_0
+- pyyaml=3.11=py27_4
+- pyzmq=15.4.0=py27_0
+- qt=4.8.7=4
+- qtconsole=4.2.1=py27_0
+- readline=6.2=2
+- requests=2.11.1=py27_0
+- setuptools=25.1.6=py27_0
+- simplegeneric=0.8.1=py27_1
+- singledispatch=3.4.0.3=py27_0
+- sip=4.18=py27_0
+- snowballstemmer=1.2.1=py27_0
+- sphinx=1.4.1=py27_0
+- sphinx_rtd_theme=0.1.9=py27_0
+- sqlite=3.13.0=0
+- ssl_match_hostname=3.4.0.2=py27_1
+- statiskit::gmp=6.1.0=1
+- statiskit::libboost=1.61.0=py27_0
+- statiskit::libclang=3.8.0=0
+- statiskit::libclanglite=3.8.0=0
+- statiskit::python-autowig=1.0.0=py27_0
+- statiskit::python-clang=3.8.0=py27_0
+- statiskit::python-clanglite=3.8.0=py27_0
+- statiskit::python-git=0.3.0=py27_0
+- statiskit::python-parse=1.6.6=py27_0
+- terminado=0.6=py27_0
+- tk=8.5.18=0
+- tornado=4.4.1=py27_0
+- traitlets=4.2.2=py27_0
+- wcwidth=0.1.7=py27_0
+- wheel=0.29.0=py27_0
+- widgetsnbextension=1.2.6=py27_0
+- yaml=0.1.6=0
+- zeromq=4.1.4=0
+- zlib=1.2.8=3
 - pip:
-  - pygeobase==0.3.9
+  - autowig (/home/pfernique/.miniconda2/envs/sphinx-autowig/lib/python2.7/site-packages)==1.0.0
+  - backports-abc==0.4
+  - backports.shutil-get-terminal-size==1.0.0
+  - backports.ssl-match-hostname==3.4.0.2
+  - ipython-genutils==0.1.0
+  - jupyter-client==4.3.0
+  - jupyter-console==5.0.0
+  - jupyter-core==4.1.1
+  - mako==1.0.4
+  - markupsafe==0.23
+  - nb-anacondacloud==1.2.0
+  - nb-conda==2.0.0
+  - nb-conda-kernels==2.0.0
+  - nbsphinx==0.2.9
+  - parse==1.6.6
+  - path.py==8.2.1
+  - prompt-toolkit==1.0.3
+  - pyclanglite==0.1.0
+  - pygments==2.1.3
+  - pypandoc==1.2.0
+  - six==1.10.0
+  - sphinx-rtd-theme==0.1.9
+prefix: /home/pfernique/.miniconda2/envs/sphinx-autowig
+

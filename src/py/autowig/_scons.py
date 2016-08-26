@@ -56,10 +56,9 @@ def boost_python_action(target, source, env, **kwargs):
         generator.plugin = env['autowig_generator']
     else:
         generator.plugin = 'boost_python_internal'
-    wrappers = generator(asg, module=target[1], decorator=target[0], env=env)
+    wrapper = generator(asg, module=target[1], decorator=target[0], env=env)
 
-    for wrapper in wrappers:
-        wrapper.write(**kwargs)
+    wrapper.write()
 
     print 'autowig: Done generating Boost.Python wrappers'
     return 0
