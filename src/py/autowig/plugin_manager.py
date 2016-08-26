@@ -117,6 +117,3 @@ documenter = PluginManager('autowig.documenter', brief="",
 
 feedback = PluginManager('autowig.feedback', brief="",
         details="""""")
-
-node_rename = PluginManager('autowig.node_rename', brief="",
-        details="")
