@@ -10,3 +10,4 @@ dependencies:
  - sphinx
  - pip:
    - nbsphinx
+   - sphinxcontrib-bibtex
