@@ -8,5 +8,5 @@ dependencies:
  - python-clanglite
  - jupyter
  - sphinx
-pip:
- - nbsphinx
+ - pip:
+   - nbsphinx
