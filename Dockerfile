@@ -1,4 +1,4 @@
-FROM statiskit/ubuntu:trusty
+FROM statiskit/pyclanglite
 
 # Build or install
 ARG BUILD="false"
