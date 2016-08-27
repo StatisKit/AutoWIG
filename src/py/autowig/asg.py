@@ -1006,11 +1006,6 @@ class FunctionProxy(DeclarationProxy):
             raise NotImplementedError('For parent class \'' + parent.__class__.__name__ + '\'')
 
     @property
-    def signature(self):
-        return self.return_type.desugared_type.globalname + ' ' + '(' + \
-        ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
-
-    @property
     def prototype(self):
         return self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + \
         ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
@@ -1040,11 +1035,6 @@ class MethodProxy(FunctionProxy):
     @property
     def is_pure(self):
         return self._is_pure
-
-    @property
-    def signature(self):
-        return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + '(' + \
-        ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ';'
 
     @property
     def prototype(self):
@@ -1122,7 +1112,8 @@ class ClassProxy(DeclarationProxy):
     def is_abstract(self):
         return self._is_abstract
 
-    def get_is_instantiable(self):
+    @property
+    def is_instantiable(self):
         if hasattr(self, '_is_instantiable'):
             return self._is_instantiable
         else:
@@ -1225,8 +1216,6 @@ class ClassProxy(DeclarationProxy):
                 declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node]]
             else:
                 declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node] if re.match(pattern, node)]
-            #for declaration in declarations:
-            #    declaration.access = declaration._access
         if access == 'public':
             return [declaration for declaration in declarations if declaration.access == 'public']
         elif access == 'protected':
@@ -1318,21 +1307,6 @@ class ClassProxy(DeclarationProxy):
     @is_copyable.setter
     def is_copyable(self, copyable):
         self._asg._nodes[self._node]['_is_copyable'] = copyable
-
-ClassProxy.is_instantiable = property(ClassProxy.get_is_instantiable)
-#class TemplateTypeSpecifiersProxy(TypeSpecifiersProxy):
-#
-#    def __init__(self, asg, source, target):
-#        super(TemplateTypeSpecifiersProxy, self).__init__(asg, source)
-#        self._target = target
-#
-#    @property
-#    def target(self):
-#        return self._asg[self._target['target']]
-#
-#    @property
-#    def specifiers(self):
-#        return self._target["specifiers"]
 
 class TemplateSpecializationProxy(object):
     """
@@ -1656,27 +1630,6 @@ class AbstractSemanticGraph(object):
     def namespaces(self, **kwargs):
         return [node for node in self.declarations(**kwargs) if isinstance(node, NamespaceProxy)]
 
-    #def include_path(self, header, absolute=False):
-    #    if not header.is_self_contained:
-    #        include = header.include
-    #        while include is not None and not include.is_indepentent:
-    #            include = include.include
-    #        if include is None:
-    #            raise ValueError('\'header\' parameter is not independent and has no include parent file independent')
-    #        header = include
-    #    if absolute:
-    #        return header.globalname
-    #    else:
-    #        include = header.localname
-    #        parent = header.parent
-    #        while not parent.localname == '/' and not parent.is_searchpath:
-    #            include = parent.localname + include
-    #            parent = parent.parent
-    #        if parent.localname == '/':
-    #            return '/' + include
-    #        else:
-    #            return include
-
     def dependencies(self, *nodes):
         white = []
         for node in nodes:
@@ -1765,77 +1718,6 @@ class AbstractSemanticGraph(object):
             elif isinstance(node, ClassProxy):
                 white.extend(node.functions())
 
-        #nodes = [self[node] if isinstance(node, basestring) else node for node in nodes]
-        ##test = any(node._node == 'class ::std::vector<std::shared_ptr<statiskit::NegativeBinomialDistribution>, std::allocator<std::shared_ptr<statiskit::NegativeBinomialDistribution> > >' for node in nodes)
-        #nodes.extend(itertools.chain(*[node.declarations() for node in nodes if isinstance(node, ClassProxy)]))
-        #nodes.extend(itertools.chain(*[[node.specialize] + [template.desugared_type.unqualified_type for template in node.templates] for node in nodes if isinstance(node, ClassTemplateSpecializationProxy)]))
-        #for node in nodes:
-        #    if isinstance(node, basestring):
-        #        node = self[node]
-        #    if isinstance(node, DeclarationProxy):
-        #        dependencies = [node]
-        #        if isinstance(node, ClassTemplatePartialSpecializationProxy):
-        #            pass
-        #        elif isinstance(node, (VariableProxy, TypedefProxy)):
-        #            dependencies.append(node.qualified_type.desugared_type.unqualified_type)
-        #        elif isinstance(node, FunctionProxy):
-        #            dependencies.append(node.return_type.unqualified_type)
-        #            dependencies.extend([prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters])
-        #        elif isinstance(node, ConstructorProxy):
-        #            dependencies.extend([prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters])
-        #        elif isinstance(node, ClassProxy):
-        #            dependencies.extend(node.bases())
-        #        for dependency in dependencies:
-        #            header = dependency.header
-        #            while not header is None and not header.is_self_contained:
-        #                header = header.include
-        #            if not header is None:
-        #                headers.append(header)
-        #    elif isinstance(node, HeaderProxy):
-        #        while not node is None and not node.is_self_contained:
-        #            node = node.include
-        #        if not node is None:
-        #            headers.append(node)
-        #while len(white) > 0:
-        #    node = white.pop()
-        #    if not node._node in black:
-        #        black.add(node._node)
-        #        if isinstance(node, FundamentalTypeProxy):
-        #            continue
-        #        elif isinstance(node, EnumeratorProxy):
-        #            pass
-        #        elif isinstance(node, EnumerationProxy):
-        #            pass
-        #        elif isinstance(node, ClassTemplatePartialSpecializationProxy):
-        #            white.append(node.specialize)
-        #            # TODO templates !
-        #            pass
-        #        elif isinstance(node, (VariableProxy, TypedefProxy)):
-        #            white.append(node.qualified_type.unqualified_type)
-        #        elif isinstance(node, FunctionProxy):
-        #            white.append(node.return_type.unqualified_type)
-        #            white.extend([prm.qualified_type.unqualified_type for prm in node.parameters])
-        #        elif isinstance(node, ConstructorProxy):
-        #            white.extend([prm.qualified_type.unqualified_type for prm in node.parameters])
-        #        elif isinstance(node, DestructorProxy):
-        #            pass
-        #        elif isinstance(node, ClassProxy):
-        #            white.extend(node.bases())
-        #            white.extend(node.declarations())
-        #            if isinstance(node, ClassTemplateSpecializationProxy):
-        #                white.append(node.specialize)
-        #                white.extend([tpl.unqualified_type for tpl in node.templates])
-        #        elif isinstance(node, ClassTemplateProxy):
-        #            pass
-        #        elif isinstance(node, NamespaceProxy):
-        #            white.extend(node.declarations())
-        #        else:
-        #            raise NotImplementedError(node.__class__.__name__)
-        #        header = node.header
-        #        while not header is None and not header.is_self_contained:
-        #            header = header.include
-        #        if not header is None:
-        #            headers.append(header)
         headers = {header.globalname for header in headers}
         headers = sorted([self[header] for header in headers], key = lambda header: header.depth)
         _headers = {header.globalname for header in headers if header.depth == 0}
