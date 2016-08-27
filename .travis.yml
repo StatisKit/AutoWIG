@@ -45,7 +45,7 @@ after_success:
           CONDA_FILE=`conda build conda/$CONDA_RECIPE --output`; 
           anaconda upload --user statiskit ${CONDA_FILE%%} --force;
       done;
-      docker build --build-arg BINDER="false" -t statiskit/pyclanglite:trusty .;
+      docker build --build-arg BINDER="false" -t statiskit/autowig .;
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
-      docker push statiskit/pyclanglite:trusty;
+      docker push statiskit/autowig;
     fi
