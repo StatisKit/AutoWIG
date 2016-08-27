@@ -140,12 +140,6 @@ def post_processing(asg, flags, **kwargs):
     return asg
 
 def bootstrap(asg, flags, **kwargs):
-    if 'env' in kwargs:
-        env = kwargs.get('env')
-        if 'autowig_parser_bootstrap' in env:
-            kwargs['bootstrap'] = env['autowig_parser_bootstrap']
-        if 'autowig_parser_maximum' in env:
-            kwargs['maximum'] = env['autowig_parser_maximum']
     bootstrap = kwargs.pop('bootstrap', True)
     maximum = kwargs.pop('maximum', 1000)
     if bootstrap:
