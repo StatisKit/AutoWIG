@@ -55,12 +55,6 @@ class NodeProxy(object):
         return self._node
 
     @property
-    def children(self):
-        """Node children
-        """
-        return [self._asg[node] for node in self._asg._syntax_edges[self._node]]
-
-    @property
     def ancestors(self):
         """Node ancestors
         """
@@ -87,10 +81,7 @@ class NodeProxy(object):
         if attr not in dir(self):
             raise AttributeError('\'' + self.__class__.__name__ + '\' object has no attribute \'' + attr + '\'')
         else:
-            try:
-                return self._asg._nodes[self._node][attr]
-            except:
-                raise
+            return self._asg._nodes[self._node][attr]
 
     @property
     def clean(self):
@@ -251,10 +242,6 @@ class FileProxy(FilesystemProxy):
             return self.localname[index:]
         else:
             return ''
-
-    #@property
-    #def sloc(self):
-    #    return sloc_count(self.content, language=self.language)
 
     def write(self, force=False):
         """Write the file and its ancestral directories into the filesystem
@@ -558,11 +545,8 @@ class FundamentalTypeProxy(DeclarationProxy):
 class CharacterFundamentalTypeProxy(FundamentalTypeProxy):
     """
     """
-
-    def __init__(self, asg, node):
-        self._asg = asg
-        if not node == self._node:
-            raise ValueError('\'node\' parameter')
+    
+    pass
 
 class CharTypeProxy(CharacterFundamentalTypeProxy):
     """
