@@ -21,18 +21,6 @@ visitor = PluginManager('autowig.visitor', brief="",
 def all_visitor(node):
     return True
 
-def free_visitor(node):
-    return getattr(node, 'access', False) == 'none'
-
-def public_visitor(node):
-    return getattr(node, 'access', False) in ['none', 'public']
-
-def protected_visitor(node):
-    return getattr(node, 'access', False) in ['none', 'public', 'protected']
-
-def private_visitor(node):
-    return getattr(node, 'access', False)
-
 class NodeProxy(object):
     """Abstract semantic graph node proxy
 
