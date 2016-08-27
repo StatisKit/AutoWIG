@@ -15,7 +15,7 @@ from .asg import (ClassTemplateSpecializationProxy,
                   FunctionProxy,
                   ConstructorProxy)
                   
-from .plugin_manager import node_rename
+from ._node_rename import node_rename
 
 FORMATTER = Template(text=r"""\
 % if brief:
