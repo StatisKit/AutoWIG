@@ -27,10 +27,7 @@ before_script:
     - bash conda/build.sh
 
 script:
-  - conda install python-clanglite -c statiskit
-  - conda install gitpython -c conda-forge
-  - conda install scons -c statiskit
-  - nosetests test -x -s -v --with-coverage --cover-package=autowig
+  - mv conda/python-autowig/.coverage ./.coverage
 
 after_success:
   - coveralls
