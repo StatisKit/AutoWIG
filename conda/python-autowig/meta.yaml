@@ -39,4 +39,5 @@ test:
      - python-scons
    commands:
      - cd {{ SRC_DIR }} 
-     - nosetests -v --pdb --with-coverage --cover-package=autowig
+     - nosetests test -x -s -v --with-coverage --cover-package=autowig
+     - mv .coverage {{ RECIPE_DIR }}/../../
