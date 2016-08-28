@@ -40,4 +40,5 @@ test:
    commands:
      - cd {{ SRC_DIR }} 
      - nosetests test -x -s -v --with-coverage --cover-package=autowig
+     - echo "{{ SP_DIR }}"
      - mv .coverage {{ RECIPE_DIR }}
