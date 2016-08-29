@@ -42,6 +42,7 @@ after_success:
       docker build --build-arg BINDER="false" -t statiskit/autowig .;
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
       docker push statiskit/autowig;
+      curl --request POST http://readthedocs.org/build/autowig
     fi
 
 notifications:
