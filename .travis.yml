@@ -45,3 +45,11 @@ after_success:
       docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
       docker push statiskit/autowig;
     fi
+
+notifications:
+  webhooks:
+    urls:
+      - http://readthedocs.org/build/autowig
+    on_success: [always] # default: always
+    on_failure: [never] # default: always
+    on_start: [never] # default: never
