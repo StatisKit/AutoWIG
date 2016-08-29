@@ -1343,9 +1343,9 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         module = asg[module]
     else:
         module = asg.add_file(module, proxy=boost_python_module())
-        header = asg.add_file(module.globalname.rstrip(module.suffix) + '.' + 'h',
-                              _module = module.suffix,
-                              proxy= BoostPythonHeaderFileProxy)
+        asg.add_file(module.globalname.rstrip(module.suffix) + '.' + 'h',
+                     _module = module.suffix,
+                     proxy= BoostPythonHeaderFileProxy)
 
     # white = [asg['::']]
     # while len(white) > 0:
