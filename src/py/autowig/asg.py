@@ -5,8 +5,6 @@ import uuid
 import itertools
 import os
 import re
-import warnings
-import hashlib
 from path import path
 from pkgtk.plugin import PluginManager
 
@@ -243,7 +241,7 @@ class FileProxy(FilesystemProxy):
         else:
             return ''
 
-    def write(self, force=False):
+    def write(self):
         """Write the file and its ancestral directories into the filesystem
 
         :Optional Parameters:
