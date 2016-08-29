@@ -28,8 +28,8 @@ before_script:
 
 script:
   - mv conda/python-autowig/.coverage ./.coverage
-  - sed -e 's#'"$HOME"'/miniconda/envs/_test/lib/python2.7/site-packages#'"$PWD"'/src/py/g' ./.coverage
-  - sed -i -e 's#'"$HOME"'/miniconda/envs/_test/lib/python2.7/site-packages#'"$PWD"'/src/py/g' ./.coverage
+  - sed -e 's#'"$HOME"'/miniconda/envs/_test/lib/python2.7/site-packages#'"$PWD"'/src/py#g' ./.coverage
+  - sed -i -e 's#'"$HOME"'/miniconda/envs/_test/lib/python2.7/site-packages#'"$PWD"'/src/py#g' ./.coverage
   - cat .coverage
 
 after_success:
