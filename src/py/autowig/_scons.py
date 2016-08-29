@@ -1,9 +1,6 @@
 """
 """
 
-from pygments import highlight
-from pygments.lexers import BashSessionLexer
-from pygments.formatters import HtmlFormatter
 from path import path
 import subprocess
 
