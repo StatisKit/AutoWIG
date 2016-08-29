@@ -28,7 +28,7 @@ before_script:
 
 script:
   - mv conda/python-autowig/.coverage ./.coverage
-  - sed -i -e 's/\/home\/travis\/miniconda\/envs\/_test\/lib\/python2.7\/site-packages/src/g' ./.coverage
+  - sed -i -e 's/\/home\/travis\/miniconda\/envs\/_test\/lib\/python2.7\/site-packages/\/home\/travis\/build\/StatisKit\/AutoWIG\/src/g' ./.coverage
 
 after_success:
   - coveralls
