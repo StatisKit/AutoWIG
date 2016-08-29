@@ -27,9 +27,6 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
         variantdir += os.sep
     wrappers = dict()
     for line in err.splitlines():
-        if 'wrapper' in line:
-            import pdb
-            pdb.set_trace()
         parsed = parse.parse(variantdir+'{filename}:{row}:{column}:{message}', line)
         if parsed:
             try:
