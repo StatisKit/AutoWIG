@@ -1025,7 +1025,7 @@ namespace autowig { template<class T> using HeldType = ${held_type}; }
         self._asg[self._node]['_helder'] = helder
    
     @helder.deleter
-    def helder(self, helder):
+    def helder(self):
         self._asg[self._node].pop('_helder', 'raw')
 
 BoostPythonHeaderFileProxy.content = property(BoostPythonHeaderFileProxy.get_content)
