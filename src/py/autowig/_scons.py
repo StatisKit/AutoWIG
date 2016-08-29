@@ -8,10 +8,9 @@ __all__ = ['scons']
 
 class ShellSession(object):
 
-    def __init__(self, out, err, lexer=BashSessionLexer()):
+    def __init__(self, out, err):
         self.out = out
         self.err = str(err)
-        self.lexer = lexer
 
     def __str__(self):
         return self.out + self.err
@@ -24,7 +23,6 @@ def scons(directory, *args, **kwargs):
         kwargs['stdout'] = subprocess.PIPE
     if kwargs.pop('err', True):
         kwargs['stderr'] = subprocess.PIPE
-    lexer = kwargs.pop('lexer', None)
     s = subprocess.Popen(['scons']+[arg for arg in args] , cwd=directory, **kwargs)
     out, err = s.communicate()
-    return ShellSession(out, err, lexer=lexer)
+    return ShellSession(out, err)

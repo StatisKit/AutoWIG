@@ -1,3 +1,4 @@
+test-warnings: true
 pylint:
   disable:
     - protected-access
