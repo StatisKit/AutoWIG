@@ -23,7 +23,6 @@ def scons(directory, *args, **kwargs):
         kwargs['stdout'] = subprocess.PIPE
     if kwargs.pop('err', True):
         kwargs['stderr'] = subprocess.PIPE
-    lexer = kwargs.pop('lexer', None)
     s = subprocess.Popen(['scons']+[arg for arg in args] , cwd=directory, **kwargs)
     out, err = s.communicate()
-    return ShellSession(out, err, lexer=lexer)
+    return ShellSession(out, err)
