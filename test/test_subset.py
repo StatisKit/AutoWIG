@@ -5,7 +5,6 @@ from git import Repo
 import subprocess
 import sys
 import __builtin__
-import sys
 
 import autowig
 
@@ -156,8 +155,6 @@ class TestSubset(unittest.TestCase):
                              + asg.nodes('::clang::ASTContext::getAllocator')):
                     node.boost_python_export = False
                     
-            import sys
-            from path import path
             for header in (path(sys.prefix)/'include'/'clang').walkfiles('*.h'):
                 asg[header.abspath()].is_external_dependency = False
             
