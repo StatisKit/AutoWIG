@@ -8,10 +8,9 @@ __all__ = ['scons']
 
 class ShellSession(object):
 
-    def __init__(self, out, err, lexer=BashSessionLexer()):
+    def __init__(self, out, err):
         self.out = out
         self.err = str(err)
-        self.lexer = lexer
 
     def __str__(self):
         return self.out + self.err
