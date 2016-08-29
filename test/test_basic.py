@@ -1,10 +1,5 @@
-import os
 import unittest
-import sys 
 from path import path
-from SCons.Script.Main import AddOption, GetOption
-from SCons.Environment import Environment
-from SCons.Script import Variables, Main
 import __builtin__
 
 import autowig
@@ -48,10 +43,13 @@ class TestBasic(unittest.TestCase):
 
         for wrapper in self.srcdir.walkfiles('wrapper_*.cpp'):
             wrapper.unlink()
-        wrapper = self.srcdir/'_module.cpp'
+        wrapper = self.srcdir/'_module.h'
         if wrapper.exists():
             wrapper.unlink()
         wrapper = self.srcdir/'_module.py'
+        if wrapper.exists():
+            wrapper.unlink()
+        wrapper = self.srcdir/'_module.cpp'
         if wrapper.exists():
             wrapper.unlink()
 
