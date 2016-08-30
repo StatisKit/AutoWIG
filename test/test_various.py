@@ -118,12 +118,12 @@ Default("build")
         module.write()
 
 
-        s = subprocess.Popen(['scons']+[arg for arg in args] , cwd=directory, **kwargs)
+        s = subprocess.Popen(['scons', 'py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         prev, curr = s.communicate()
 
         while not prev == curr:
             prev = curr
-            code = autowig.feedback(err, '.', asg)
+            code = autowig.feedback(curr, '.', asg)
             if code:
                 exec(code, locals())
 
