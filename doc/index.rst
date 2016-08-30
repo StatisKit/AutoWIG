@@ -6,9 +6,9 @@ Installation
 .. toctree::
     :maxdepth: 2
 
-    anaconda
-    source
-    docker
+    install/anaconda
+    install/source
+    install/docker
 
 Documentation
 =============
