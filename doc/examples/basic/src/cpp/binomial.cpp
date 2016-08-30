@@ -16,6 +16,9 @@ BinomialDistribution::BinomialDistribution(const BinomialDistribution& binomial)
     _pi = binomial._pi;
 }
 
+BinomialDistribution::~BinomialDistribution()
+{}
+
 double BinomialDistribution::pmf(const unsigned int value) const
 {
     double p;

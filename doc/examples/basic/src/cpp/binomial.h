@@ -12,6 +12,7 @@ class BinomialDistribution
   public:
     BinomialDistribution(const unsigned int n, const double pi);
     BinomialDistribution(const BinomialDistribution& binomial);
+    ~BinomialDistribution();
     
     //! \brief Compute the probability of a value
     //! \details The probability is given by the flowwing formula \cite{JKK96}
