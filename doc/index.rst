@@ -18,11 +18,11 @@ Documentation
 
     quick_start
     user_guide
-    reference_guide
+    api
+    contributing
     examples/index.ipynb
     faq
 
-.. include:: examples/index.ipynb
 
 License
 =======
