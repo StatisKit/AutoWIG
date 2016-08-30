@@ -1,0 +1,51 @@
+# -*-python-*-
+
+import os
+import sys
+import itertools
+from distutils import sysconfig
+
+operating_system = os.name.lower()
+platform = sys.platform.lower()
+
+Import("env")
+
+pyenv = env.Clone()
+
+header = pyenv.Glob('*.h')
+if len(header) == 1:
+    cmd = pyenv.Command(header[0].target_from_source('', '.h.gch'), header, '$CXX -o $TARGET -x c++-header -c -fPIC $SHCXXFLAGS $_CCCOMCOM $SOURCE')
+
+targets = list(itertools.chain(*[pyenv.SharedObject(None, source) for source in pyenv.Glob('*.cpp')]))
+if len(header) == 1:
+    pyenv.Depends(targets, cmd)
+
+source = pyenv.File('response_file.rsp')
+with open(source.abspath, 'w') as filehandler:
+    filehandler.write(' '.join(target.abspath.replace('\\','/') + ' ' for target in targets))
+
+pyenv.AppendUnique(LINKFLAGS = ['@' + source.abspath])
+target = str(pyenv.File("basic/__module").srcnode()) 
+
+pyenv.AppendUnique(LIBS = ['basic'])
+
+kwargs = dict()
+
+if operating_system == 'nt':
+    kwargs['SHLIBSUFFIX'] = '.pyd'
+else:
+    kwargs['SHLIBSUFFIX'] = '.so'
+
+kwargs['SHLIBPREFIX'] = ''
+
+if operating_system == "posix":
+    pyenv.AppendUnique(CXXFLAGS = ['-ftemplate-depth-100'])
+
+
+
+wrap = pyenv.LoadableModule(target, [], LDMODULESUFFIX='.so',
+        FRAMEWORKSFLAGS = '-flat_namespace -undefined suppress', **kwargs)
+pyenv.Depends(wrap, targets)
+
+Alias("py", wrap)
+Alias("build", wrap)

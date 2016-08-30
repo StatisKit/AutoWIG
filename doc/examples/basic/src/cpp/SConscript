@@ -1,0 +1,29 @@
+# -*-python-*-
+
+
+import SCons.Action
+import SCons.Builder
+import SCons.Scanner.C
+import SCons.Util
+import SCons.Script
+ 
+import os
+bn = os.path.basename
+
+Import("env")
+
+cppenv = env.Clone()
+
+headers = cppenv.Glob('*.h*')
+includes = cppenv.Install(os.path.join(cppenv['PREFIX'], "include", "basic"), headers)
+
+Alias("cpp", includes)
+Alias("build", includes)
+
+sources = cppenv.Glob('*.cpp')
+if cppenv.get("static"):
+    lib = cppenv.StaticLibrary(os.path.join(cppenv['PREFIX'], "lib", "basic"), sources)
+else:
+    lib = cppenv.SharedLibrary(os.path.join(cppenv['PREFIX'], "lib", "basic"), sources)
+Alias("cpp", lib)
+Alias("build", lib)

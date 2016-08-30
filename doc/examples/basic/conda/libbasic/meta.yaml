@@ -1,13 +1,13 @@
 package:
-  name: basic
+  name: libbasic
   version: "1.0.0"
 
 source:
-  path: .
+  path: ../..
 
 build:
   number: 0
-  script: scons --prefix={{ PREFIX }}
+  script: scons cpp --prefix={{ PREFIX }} -j{{ CPU_COUNT }}
 
 about:
   home: http://autowig.readthedocs.io/
