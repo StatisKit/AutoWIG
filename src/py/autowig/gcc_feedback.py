@@ -17,8 +17,6 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
     else:
         variantdir = directory
     indent = kwargs.pop('indent', 0)
-    tabsize = kwargs.pop('tabsize', None)
-    filename = kwargs.pop('filename', None)
     directory = str(directory.abspath()) + os.sep
     variantdir = str(variantdir.relpath(directory))
     if variantdir == '.':
@@ -43,27 +41,9 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
     code = []
     for wrapper, rows in wrappers.iteritems():
         wrapper = asg[wrapper]
-        if len(rows) == 1:
-            row = rows[-1]
-            edit = getattr(wrapper, '_feedback', None)
-            if edit:
-                with open(wrapper.globalname, 'r') as filehandler:
-                    lines = filehandler.readlines()
-                    if len(lines) == row and force:
-                        code.extend(edit(None).splitlines())
-                    else:
-                        code.extend(edit(row).splitlines())
-        else:
-            edit = getattr(wrapper, '_feedback', None)
-            if edit:
-                for row in rows:
-                    code.extend(edit(row).splitlines())
+        for row in rows:
+            code.extend(wrapper.edit(row).splitlines())
     code = "\t" * indent + ("\n" + "\t" * indent).join(code for code in code if code)
     if not code.isspace():
         code += '\n'
-        if tabsize:
-            code = code.expandtabs(tabsize)
-        if filename:
-            with open(filename, 'w') as filehandler:
-                filehandler.write(code)
-        return code
+    return code

@@ -39,3 +39,6 @@ build-scons
 
 # Gedit
 *.*~
+
+# Coverage
+.coverage

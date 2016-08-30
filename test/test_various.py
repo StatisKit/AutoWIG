@@ -4,7 +4,7 @@ import __builtin__
 
 import autowig
 
-class TestFeedBack(unittest.TestCase):
+class TestVarious(unittest.TestCase):
     """Test the feedback of a SCons results"""
 
     @classmethod
@@ -16,6 +16,14 @@ class TestFeedBack(unittest.TestCase):
 namespace test
 {
     typedef std::pair< const double, double > Point;
+
+    enum {
+        RED,
+        GREEN,
+        BLUE
+    };
+
+    int color;
 }""")
 
         with open('SConstruct', 'w') as filehandler:
@@ -84,6 +92,9 @@ Default("build")
         module = autowig.generator(asg, module = self.srcdir/'_module.cpp',
                                      decorator = self.srcdir/'_module.py',
                                      prefix = 'wrapper_')
+
+        from autowig._controller import cleaning
+        cleaning(asg)
 
         module.write()
         compilation = autowig.scons(self.srcdir, 'build')

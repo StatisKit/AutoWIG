@@ -232,7 +232,7 @@ def _default_boost_python_export(self):
 FunctionProxy._default_boost_python_export = property(_default_boost_python_export)
 
 def _valid_boost_python_export(self):
-    if boost_python_call_policy(self) == 'boost::python::return_value_policy< boost::python::reference_existing_object >()':
+    if self.boost_python_call_policy == 'boost::python::return_value_policy< boost::python::reference_existing_object >()':
         if not isinstance(self.return_type.desugared_type.unqualified_type, ClassProxy):
             return False
     if self.return_type.boost_python_export and all(parameter.boost_python_export for parameter in self.parameters):
@@ -252,7 +252,7 @@ ConstructorProxy._valid_boost_python_export = property(_valid_boost_python_expor
 del _valid_boost_python_export
 
 def _valid_boost_python_export(self):
-    if boost_python_call_policy(self) in ['boost::python::return_internal_reference<>()',
+    if self.boost_python_call_policy in ['boost::python::return_internal_reference<>()',
                                           'boost::python::return_value_policy< boost::python::reference_existing_object >()']:
         if not isinstance(self.return_type.desugared_type.unqualified_type, ClassProxy):
             return False
@@ -299,19 +299,6 @@ class BoostPythonExportFileProxy(FileProxy):
     @depth.deleter
     def del_depth(self):
         self._asg._nodes[self._node].pop('_depth')
-
-    @property
-    def scope(self):
-        if hasattr(self, '_scope'):
-            return self._scope
-
-    @scope.setter
-    def scope(self, scope):
-        self._asg._nodes[self._node]['_scope'] = scope
-
-    @scope.deleter
-    def del_scope(self):
-        self._asg._nodes[self._node].pop('_scope')
 
     @property
     def module(self):
@@ -395,8 +382,8 @@ function_pointer_${function.hash}\
     % else:
 ${function.globalname}\
     % endif
-    % if call_policy(function):
-, ${call_policy(function)}\
+    % if function.boost_python_call_policy:
+, ${function.boost_python_call_policy}\
     % endif
 , "${documenter(function)}");""")
 
@@ -489,8 +476,8 @@ method_pointer_${method.hash}, \
                 % else:
 &${method.globalname}, \
                 % endif
-                % if call_policy(method):
-${call_policy(method)}, \
+                % if method.boost_python_call_policy:
+${method.boost_python_call_policy}, \
                 % endif
 "${documenter(method)}");
                 % if method.return_type.is_reference and not method.return_type.is_const and method.return_type.unqualified_type.is_assignable:
@@ -504,8 +491,8 @@ ${call_policy(method)}, \
     % for function in cls.functions():
         % if function.boost_python_export:
     class_${cls.hash}.def("${node_rename(function)}", function_group::function_${function.hash}, \
-                % if call_policy(function):
-${call_policy(function)}, \
+                % if function.boost_python_call_policy:
+${function.boost_python_call_policy}, \
                 % endif
 "${documenter(function)}");
         % endif
@@ -609,13 +596,11 @@ ${field.globalname}, "${documenter(field)}");
             elif isinstance(arg, FunctionProxy):
                 content += '\n' + self.FUNCTION.render(function = arg,
                         node_rename = node_rename,
-                        documenter = documenter,
-                        call_policy = boost_python_call_policy)
+                        documenter = documenter)
             elif isinstance(arg, ClassProxy):
                 content += '\n' + self.CLASS.render(cls = arg,
                         node_rename = node_rename,
-                        documenter = documenter,
-                        call_policy = boost_python_call_policy)
+                        documenter = documenter)
             elif isinstance(arg, TypedefProxy):
                 continue
             else:
@@ -623,12 +608,7 @@ ${field.globalname}, "${documenter(field)}");
         content += '\n}'
         return content
 
-    def _feedback(self, row):
-        if row is None:
-            return '\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False"
-                             for declaration in self.declarations
-                             if isinstance(declaration, ClassProxy)) + \
-                    "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n"
+    def edit(self, row):
         if row <= 0:
             raise ValueError()
         if not self.on_disk:
@@ -704,6 +684,9 @@ ${field.globalname}, "${documenter(field)}");
 
                     else:
                         return ""
+            else:
+                return ('\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False" for declaration in self.declarations if isinstance(declaration, ClassProxy))
+                        + "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n")
         return ""
 
 
@@ -920,14 +903,12 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
             elif isinstance(arg, FunctionProxy):
                 content += '\n' + self.FUNCTION.render(function = arg,
                         node_rename = node_rename,
-                        documenter = documenter,
-                        call_policy = boost_python_call_policy)
+                        documenter = documenter)
             elif isinstance(arg, ClassTemplateSpecializationProxy):
                 if arg.globalname not in self.IGNORE and arg.specialize.globalname not in self.IGNORE:
                     content += '\n' + self.CLASS.render(cls = arg,
                             node_rename = node_rename,
-                            documenter = documenter,
-                            call_policy = boost_python_call_policy)
+                            documenter = documenter)
                 if arg.specialize.globalname in self.TO:
                     content += '\n' + self.TO[arg.specialize.globalname].render(cls = arg)
                 elif arg.globalname in self.TO:
@@ -940,8 +921,7 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                 if arg.globalname not in self.IGNORE:
                     content += '\n' + self.CLASS.render(cls = arg,
                             node_rename = node_rename,
-                            documenter = documenter,
-                            call_policy = boost_python_call_policy)
+                            documenter = documenter)
                 if arg.globalname in self.TO:
                     content += '\n' + self.TO[arg.globalname].render(cls = arg)
                 if arg.globalname in self.FROM:
