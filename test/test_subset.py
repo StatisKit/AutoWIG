@@ -87,10 +87,7 @@ class TestSubset(unittest.TestCase):
                              silent = True)
 
         def clanglite_controller(asg):
-                
-            from autowig.boost_python_generator import BoostPythonExportBasicFileProxy
-            BoostPythonExportBasicFileProxy.HELDTYPE = "namespace autowig { template<class T> using HeldType = T*; }"
-            
+                            
             for node in asg['::boost::python'].classes(nested = True):
                 node.is_copyable = True
                 
