@@ -69,13 +69,6 @@ class TestBasic(unittest.TestCase):
         module.write()
         autowig.scons(self.srcdir, 'build')
 
-    def test_basic_export(self):
-        """Test `basic` export"""
-        proxy = autowig.boost_python_export.proxy
-        autowig.boost_python_export.proxy = 'basic'
-        self.test_mapping_export()
-        autowig.boost_python_export.proxy = proxy
-
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
         plugin = autowig.parser.plugin

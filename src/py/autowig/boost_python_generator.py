@@ -77,10 +77,7 @@ def boost_python_default_call_policy(node):
 
 def boost_python_visitor(node):
     if getattr(node, 'boost_python_export', False):
-        if isinstance(node, ClassTemplateSpecializationProxy) and node.is_smart_pointer:
-            return node.templates[0].desugared_type.unqualified_type.boost_python_export
-        else:
-            return True
+        return True
     else:
         return isinstance(node, FundamentalTypeProxy)
 
@@ -93,7 +90,7 @@ def get_boost_python_export(self):
     else:
         if desugared_type.is_class and not desugared_type.unqualified_type.is_copyable:
             if desugared_type.is_reference and desugared_type.is_const or not desugared_type.is_qualified:
-                return getattr(desugared_type.unqualified_type, 'is_smart_pointer', False)
+                return False
         return desugared_type.unqualified_type.boost_python_export
 
 def set_boost_python_export(self, boost_python_export):
@@ -331,7 +328,7 @@ class BoostPythonExportFileProxy(FileProxy):
     def edit(self, line):
         pass
 
-class BoostPythonExportBasicFileProxy(BoostPythonExportFileProxy):
+class BoostPythonExportDefaultFileProxy(BoostPythonExportFileProxy):
 
     language = 'c++'
 
@@ -530,170 +527,6 @@ ${field.globalname}, "${documenter(field)}");
     boost::python::register_exception_translator< ${cls.globalname} >(&autowig::translate_${cls.hash});
 % endif""")
 
-    @property
-    def is_empty(self):
-        return len(self._declarations) == 0
-
-    @property
-    def depth(self):
-        if self.is_empty:
-            return 0
-        else:
-            depth = 0
-            for declaration in self.declarations:
-                if isinstance(declaration, ClassProxy):
-                    depth = max(declaration.depth, depth)
-                elif isinstance(declaration, VariableProxy):
-                    target = declaration.qualified_type.desugared_type.unqualified_type
-                    if isinstance(target, ClassTemplateSpecializationProxy) and target.is_smart_pointer:
-                        target = target.templates[0].target
-                    if isinstance(target, ClassProxy):
-                        depth = max(target.depth+1, depth)
-            return depth
-
-    @property
-    def scope(self):
-        if len(self._declarations) > 0:
-            declaration = self.declarations[0]
-            if isinstance(declaration, (ClassProxy, EnumerationProxy, NamespaceProxy)):
-                return declaration
-            else:
-                return declaration.parent
-
-    @property
-    def scopes(self):
-        if len(self._declarations) > 0:
-            return self.declarations[0].ancestors[1:]
-        else:
-            return []
-
-    @property
-    def _content(self):
-        content = '#include "' + self.header.localname + '"\n'
-        for arg in self.declarations:
-            if isinstance(arg, ClassProxy) and arg.is_error:
-                content += '\n\n' + self.ERROR.render(error = arg)
-        for arg in self.declarations:
-            if isinstance(arg, ClassProxy):
-                content += '\n\n' + self.DECORATOR.render(cls = arg)
-        content += '\n\nvoid ' + self.prefix + '()\n{\n'
-        content += self.SCOPE.render(scopes = self.scopes,
-                node_rename = node_rename,
-                documenter = documenter)
-        for arg in self.declarations:
-            if isinstance(arg, EnumeratorProxy):
-                content += '\n' + self.ENUMERATOR.render(enumerator = arg,
-                        node_rename = node_rename,
-                        documenter = documenter)
-            elif isinstance(arg, EnumerationProxy):
-                content += '\n' + self.ENUMERATION.render(enumeration = arg,
-                        node_rename = node_rename,
-                        documenter = documenter)
-            elif isinstance(arg, VariableProxy):
-                content += '\n' + self.VARIABLE.render(variable = arg,
-                        node_rename = node_rename,
-                        documenter = documenter)
-            elif isinstance(arg, FunctionProxy):
-                content += '\n' + self.FUNCTION.render(function = arg,
-                        node_rename = node_rename,
-                        documenter = documenter)
-            elif isinstance(arg, ClassProxy):
-                content += '\n' + self.CLASS.render(cls = arg,
-                        node_rename = node_rename,
-                        documenter = documenter)
-            elif isinstance(arg, TypedefProxy):
-                continue
-            else:
-                raise NotImplementedError(arg.__class__.__name__)
-        content += '\n}'
-        return content
-
-    def edit(self, row):
-        if row <= 0:
-            raise ValueError()
-        if not self.on_disk:
-            raise ValueError()
-        with open(self.globalname, 'r') as filehandler:
-            lines = filehandler.readlines()
-            if not row == len(lines):
-                row = row - 1
-                line = lines[row]
-                parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', line)
-                if parsed:
-                    return "if asg['" + parsed["globalname"] + "'].is_copyable:\n\tasg['" + parsed["globalname"] + "'].is_copyable = False\nelse:\n\tasg['" + parsed["globalname"] + "'].boost_python_export = False\n\t\n\tif '" + self.globalname + "' in asg:\n\t\tasg['" + self.globalname + "'].remove()\n"
-                else:
-                    while row > 0 and parsed is None:
-                        row = row - 1
-                        parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', lines[row])
-                    row = row + 1
-                    while row < len(lines) and parsed is None:
-                        parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', lines[row])
-                        row = row + 1
-                    if parsed:
-                        node = self._asg[parsed["globalname"]]
-                        parsed = parse.parse('    class_{hash}.def(boost::python::init< {parameters} >({documentation}));', line)
-                        if not parsed:
-                            parsed = parse.parse('    class_{hash}.def(boost::python::init<  >({documentation}));', line)
-                        if parsed:
-                            return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype == '" + node.localname + "(" + parsed.named.get("parameters","") + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak\n"
-                        else:
-                            parsed = parse.parse('    class_{hash}.def{what}({python}, {cpp}, {documentation});', line)
-                            if not parsed:
-                                parsed = parse.parse('    class_{hash}.def({python}, {cpp}, {documentation});', line)
-                            if parsed:
-                                if 'what' not in parsed.named:
-                                    if parsed['cpp'].startswith('method_pointer_'):
-                                        pointer = parsed['cpp']
-                                        parsed = None
-                                        while row > 0 and parsed is None:
-                                            row = row - 1
-                                            parsed = parse.parse('    {return_type} (::{scope}::*'+ pointer + ')({parameters}){cv}= {globalname};', lines[row])
-                                            if not parsed:
-                                                parsed = parse.parse('    {return_type} (::{scope}::*'+ pointer + ')(){cv}= {globalname};', lines[row])
-                                        if parsed:
-                                            localname = parsed["globalname"].split('::')[-1]
-                                            return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
-                                        else:
-                                            row = row + 1
-                                            while row < len(lines) and parsed is None:
-                                                parsed = parse.parse('    {return_type} (*'+ pointer + ')({parameters}){cv}= {globalname};', lines[row])
-                                                if not parsed:
-                                                    parsed = parse.parse('    {return_type} (*'+ pointer + ')(){cv}= {globalname};', lines[row])
-                                                row = row + 1
-                                            if parsed:
-                                                localname = parsed["globalname"].split('::')[-1]
-                                                return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == 'static " + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
-                                            else:
-                                                return ""
-                                    elif parsed['cpp'].startswith('function_pointer_'):
-                                        return ""
-                                    else:
-                                        localname = parsed["cpp"].split('::')[-1]
-                                        return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.localname == '" + localname + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
-                                else:
-                                    return "asg['" + parsed['cpp'].lstrip('&') + "'].boost_python_export = False"
-                            else:
-                                parsed = parse.parse('    {return_type} ({pointer})({parameters}){cv}= {globalname};', line)
-                                if not parsed:
-                                    parsed = parse.parse('    {return_type} ({pointer})(){cv}= {globalname};', line)
-                                if parsed:
-                                    localname = parsed["globalname"].split('::')[-1]
-                                    return "for method in asg['" + node.globalname + "'].methods(access='public') + asg['" + node.globalname + "'].functions():\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
-                                else:
-                                    return ""
-
-                    else:
-                        return ""
-            else:
-                return ('\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False" for declaration in self.declarations if isinstance(declaration, ClassProxy))
-                        + "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n")
-        return ""
-
-
-
-
-
-class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
 
     TO = {
             "class ::std::unique_ptr" : Template(r"""\
@@ -872,11 +705,44 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
                 "struct ::boost::python::detail::str_base",
                 "struct ::boost::python::detail::void_return",
                 "struct ::boost::python::detail::tuple_base"}
-                    
-    def get_content(self):
-        #if self.localname == 'wrapper_0f744e8d056f5d469a887c7c78eaf8fe.cpp':
-        #    import pdb
-        #    pdb.set_trace()
+
+    @property
+    def is_empty(self):
+        return len(self._declarations) == 0
+
+    @property
+    def depth(self):
+        if self.is_empty:
+            return 0
+        else:
+            depth = 0
+            for declaration in self.declarations:
+                if isinstance(declaration, ClassProxy):
+                    depth = max(declaration.depth, depth)
+                elif isinstance(declaration, VariableProxy):
+                    target = declaration.qualified_type.desugared_type.unqualified_type
+                    if isinstance(target, ClassProxy):
+                        depth = max(target.depth+1, depth)
+            return depth
+
+    @property
+    def scope(self):
+        if len(self._declarations) > 0:
+            declaration = self.declarations[0]
+            if isinstance(declaration, (ClassProxy, EnumerationProxy, NamespaceProxy)):
+                return declaration
+            else:
+                return declaration.parent
+
+    @property
+    def scopes(self):
+        if len(self._declarations) > 0:
+            return self.declarations[0].ancestors[1:]
+        else:
+            return []
+           
+    @property         
+    def _content(self):
         content = '#include "' + self.header.localname + '"\n'
         for arg in self.declarations:
             if isinstance(arg, ClassProxy) and arg.is_error:
@@ -933,7 +799,87 @@ class BoostPythonExportMappingFileProxy(BoostPythonExportBasicFileProxy):
         content += '\n}'
         return content
 
-BoostPythonExportMappingFileProxy._content = property(BoostPythonExportMappingFileProxy.get_content)
+    def edit(self, row):
+        if row <= 0:
+            raise ValueError()
+        if not self.on_disk:
+            raise ValueError()
+        with open(self.globalname, 'r') as filehandler:
+            lines = filehandler.readlines()
+            if not row == len(lines):
+                row = row - 1
+                line = lines[row]
+                parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', line)
+                if parsed:
+                    return "if asg['" + parsed["globalname"] + "'].is_copyable:\n\tasg['" + parsed["globalname"] + "'].is_copyable = False\nelse:\n\tasg['" + parsed["globalname"] + "'].boost_python_export = False\n\t\n\tif '" + self.globalname + "' in asg:\n\t\tasg['" + self.globalname + "'].remove()\n"
+                else:
+                    while row > 0 and parsed is None:
+                        row = row - 1
+                        parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', lines[row])
+                    row = row + 1
+                    while row < len(lines) and parsed is None:
+                        parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', lines[row])
+                        row = row + 1
+                    if parsed:
+                        node = self._asg[parsed["globalname"]]
+                        parsed = parse.parse('    class_{hash}.def(boost::python::init< {parameters} >({documentation}));', line)
+                        if not parsed:
+                            parsed = parse.parse('    class_{hash}.def(boost::python::init<  >({documentation}));', line)
+                        if parsed:
+                            return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype == '" + node.localname + "(" + parsed.named.get("parameters","") + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak\n"
+                        else:
+                            parsed = parse.parse('    class_{hash}.def{what}({python}, {cpp}, {documentation});', line)
+                            if not parsed:
+                                parsed = parse.parse('    class_{hash}.def({python}, {cpp}, {documentation});', line)
+                            if parsed:
+                                if 'what' not in parsed.named:
+                                    if parsed['cpp'].startswith('method_pointer_'):
+                                        pointer = parsed['cpp']
+                                        parsed = None
+                                        while row > 0 and parsed is None:
+                                            row = row - 1
+                                            parsed = parse.parse('    {return_type} (::{scope}::*'+ pointer + ')({parameters}){cv}= {globalname};', lines[row])
+                                            if not parsed:
+                                                parsed = parse.parse('    {return_type} (::{scope}::*'+ pointer + ')(){cv}= {globalname};', lines[row])
+                                        if parsed:
+                                            localname = parsed["globalname"].split('::')[-1]
+                                            return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
+                                        else:
+                                            row = row + 1
+                                            while row < len(lines) and parsed is None:
+                                                parsed = parse.parse('    {return_type} (*'+ pointer + ')({parameters}){cv}= {globalname};', lines[row])
+                                                if not parsed:
+                                                    parsed = parse.parse('    {return_type} (*'+ pointer + ')(){cv}= {globalname};', lines[row])
+                                                row = row + 1
+                                            if parsed:
+                                                localname = parsed["globalname"].split('::')[-1]
+                                                return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == 'static " + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
+                                            else:
+                                                return ""
+                                    elif parsed['cpp'].startswith('function_pointer_'):
+                                        return ""
+                                    else:
+                                        localname = parsed["cpp"].split('::')[-1]
+                                        return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.localname == '" + localname + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
+                                else:
+                                    return "asg['" + parsed['cpp'].lstrip('&') + "'].boost_python_export = False"
+                            else:
+                                parsed = parse.parse('    {return_type} ({pointer})({parameters}){cv}= {globalname};', line)
+                                if not parsed:
+                                    parsed = parse.parse('    {return_type} ({pointer})(){cv}= {globalname};', line)
+                                if parsed:
+                                    localname = parsed["globalname"].split('::')[-1]
+                                    return "for method in asg['" + node.globalname + "'].methods(access='public') + asg['" + node.globalname + "'].functions():\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
+                                else:
+                                    return ""
+
+                    else:
+                        return ""
+            else:
+                return ('\n'.join("asg['" + declaration.globalname + "'].boost_python_export = False" for declaration in self.declarations if isinstance(declaration, ClassProxy))
+                        + "\nif '" + self.globalname + "' in asg:\n\tasg['" + self.globalname + "'].remove()\n")
+        return ""
+
 
 def boost_python_exports(self, *args, **kwargs):
     return [export for export in self.files(*args, **kwargs) if isinstance(export, BoostPythonExportFileProxy)]

@@ -1334,10 +1334,6 @@ class TemplateSpecializationProxy(object):
         return self._asg[specialize]
 
     @property
-    def is_smart_pointer(self):
-        return self.specialize.is_smart_pointer
-
-    @property
     def access(self):
         return self._asg._nodes[self._node].get('_access', self.specialize.access)
 
@@ -1389,18 +1385,6 @@ class ClassTemplateProxy(DeclarationProxy):
             return [spec for spec in self.specializations(None) if isinstance(spec, ClassTemplatePartialSpecializationProxy)]
         else:
             return [spec for spec in self.specializations(None) if isinstance(spec, ClassTemplateSpecializationProxy)]
-
-    @property
-    def is_smart_pointer(self):
-        return getattr(self, '_is_smart_pointer', False)
-
-    @is_smart_pointer.setter
-    def is_smart_pointer(self, is_smart_pointer):
-        self._asg._nodes[self._node]['_is_smart_pointer'] = is_smart_pointer
-
-    @is_smart_pointer.deleter
-    def del_is_smart_pointer(self):
-        self._asg._nodes[self._node].pop('_is_smart_pointer', False)
 
     @property
     def is_copyable(self):
@@ -1681,8 +1665,6 @@ class AbstractSemanticGraph(object):
                         for template in node.templates:
                             if visitor(template):
                                 white.append(template.desugared_type.unqualified_type)
-                    #if isinstance(node, ClassTemplateSpecializationProxy) and node.is_smart_pointer:
-                    #    white.append(node.templates[0].desugared_type.unqualified_type)
                 elif isinstance(node, ClassTemplateProxy):
                     continue
                 elif isinstance(node, NamespaceProxy):

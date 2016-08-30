@@ -4,18 +4,36 @@ import __builtin__
 
 import autowig
 
-class TestVarious(unittest.TestCase):
+class TestFeedback(unittest.TestCase):
     """Test the feedback of a SCons results"""
 
     @classmethod
     def setUpClass(cls):
         with open('test.h', 'w') as filehandler:
             filehandler.write("""
-#include <utility>
+#include <string>
 
 namespace test
 {
-    typedef std::pair< const double, double > Point;
+    template<class T, class U>
+    class Pair
+    {
+        public:
+            Pair(const std::string& first, const std::string& second)
+            { 
+                this->first = first;
+                this->second = second;
+            };
+
+            void swap(const Pair< T, U >& pair)
+            { this->first = pair.first; this->second = pair.second; }
+
+        protected:
+            T first;
+            U second;
+    };
+
+    typedef Pair< const double, double > Point;
 
     enum {
         RED,
@@ -65,8 +83,8 @@ Default("build")
         autowig.feedback.plugin = 'gcc-5'
         cls.srcdir = path('.').abspath()
 
-    def test_feedback_export(self):
-        """Test `feedback` export"""
+    def test_with_none_overload_export(self, overload="none"):
+        """Test `feedback` with 'none' overload"""
 
         for wrapper in self.srcdir.walkfiles('wrapper_*.cpp'):
             wrapper.unlink()
@@ -101,11 +119,20 @@ Default("build")
 
         err = ''
 
-        #import pdb
-        #pdb.set_trace()
-
         while not err == compilation.err:
             err = compilation.err
             code = autowig.feedback(err, '.', asg)
             if code:
                 exec(code, locals())
+
+    def test_with_all_overload_export(self):
+        """Test `feedback` with 'all' overload"""
+        self.test_with_none_overload_export(overload="all")
+
+    def test_with_class_overload_export(self):
+        """Test `feedback` with 'class' overload"""
+        self.test_with_none_overload_export(overload="class")
+
+    def test_with_namespace_overload_export(self):
+        """Test `feedback` with 'namespace' overload"""
+        self.test_with_none_overload_export(overload="namespace")
