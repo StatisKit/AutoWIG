@@ -20,7 +20,9 @@ Documentation
     user_guide
     reference_guide
     examples/index.ipynb
-    faq 
+    faq
+
+.. include:: examples/index.ipynb
 
 License
 =======
