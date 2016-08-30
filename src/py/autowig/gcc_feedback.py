@@ -2,11 +2,8 @@ import os
 import parse
 from path import path
 
-from ._scons import ShellSession
 
 def gcc_5_feedback(err, directory, asg, **kwargs):
-    if isinstance(err, ShellSession):
-        err = err.err
     if not isinstance(err, basestring):
         raise TypeError('\'err\' parameter')
     if not isinstance(directory, path):

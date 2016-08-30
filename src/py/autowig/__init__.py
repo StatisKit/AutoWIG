@@ -33,5 +33,3 @@ boost_python_decorator.proxy = 'default'
 
 from ._generator import generator
 generator.plugin = 'boost_python'
-
-from ._scons import scons

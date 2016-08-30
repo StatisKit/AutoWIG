@@ -1,4 +1,5 @@
 import unittest
+import subprocess
 from path import path
 import __builtin__
 
@@ -115,12 +116,13 @@ Default("build")
         cleaning(asg)
 
         module.write()
-        compilation = autowig.scons(self.srcdir, 'build')
 
-        err = ''
 
-        while not err == compilation.err:
-            err = compilation.err
+        s = subprocess.Popen(['scons']+[arg for arg in args] , cwd=directory, **kwargs)
+        prev, curr = s.communicate()
+
+        while not prev == curr:
+            prev = curr
             code = autowig.feedback(err, '.', asg)
             if code:
                 exec(code, locals())

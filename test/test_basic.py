@@ -1,5 +1,6 @@
 import unittest
 import sys
+import subprocess
 from path import path
 import __builtin__
 
@@ -54,12 +55,12 @@ class TestBasic(unittest.TestCase):
         if wrapper.exists():
             wrapper.unlink()
             
-        autowig.scons(self.tgt.parent.parent, 'cpp')
+        subprocess.check_call(['scons', 'cpp', '-C', self.tgt.parent.parent])
 
         asg = autowig.AbstractSemanticGraph()
 
         asg = autowig.parser(asg, self.src.files('*.h'),
-                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.src)],
+                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.src.parent)],
                                   silent = True)
 
         autowig.controller.plugin = 'default'
@@ -70,7 +71,7 @@ class TestBasic(unittest.TestCase):
                                         prefix = 'wrapper_')
         wrappers.write()
         
-        autowig.scons(self.tgt.parent.parent, 'py')
+        subprocess.check_call(['scons', 'py', '-C', self.tgt.parent.parent])
 
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
