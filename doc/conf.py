@@ -40,7 +40,8 @@ extensions = [
     #'sphinxcontrib.blockdiag',
     #'sphinx_gallery.gen_gallery',
     'nbsphinx',
-    'sphinxcontrib.bibtex'
+    'sphinxcontrib.bibtex',
+    'sphinx.ext.autosummary'
 ]
 
 # sphinx_gallery_conf = {
@@ -297,9 +298,7 @@ intersphinx_mapping = {'http://docs.python.org/': None}
 numfig = True
 numfig_format = {'figure': 'Fig. %s', 'table': 'Tab. %s', 'code-block': 'Lst. %s'}
 
-nbsphinx_execute = 'always'
-nbsphinx_allow_errors = True
-nbsphinx_timeout = 600
+nbsphinx_execute = 'never'
 
 rst_epilog = """
 
