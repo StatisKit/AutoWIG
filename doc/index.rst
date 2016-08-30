@@ -21,7 +21,7 @@ Documentation
     api
     contributing
     examples/index.ipynb
-    faq
+    faq/index.rst
 
 
 License
