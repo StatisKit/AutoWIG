@@ -1,5 +1,0 @@
-nbsphinx
-sphinxcontrib-bibtex
-sphinx-gallery
-jupyter>=1.0.0
-sphinx>=1.4.6
