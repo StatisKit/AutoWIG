@@ -1,9 +1,8 @@
 .. _faq-how-to-windows
 
-How to install **AutoWIG** on Windows ?
-=======================================
+How to use **AutoWIG** on Windows or MacOS ?
+============================================
 
-Currently, **AutoWIG** is not supported on Windows.
-However, *Windows 10’s Anniversary Update* offers a `ubuntu based shell <https://msdn.microsoft.com/fr-fr/commandline/wsl/install_guide>`_.
-This shell can therefore be used to install **AutoWIG** on your Windows machine without requiring to install a Linux virtual machine.
-One this shell is launched, please follow the :ref:`install-source` procedure.
+Currently, **AutoWIG** is not supported on Windows nor MacOS.
+However, we procide a **Docker** image that can be used on these operating systems.
+Please follow the :ref:`using-docker` procedure.
