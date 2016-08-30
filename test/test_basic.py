@@ -35,13 +35,13 @@ class TestBasic(unittest.TestCase):
     def setUpClass(cls):
         autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
-        cls.rootdir = path('.').abspath()
-        cls.srcdir = cls.rootdir/'doc'/'examples'/'basic'
+        cls.tgt = path('.').abspath()/'doc'/'examples'/'basic'/'src'/'py'
+        cls.src = path(sys.path).abspath()/'include'/'basic'
 
     def test_mapping_export(self):
         """Test `mapping` export"""
 
-        for wrapper in self.srcdir.walkfiles('wrapper_*.cpp'):
+        for wrapper in self.src.walkfiles('wrapper_*.cpp'):
             wrapper.unlink()
         wrapper = self.srcdir/'_module.h'
         if wrapper.exists():
@@ -52,22 +52,24 @@ class TestBasic(unittest.TestCase):
         wrapper = self.srcdir/'_module.cpp'
         if wrapper.exists():
             wrapper.unlink()
+            
+        autowig.scons(cls.tgt.parent.parent, 'cpp')
 
         asg = autowig.AbstractSemanticGraph()
 
-        asg = autowig.parser(asg, [self.srcdir/'overload.h', self.srcdir/'binomial.h'],
-                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.srcdir)],
+        asg = autowig.parser(asg, self.cppdir.files(*.h'),
+                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.src)],
                                   silent = True)
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
-        module = autowig.generator(asg, module = self.srcdir/'_module.cpp',
-                                     decorator = self.srcdir/'_module.py',
-                                     prefix = 'wrapper_')
-
-        module.write()
-        autowig.scons(self.srcdir, 'build')
+        wrappers = autowig.generator(asg, module = self.tgt/'_module.cpp',
+                                        decorator = self.tgt/'basic'/'_module.py',
+                                        prefix = 'wrapper_')
+        wrappers.write()
+        
+        autowig.scons(self.tgt.parent.parent, 'py')
 
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
