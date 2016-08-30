@@ -1,4 +1,5 @@
 import unittest
+import sys
 from path import path
 import __builtin__
 
@@ -36,28 +37,28 @@ class TestBasic(unittest.TestCase):
         autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
         cls.tgt = path('.').abspath()/'doc'/'examples'/'basic'/'src'/'py'
-        cls.src = path(sys.path).abspath()/'include'/'basic'
+        cls.src = path(sys.prefix).abspath()/'include'/'basic'
 
     def test_mapping_export(self):
         """Test `mapping` export"""
 
-        for wrapper in self.src.walkfiles('wrapper_*.cpp'):
+        for wrapper in self.tgt.walkfiles('wrapper_*.cpp'):
             wrapper.unlink()
-        wrapper = self.srcdir/'_module.h'
+        wrapper = self.tgt/'_module.h'
         if wrapper.exists():
             wrapper.unlink()
-        wrapper = self.srcdir/'_module.py'
+        wrapper = self.tgt/'_module.py'
         if wrapper.exists():
             wrapper.unlink()
-        wrapper = self.srcdir/'_module.cpp'
+        wrapper = self.tgt/'_module.cpp'
         if wrapper.exists():
             wrapper.unlink()
             
-        autowig.scons(cls.tgt.parent.parent, 'cpp')
+        autowig.scons(self.tgt.parent.parent, 'cpp')
 
         asg = autowig.AbstractSemanticGraph()
 
-        asg = autowig.parser(asg, self.cppdir.files(*.h'),
+        asg = autowig.parser(asg, self.src.files('*.h'),
                                   ['-x', 'c++', '-std=c++11', '-I' + str(self.src)],
                                   silent = True)
 

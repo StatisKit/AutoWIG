@@ -6,6 +6,8 @@ channels:
 dependencies:
  - python-autowig
  - python-clanglite
+ - python-scons
+ - gitpython
  - jupyter
  - sphinx
  - pip:
