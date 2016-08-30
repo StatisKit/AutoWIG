@@ -1,1 +1,1 @@
-from __module import BinomialDistribution, Overload
+from __module import BinomialDistribution, Overload, ProbabilityError
