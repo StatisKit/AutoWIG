@@ -19,6 +19,7 @@ before_install:
     - conda install conda-build
 
 install:
+    - conda install curl
     - pip install coverage
     - pip install coveralls
     - pip install nose
