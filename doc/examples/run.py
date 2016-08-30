@@ -2,7 +2,7 @@ import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
 from path import path
 
-nbdir = path('.').asbpath()
+nbdir = path('.').abspath()
 
 ep = ExecutePreprocessor()
 for notebook in nbdir.files('*.ipynb'):
