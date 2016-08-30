@@ -9,4 +9,4 @@ Frequently Asked Questions
 
 .. toctree::
 
-    faq/how_to_windows
+    faq/how_to_windows_macos
