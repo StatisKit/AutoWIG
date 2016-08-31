@@ -306,9 +306,9 @@ def name_formatter(node):
     elif isinstance(node, TypedefProxy):
         node = node.qualified_type.desugared_type.unqualified_type
     if node.boost_python_export and node.boost_python_export is not True:
-        module = node.boost_python_export.module
+        decorator = node.boost_python_export.module.decorator
         parent = node.parent
-        name = '`' + module.package + '.' + '.'.join(node_rename(ancestor, scope=True) for ancestor in parent.ancestors[1:])
+        name = '`' + decorator.package + '.' + '.'.join(node_rename(ancestor, scope=True) for ancestor in parent.ancestors[1:])
         if parent.globalname == '::':
             name += node_rename(node) + '`'
         elif parent.parent.globalname == '::':
