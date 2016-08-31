@@ -17,7 +17,7 @@ In order to install **AutoWIG** from source code we recommand to use:
 
 This is done by typing the following commands in shell:
 
-.. literalinclude:: ../conda/build.sh
+.. literalinclude:: ../../conda/build.sh
 
 .. warning::
 
