@@ -16,7 +16,6 @@ Documentation
 .. toctree::
     :maxdepth: 2
 
-    quick_start
     user_guide
     api
     contributing

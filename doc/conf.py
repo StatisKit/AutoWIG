@@ -301,7 +301,6 @@ numfig_format = {'figure': 'Fig. %s', 'table': 'Tab. %s', 'code-block': 'Lst. %s
 
 nbsphinx_execute = 'auto'
 nbsphinx_timeout = 60
-nbsphinx_allow_errors = True
 
 rst_epilog = """
 
