@@ -38,3 +38,12 @@ You can therefore use:
   * On Windows refers to this `post <http://manomarks.github.io/2015/12/03/docker-gui-windows.html>`_.
   
   * On MacOs refers to this `post <https://github.com/docker/docker/issues/8710>`_.
+
+.. note::
+
+  This **Docker** image is generated using the following `Dockerfile`.
+  
+  .. literalinclude:: ../../Dockerfile
+  
+  This `Dockerfile` is also used on **Binder** in order to enusre reproducability of presented examples (see :ref:`Examples`).
+  More information can be found on the **Binder** `documentation <http://docs.mybinder.org/>`_.
