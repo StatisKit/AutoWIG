@@ -9,7 +9,7 @@ dependencies:
  - python-scons
  - gitpython
  - jupyter
- - sphinx
+ - sphinx>=1.3.6
  - pip:
    - nbsphinx
    - sphinxcontrib-bibtex
