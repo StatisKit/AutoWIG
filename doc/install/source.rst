@@ -3,23 +3,26 @@
 Installation from source code
 =============================
 
-In order to install **AutoWIG** from source code we recommand to use:
+In order to install **AutoWIG** from source code we recommand to:
 
-* The source code available on *GitHub* (see `Git <https://git-scm.com/>`_ and `GitHub <https://github.com/>`_ websites for more information).
+* Download the source code available on *GitHub* (see `Git <https://git-scm.com/>`_ and `GitHub <https://github.com/>`_ websites for more information).
+
+  .. code-block:: bash
+  
+      git clone https://github.com/StatisKit/AutoWIG.git
+     
 * The conda recipes present on *GitHub* repositories (see `conda <http://conda.pydata.org/docs/>`_ website for more information).
  
+  .. literalinclude:: ../../conda/build.sh
+
+  .. note::
+ 
+      Following this procedure do not install *Python* packages in develop mode.
+      
+  .. warning::
+
+      This installation has only been tested on **Ubuntu**.
+      
 .. note::
 
     When installing **AutoWIG** from source code, it is highly recommanded to first install **PyClangLite** from source code (refers to its `installation guide <http://pyclanglite.readthedocs.io/en/latest/source.html>`_).
-
-This is done by typing the following commands in shell:
-
-.. literalinclude:: ../../conda/build.sh
-
-.. warning::
-
-    This installation has only been tested on **Ubuntu**.
-    
-.. note::
- 
-    Following this procedure do not install *Python* packages in develop mode.
