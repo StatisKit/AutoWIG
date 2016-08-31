@@ -10,9 +10,9 @@ Then, you can use the :code:`statiskit/autowig:trusty` **Docker** image to run *
 
 .. code-block:: console
 
-  $ docker run -it statiskit/autowig:trusty
+  $ docker run -it statiskit/autowig
   
-Note that, for convenience **IPython** and **Jupyter** packages are installed.
+For convenience **IPython** and **Jupyter** packages are aleary installed.
 You can therefore use:
 
 * The **IPython** console.
