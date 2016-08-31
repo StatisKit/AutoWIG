@@ -1,14 +1,3 @@
-from .asg import (HeaderProxy,
-                  TypedefProxy,
-                  EnumerationProxy,
-                  FunctionProxy,
-                  ConstructorProxy,
-                  ClassProxy,
-                  ClassTemplateSpecializationProxy,
-                  ClassTemplateProxy,
-                  VariableProxy,
-                  ClassTemplatePartialSpecializationProxy)
-
 from ._controller import refactoring, cleaning
 
 __all__ = []
