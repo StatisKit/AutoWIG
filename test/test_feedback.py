@@ -1,7 +1,6 @@
 import unittest
 import subprocess
 from path import path
-import __builtin__
 
 import autowig
 
@@ -106,7 +105,7 @@ Default("build")
                                   silent = True)
 
         autowig.controller.plugin = 'default'
-        autowig.controller(asg)
+        autowig.controller(asg, overload=overload)
 
         module = autowig.generator(asg, module = self.srcdir/'_module.cpp',
                                      decorator = self.srcdir/'_module.py',
@@ -118,7 +117,8 @@ Default("build")
         module.write()
 
 
-        s = subprocess.Popen(['scons', 'py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        s = subprocess.Popen(['scons', 'py'],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         prev, curr = s.communicate()
 
         while not prev == curr:
