@@ -1,5 +1,3 @@
-from dateutil.relativedelta import relativedelta
-
 __all__ = ['camel_case_to_lower', 'to_camel_case', 'camel_case_to_upper']
 
 def subclasses(cls, recursive=True):
