@@ -34,7 +34,6 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
                         wrappers[node].append(row)
             except:
                 pass
-    force = kwargs.pop('force', False)
     code = []
     for wrapper, rows in wrappers.iteritems():
         wrapper = asg[wrapper]
