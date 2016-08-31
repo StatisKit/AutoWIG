@@ -41,7 +41,8 @@ extensions = [
     #'sphinx_gallery.gen_gallery',
     'nbsphinx',
     'sphinxcontrib.bibtex',
-    'sphinx.ext.autosummary'
+    'sphinx.ext.autosummary',
+    'IPython.sphinxext.ipython_console_highlighting'
 ]
 
 # sphinx_gallery_conf = {
@@ -298,9 +299,9 @@ intersphinx_mapping = {'http://docs.python.org/': None}
 numfig = True
 numfig_format = {'figure': 'Fig. %s', 'table': 'Tab. %s', 'code-block': 'Lst. %s'}
 
-nbsphinx_execute = 'always'
+nbsphinx_execute = 'auto'
+nbsphinx_timeout = 60
 nbsphinx_allow_errors = True
-nbsphinx_timeout = 600
 
 rst_epilog = """
 
