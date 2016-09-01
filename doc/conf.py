@@ -37,29 +37,11 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
-    #'sphinxcontrib.blockdiag',
-    #'sphinx_gallery.gen_gallery',
     'nbsphinx',
     'sphinxcontrib.bibtex',
     'sphinx.ext.autosummary',
     'IPython.sphinxext.ipython_console_highlighting'
 ]
-
-# sphinx_gallery_conf = {
-#     # path to your examples scripts
-#     'examples_dirs' : './examples',
-#     # path where to save gallery generated examples
-#     'gallery_dirs'  : 'auto_examples',
-#     'filename_pattern' : os.sep + '*'
-#     }
-
-
-numfig = True
-
-todo_include_todos = True
-
-# Fontpath for blockdiag (truetype font)
-blockdiag_fontpath = '/usr/share/fonts/truetype/ipafont/ipagp.ttf'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -296,32 +278,16 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
 
+todo_include_todos = True
+
+blockdiag_fontpath = '/usr/share/fonts/truetype/ipafont/ipagp.ttf'
+
 numfig = True
 numfig_format = {'figure': 'Fig. %s', 'table': 'Tab. %s', 'code-block': 'Lst. %s'}
 
-nbsphinx_execute = 'auto'
+nbsphinx_execute = 'never'
 nbsphinx_timeout = 60
 
 rst_epilog = """
 
 """
-
-# if on_rtd:
-#     warn('debug -syspath -edit: %s'%os.path.abspath('../..'))
-#     sys.path.insert(0, os.path.abspath('../..'))
-
-#     class Mock(MagicMock):
-
-#         @classmethod
-#         def __getattr__(cls, name):
-#             return Mock()
-
-#         @classmethod
-#         def __getitem__(cls, name):
-#             return Mock()
-
-
-#     MOCK_MODULES = []
-
-#     for mod_name in MOCK_MODULES:
-#         sys.modules.update({mod_name: Mock()})
