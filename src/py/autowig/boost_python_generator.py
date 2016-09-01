@@ -1182,14 +1182,15 @@ import ${dependency.package}.${dependency.prefix}
 % endif
 
 # Import Boost.Python module
-import ${decorator.package}._${module.prefix}
+import _${module.prefix}
 """)
 
     SCOPES = Template(text=r"""\
 % if len(scopes) > 0:
 # Resolve scopes
     % for scope in scopes:
-${decorator.package}._${module.prefix}.${".".join(node_rename(ancestor) for ancestor in scope.ancestors[1:])}.${node_rename(scope)} = ${decorator.package}._${module.prefix}.${".".join(node_rename(ancestor, scope=True) for ancestor in scope.ancestors[1:])}.${node_rename(scope)}
+_${module.prefix}.${".".join(node_rename(ancestor) for ancestor in scope.ancestors[1:])}.${node_rename(scope)} = \
+_${module.prefix}.${".".join(node_rename(ancestor, scope=True) for ancestor in scope.ancestors[1:])}.${node_rename(scope)}
     % endfor
 % endif
 """)
@@ -1198,9 +1199,10 @@ ${decorator.package}._${module.prefix}.${".".join(node_rename(ancestor) for ance
 % if templates:
 # Group template specializations
     % for tpl, spcs in templates:
-${decorator.package}._${module.prefix}.\
+_${module.prefix}.\
         % if len(tpl.ancestors) > 1:
-${".".join(node_rename(ancestor) for ancestor in tpl.ancestors[1:])}.${node_rename(tpl)} = [${", ".join([decorator.package + '._' + module.prefix + "." + ".".join(node_rename(ancestor) for ancestor in spc.ancestors[1:]) + "." + node_rename(spc) for spc in spcs])}]
+${".".join(node_rename(ancestor) for ancestor in tpl.ancestors[1:])}.${node_rename(tpl)} = \
+[${", ".join([decorator.package + '._' + module.prefix + "." + ".".join(node_rename(ancestor) for ancestor in spc.ancestors[1:]) + "." + node_rename(spc) for spc in spcs])}]
         % else:
 ${node_rename(tpl)} = [${", ".join([decorator.package + '._' + module.prefix + "." + node_rename(spc) for spc in spcs])}]
         % endif
@@ -1211,11 +1213,16 @@ ${node_rename(tpl)} = [${", ".join([decorator.package + '._' + module.prefix + "
 % if typedefs:
 # Define aliases
     % for tdf in typedefs:
-${decorator.package}._${module.prefix}.\
+_${module.prefix}.\
         % if len(tdf.ancestors) > 1:
 ${".".join(node_rename(ancestor) for ancestor in tdf.ancestors[1:])}.\
         % endif
-${node_rename(tdf)} = ${tdf.qualified_type.desugared_type.unqualified_type.boost_python_export.module.decorator.package}._${tdf.qualified_type.desugared_type.unqualified_type.boost_python_export.module.prefix}.\
+<% target = tdf.qualified_type.desugared_type.unqualified_type.boost_python_export.module.decorator %>\
+        % if target.globalname == module.globalname:
+${node_rename(tdf)} = _${module.prefix}.\
+        % else:
+${node_rename(tdf)} = ${target.package}._${target.module.prefix}.\
+        % endif
         % if len(tdf.qualified_type.desugared_type.unqualified_type.ancestors) > 1:
 ${".".join(node_rename(ancestor) for ancestor in tdf.qualified_type.desugared_type.unqualified_type.ancestors[1:])}.\
         % endif
