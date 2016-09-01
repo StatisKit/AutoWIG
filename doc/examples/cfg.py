@@ -1,1 +1,4 @@
-c.ExecutePreprocessor.timeout = 600
+ c.NbConvertApp.notebooks = ["basic.ipynb"]
+
+c.ExecutePreprocessor.timeout = 60
+
