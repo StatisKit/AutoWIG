@@ -12,7 +12,6 @@ Our approach is automatic, extensible, and applies to very complex *C++* librari
 
 .. sidebar:: Summary
 
-    :Version: |VERSION|
     :Status: |TRAVIS| |COVERALLS| |LANDSCAPE| |READTHEDOCS|
     :License: |LICENSE|
     :Authors: |AUTHORS|
