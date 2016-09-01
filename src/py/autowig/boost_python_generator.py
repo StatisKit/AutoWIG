@@ -1202,9 +1202,9 @@ _${module.prefix}.${".".join(node_rename(ancestor, scope=True) for ancestor in s
 _${module.prefix}.\
         % if len(tpl.ancestors) > 1:
 ${".".join(node_rename(ancestor) for ancestor in tpl.ancestors[1:])}.${node_rename(tpl)} = \
-[${", ".join([decorator.package + '._' + module.prefix + "." + ".".join(node_rename(ancestor) for ancestor in spc.ancestors[1:]) + "." + node_rename(spc) for spc in spcs])}]
+[${", ".join(['_' + module.prefix + "." + ".".join(node_rename(ancestor) for ancestor in spc.ancestors[1:]) + "." + node_rename(spc) for spc in spcs])}]
         % else:
-${node_rename(tpl)} = [${", ".join([decorator.package + '._' + module.prefix + "." + node_rename(spc) for spc in spcs])}]
+${node_rename(tpl)} = [${", ".join(['_' + module.prefix + "." + node_rename(spc) for spc in spcs])}]
         % endif
     % endfor
 % endif""")
@@ -1218,10 +1218,11 @@ _${module.prefix}.\
 ${".".join(node_rename(ancestor) for ancestor in tdf.ancestors[1:])}.\
         % endif
 <% target = tdf.qualified_type.desugared_type.unqualified_type.boost_python_export.module.decorator %>\
+${node_rename(tdf)} = \
         % if target.globalname == module.globalname:
-${node_rename(tdf)} = _${module.prefix}.\
+_${module.prefix}.\
         % else:
-${node_rename(tdf)} = ${target.package}._${target.module.prefix}.\
+${target.package}._${target.module.prefix}.\
         % endif
         % if len(tdf.qualified_type.desugared_type.unqualified_type.ancestors) > 1:
 ${".".join(node_rename(ancestor) for ancestor in tdf.qualified_type.desugared_type.unqualified_type.ancestors[1:])}.\
