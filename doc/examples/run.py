@@ -1,7 +1,7 @@
 import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
 
-def mngnb(configpath='doc/conf.py', as_version=4):
+def mngithub_notebook(configpath='doc/conf.py', as_version=4):
     configpath = path(configpath)
     configdict = dict()
     if configpath.is_file():

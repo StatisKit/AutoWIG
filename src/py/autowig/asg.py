@@ -1110,6 +1110,10 @@ class ClassProxy(DeclarationProxy):
     def is_abstract(self):
         return self._is_abstract
 
+    @is_abstract.setter
+    def is_abstract(self, is_abstract):
+        self._asg._nodes[self._node]['_is_abstract'] = is_abstract
+
     @property
     def is_instantiable(self):
         if hasattr(self, '_is_instantiable'):
