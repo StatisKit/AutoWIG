@@ -25,7 +25,7 @@ double BinomialDistribution::pmf(const unsigned int value) const
     if(value > n)
     { p = 0; }
     else
-    { p = factorial(n)/(factorial(n-value) * factorial(value)) * pow(1-p, n-value) * pow(p, value); }
+    { p = factorial(n)/(factorial(n-value) * factorial(value)) * pow(1-_pi, n-value) * pow(_pi, value); }
     return p;
 }
 
