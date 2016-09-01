@@ -1219,7 +1219,7 @@ ${".".join(node_rename(ancestor) for ancestor in tdf.ancestors[1:])}.\
         % endif
 <% target = tdf.qualified_type.desugared_type.unqualified_type.boost_python_export.module.decorator %>\
 ${node_rename(tdf)} = \
-        % if target.globalname == module.globalname:
+        % if target.globalname == module.decorator.globalname:
 _${module.prefix}.\
         % else:
 ${target.package}._${target.module.prefix}.\
