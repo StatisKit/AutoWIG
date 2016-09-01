@@ -24,7 +24,7 @@ class TemplateRender(object):
                 if not builtin in context:
                     context[builtin] = getattr(__builtin__, builtin)
             return globals()["render_body"](**context)
-    	return __call__
+        return __call__
 
 from autowig.boost_python_generator import Template
 
