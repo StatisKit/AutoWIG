@@ -30,7 +30,7 @@ License
 
 .. note:: 
 
-    |LICENSEPAGE| is a LGPL compatible license.
+    |LICENSEPAGE| is LGPL compatible.
     
 Authors
 =======
