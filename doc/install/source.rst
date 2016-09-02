@@ -3,6 +3,10 @@
 Installation from source code
 =============================
 
+.. note::
+
+    When installing **AutoWIG** from source code, it is highly recommanded to first install **PyClangLite** from source code (refers to its `installation guide <http://pyclanglite.readthedocs.io/en/latest/source.html>`_).
+    
 In order to install **AutoWIG** from source code we recommand to:
 
 * Download the source code available on *GitHub* (see `Git <https://git-scm.com/>`_ and `GitHub <https://github.com/>`_ websites for more information).
@@ -22,7 +26,7 @@ In order to install **AutoWIG** from source code we recommand to:
   .. warning::
 
       This installation has only been tested on **Ubuntu**.
-      
-.. note::
 
-    When installing **AutoWIG** from source code, it is highly recommanded to first install **PyClangLite** from source code (refers to its `installation guide <http://pyclanglite.readthedocs.io/en/latest/source.html>`_).
+.. warning::
+
+    When installing **AutoWIG** from source code, it is highly recommanded to install **Boost** libraries from source code (refers to its `installation guide <http://www.boost.org/doc/libs/release/more/getting_started/index.html>`_).
