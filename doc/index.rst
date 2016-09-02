@@ -41,7 +41,6 @@ References
 ==========
 
 .. include:: ./zreferences.rst
-   :all:
 
 .. |LICENSE| replace:: see `License`_ section
 
