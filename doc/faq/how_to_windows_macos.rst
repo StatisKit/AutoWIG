@@ -4,5 +4,5 @@ How to use **AutoWIG** on Windows or MacOS ?
 ============================================
 
 Currently, **AutoWIG** is not supported on Windows nor MacOS.
-However, we procide a **Docker** image that can be used on these operating systems.
+However, we provide a **Docker** image that can be used on these operating systems.
 Please follow the :ref:`using-docker` procedure.
