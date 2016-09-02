@@ -53,3 +53,5 @@ Dependency management between components
     For such cases, it doesn't seem relevant that every wrapped *C++* library contains wrappers for usual **STL** containers (e.g. :code:`std::vector< double >`, :code:`std::set< int >`).
     Moreover, loading in the *Python* interpreter multiple compiled libraries sharing different wrappers from same *C++* components could lead to serious side effects.
     It is therefore required that dependencies across different library bindings can be handled automatically.
+
+.. bibliography:: references.bib
