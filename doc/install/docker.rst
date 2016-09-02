@@ -50,5 +50,5 @@ You can therefore use:
   .. literalinclude:: ../../Dockerfile
      :language: docker
      
-  This `Dockerfile` is also used on **Binder** in order to enusre reproducability of presented examples (see :ref:`Examples`).
+  This `Dockerfile` is also used on **Binder** in order to ensure reproducability of presented examples (see :ref:`Examples`).
   More information can be found on the **Binder** `documentation <http://docs.mybinder.org/>`_.
