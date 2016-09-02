@@ -5,7 +5,7 @@ Using Docker
 
 .. note::
 
-   Docker is an open-source project that automates the deployment of Linux applications inside software containers.
+   **Docker** :cite:`Mer14` is an open-source project that automates the deployment of Linux applications inside software containers.
    
    
 We provide **Docker** images to enable to run **AutoWIG** on various platforms (in particular Windows and MacOS).
