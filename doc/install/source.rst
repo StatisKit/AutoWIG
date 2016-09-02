@@ -15,7 +15,7 @@ In order to install **AutoWIG** from source code we recommand to:
   
       git clone https://github.com/StatisKit/AutoWIG.git
      
-* The conda recipes present on *GitHub* repositories (see `conda <http://conda.pydata.org/docs/>`_ website for more information).
+* Use the conda recipes present on this repository (see `conda <http://conda.pydata.org/docs/>`_ website for more information).
  
   .. literalinclude:: ../../conda/build.sh
 
