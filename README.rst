@@ -44,6 +44,6 @@ Our approach is automatic, extensible, and applies to very complex *C++* librari
                 :target: https://landscape.io/github/StatisKit/AutoWIG/master
                 :alt: Landscape
 
-.. |READTHEDOCS| image:: https://readthedocs.org/projects/AutoWIG/badge/?version=latest
-                :target: http://AutoWIG.readthedocs.io/en/latest
+.. |READTHEDOCS| image:: https://readthedocs.org/projects/AutoWIG/badge/?version=v1.0.0
+                :target: http://AutoWIG.readthedocs.io
                 :alt: Read the Docs
