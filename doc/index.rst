@@ -26,11 +26,11 @@ Documentation
 License
 =======
 
-**AutoWIG** is distributed under the |LICENSELINK|_.
+**AutoWIG** is distributed under the |LICENSEPAGE|_.
 
 .. note:: 
 
-    |LICENSELINK| is a LGPL compatible license.
+    |LICENSEPAGE| is a LGPL compatible license.
     
 Authors
 =======
@@ -41,9 +41,9 @@ Authors
 
 .. |AUTHORS| replace:: see `Authors`_ section
 
-.. |LICENSELINK| replace:: CeCILL-C license
+.. |LICENSEPAGE| replace:: CeCILL-C license
 
-.. _LICENSELINK : license.html
+.. _LICENSEPAGE : license.html
 
 .. |LICENSE| replace:: see `License`_ section
 
