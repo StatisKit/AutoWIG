@@ -37,6 +37,8 @@ Authors
 
 .. include:: ../AUTHORS.rst
 
+.. bibliography:: references.bib
+
 .. |LICENSE| replace:: see `License`_ section
 
 .. |AUTHORS| replace:: see `Authors`_ section
