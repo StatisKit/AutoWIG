@@ -45,7 +45,7 @@ You can therefore use:
 
 .. note::
 
-  This **Docker** image is generated using the following `Dockerfile`.
+  This **Docker** image is generated using the following :download:`../../Dockerfile`.
   
   .. literalinclude:: ../../Dockerfile
      :language: docker
