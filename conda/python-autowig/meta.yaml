@@ -39,7 +39,6 @@ test:
      - python-scons
    commands:
      - cd {{ SRC_DIR }}
-     - echo $SP_DIR
-     - echo $PREFIX
      - nosetests test --pdb -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test
-     - mv .coverage {{ RECIPE_DIR }}
+     - sed -i -e 's#'"$PREFIX"'/python2.7/site-packages#'"$RECIPE_DIR"'../../src/py#g'
+     - mv .coverage {{ RECIPE_DIR }}/../../
