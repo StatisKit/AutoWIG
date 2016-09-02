@@ -17,8 +17,6 @@ Documentation
     :maxdepth: 2
 
     user_guide
-    api
-    contributing
     examples/index.ipynb
     faq/index.rst
 
