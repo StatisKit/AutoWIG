@@ -40,7 +40,8 @@ Authors
 References
 ==========
 
-.. include:: zreferences.rst
+.. include:: ./zreferences.rst
+   :all:
 
 .. |LICENSE| replace:: see `License`_ section
 
