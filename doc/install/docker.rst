@@ -33,7 +33,7 @@ You can therefore use:
   
     .. code-block:: console
   
-      $ docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix statiskit/ubuntu:autowig
+      $ docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix statiskit/autowig
     
   * On Windows refers to this `post <http://manomarks.github.io/2015/12/03/docker-gui-windows.html>`_.
   
