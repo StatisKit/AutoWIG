@@ -40,5 +40,5 @@ test:
    commands:
      - cd {{ SRC_DIR }}
      - nosetests test --pdb -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test
-     - sed -i -e 's#'"$PREFIX"'/python2.7/site-packages#'"$RECIPE_DIR"'../../src/py#g' .coverage
+     - sed -i -e 's#'"$PREFIX"'/lib/python2.7/site-packages#'"$RECIPE_DIR"'../../src/py#g' .coverage
      - mv .coverage {{ RECIPE_DIR }}/../../
