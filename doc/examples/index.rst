@@ -13,6 +13,8 @@ Examples
   In order to able to run these examples, it is possible that you need to rebuild the **Docker** image.
   For this, go to the `Binder status page <http://mybinder.org/status/statiskit/autowig>`_ and click on on the `rebuild` button.
 
+Here are the pre-executed examples:
+
 .. toctree::
   :maxdepth: 2
   
