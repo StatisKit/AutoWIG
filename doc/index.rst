@@ -37,9 +37,6 @@ Authors
 
 .. include:: ../AUTHORS.rst
 
-References
-==========
-
 .. include:: ./zreferences.rst
 
 .. |LICENSE| replace:: see `License`_ section
