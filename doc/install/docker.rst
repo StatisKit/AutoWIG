@@ -44,6 +44,7 @@ You can therefore use:
   This **Docker** image is generated using the following `Dockerfile`.
   
   .. literalinclude:: ../../Dockerfile
-  
+     :language: docker
+     
   This `Dockerfile` is also used on **Binder** in order to enusre reproducability of presented examples (see :ref:`Examples`).
   More information can be found on the **Binder** `documentation <http://docs.mybinder.org/>`_.
