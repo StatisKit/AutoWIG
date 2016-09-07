@@ -17,31 +17,27 @@ Documentation
     :maxdepth: 2
 
     user_guide
-    examples/index.ipynb
-    faq/index.rst
+    examples/index
+    faq/index
 
 
 License
 =======
 
-**AutoWIG** is distributed under the |LICENSEPAGE|_.
+**AutoWIG** is distributed under the |LICENSENAME|_.
 
 .. note:: 
 
-    |LICENSEPAGE| is LGPL compatible.
+    |LICENSENAME| is LGPL compatible.
     
 Authors
 =======
 
 .. include:: ../AUTHORS.rst
 
-.. |LICENSE| replace:: see `License`_ section
+.. |LICENSENAME| replace:: CeCILL-C license
 
-.. |AUTHORS| replace:: see `Authors`_ section
-
-.. |LICENSEPAGE| replace:: CeCILL-C license
-
-.. _LICENSEPAGE : license.html
+.. _LICENSENAME : license.html
 
 .. |LICENSE| replace:: see `License`_ section
 

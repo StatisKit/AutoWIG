@@ -26,9 +26,6 @@ install:
 
 script:
   - bash conda/build.sh
-  #- mv conda/python-autowig/.coverage ./.coverage
-  #- sed -i -e 's#'"$HOME"'/miniconda/envs/_test/lib/python2.7/site-packages#'"$PWD"'/src/py#g' ./.coverage
-  #- sed -i -e 's#'"$HOME"'/miniconda/conda-bld/work/#'"$PWD"'#g' ./.coverage
 
 after_success:
   - coveralls
