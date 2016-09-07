@@ -1,3 +1,6 @@
+set -e
+set -v
+
 # Build python-clang recipe
 conda build conda/python-clang -c statiskit
 conda install python-clang --use-local -c statiskit 

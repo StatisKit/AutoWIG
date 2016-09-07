@@ -19,6 +19,7 @@ In order to install **AutoWIG** from source code we recommand to:
 * Use the conda recipes present on this repository (see `conda <http://conda.pydata.org/docs/>`_ website for more information).
  
   .. literalinclude:: ../../conda/build.sh
+     :lines: 4-
 
   .. note::
  
