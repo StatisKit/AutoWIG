@@ -30,14 +30,18 @@ script:
 after_success:
   - coveralls
   - if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]]; then
-      conda install anaconda-client;
-      anaconda login --username "$ANACONDA_USERNAME" --password "$ANACONDA_PASSWORD";
-      for CONDA_RECIPE in python-clang python-autowig; do
-          CONDA_FILE=`conda build conda/$CONDA_RECIPE --output`; 
-          anaconda upload --user statiskit ${CONDA_FILE%%} --force;
-      done;
-      docker build -t statiskit/autowig .;
-      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
-      docker push statiskit/autowig;
+      if [[ ! -z $ANACONDA_USERNAME ]] && [[ ! -z $ANACONDA_PASSWORD ]]; then
+        conda install anaconda-client;
+        anaconda login --username "$ANACONDA_USERNAME" --password "$ANACONDA_PASSWORD";
+        for CONDA_RECIPE in python-clang python-autowig; do
+            CONDA_FILE=`conda build conda/$CONDA_RECIPE --output`; 
+            anaconda upload --user statiskit ${CONDA_FILE%%} --force;
+        done;
+      fi
+      if [[ ! -z $DOCKER_USERNAME ]] && [[ ! -z $DOCKER_PASSWORD ]]; then
+        docker build -t statiskit/autowig .;
+        docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+        docker push statiskit/autowig;
+      fi
       curl --request POST http://readthedocs.org/build/autowig;
     fi
