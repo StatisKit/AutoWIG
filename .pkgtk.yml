@@ -1,0 +1,16 @@
+about:
+  authors:
+    - Pierre Fernique
+    - Christophe Pradal
+  plugin: github
+authors:
+  basename: CONTRIBUTORS.rst
+  format: '* `{name} <{email}>`_ ({score})'
+  plugin: commit
+license:
+  basename: LICENSE.rst
+  exclude:
+  - ./.git/*
+  - ./build/*
+  plugin: CeCILL-C
+  width: 78

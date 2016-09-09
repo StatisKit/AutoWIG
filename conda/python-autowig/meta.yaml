@@ -17,6 +17,7 @@ requirements:
   build:
     - python
     - pyyaml
+    - python-pkgtk
   run:
     - python
     - mako
