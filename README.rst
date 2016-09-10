@@ -52,7 +52,7 @@ Our approach is automatic, extensible, and applies to very complex *C++* librari
            :target: https://travis-ci.org/StatisKit/AutoWIG
            :alt: Travis
 
-.. |COVERALLS| image:: https://coveralls.io/repos/github/StatisKit/AutoWIG/badge.svg
+.. |COVERALLS| image:: https://coveralls.io/repos/github/StatisKit/AutoWIG/badge.svg?branch=master
                :target: https://coveralls.io/github/StatisKit/AutoWIG?branch=master
                :alt: Coveralls
 
