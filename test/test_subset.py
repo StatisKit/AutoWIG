@@ -1,3 +1,19 @@
+##################################################################################
+#                                                                                #
+# AutoWIG: Automatic Wrapper and Interface Generator                             #
+#                                                                                #
+# Homepage: http://autowig.readthedocs.io                                        #
+#                                                                                #
+# Copyright (c) 2016 Pierre Fernique                                             #
+#                                                                                #
+# This software is distributed under the CeCILL-C license. You should have       #
+# received a copy of the legalcode along with this work. If not, see             #
+# <http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html>.                 #
+#                                                                                #
+# File authors: Pierre Fernique <pfernique@gmail.com> (46)                       #
+#                                                                                #
+##################################################################################
+
 import unittest
 from path import path
 from git import Repo
@@ -38,11 +54,11 @@ from functools import wraps
 def wrapper(f):
     @wraps(f)
     def execfunc(self, *args, **kwargs):
-        global prev
-        if time.time() - prev >= 300:
-            sys.stdout.write('.')
-            sys.stdout.flush()
-            prev = time.time()
+        #global prev
+        #if time.time() - prev >= 300:
+        #    sys.stdout.write('.')
+        #    sys.stdout.flush()
+        #    prev = time.time()
         return f(self, *args, **kwargs)
     return execfunc
 

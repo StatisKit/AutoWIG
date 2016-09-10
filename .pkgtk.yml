@@ -1,0 +1,24 @@
+about:
+  authors:
+  - Pierre Fernique
+  - Christophe Pradal
+  brief: !!python/unicode 'Automatic Wrapper and Interface Generator'
+  email: !!python/unicode 'statiskit@googlegroups.com'
+  homepage: http://autowig.readthedocs.io
+  name: !!python/unicode 'AutoWIG'
+  plugin: github
+  version: v1.0.0
+authors:
+  basename: CONTRIBUTORS.rst
+  format: '* `{name} <{email}>`_ ({score})'
+  plugin: commit
+license:
+  basename: LICENSE.rst
+  exclude:
+  - ./.git/*
+  - ./build/*
+  - ./.pkgtk.yml
+  - ./CONTRIBUTORS.rst
+  - ./LICENSE.rst
+  plugin: CeCILL-C
+  width: 78

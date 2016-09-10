@@ -1,3 +1,19 @@
+.. ................................................................................ ..
+..                                                                                  ..
+..  AutoWIG: Automatic Wrapper and Interface Generator                              ..
+..                                                                                  ..
+..  Homepage: http://autowig.readthedocs.io                                         ..
+..                                                                                  ..
+..  Copyright (c) 2016 Pierre Fernique                                              ..
+..                                                                                  ..
+..  This software is distributed under the CeCILL-C license. You should have        ..
+..  received a copy of the legalcode along with this work. If not, see              ..
+..  <http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html>.                  ..
+..                                                                                  ..
+..  File authors: Pierre Fernique <pfernique@gmail.com> (34)                        ..
+..                                                                                  ..
+.. ................................................................................ ..
+
 AutoWIG: Automatic Wrapper and Interface Generator
 ##################################################
 
@@ -16,19 +32,19 @@ Our approach is automatic, extensible, and applies to very complex *C++* librari
     :License: |LICENSE|
     :Authors: |AUTHORS|
     
-.. |LICENSE| replace:: see |LICENSELINK|_ file
+.. |LICENSE| replace:: see |LICENSEFILE|_ file
 
-.. |AUTHORS| replace:: see |AUTHORSLINK|_ file
+.. |AUTHORS| replace:: see |AUTHORSFILE|_ file
 
 .. |VERSION| replace:: 0.1.0
 
-.. |LICENSELINK| replace:: LICENSE.rst
+.. |LICENSEFILE| replace:: LICENSE.rst
 
-.. _LICENSELINK : LICENSE.rst
+.. _LICENSEFILE : LICENSE.rst
 
-.. |AUTHORSLINK| replace:: AUTHORS.rst
+.. |AUTHORSFILE| replace:: AUTHORS.rst
 
-.. _AUTHORSLINK : AUTHORS.rst
+.. _AUTHORSFILE : AUTHORS.rst
 
 .. |VERSION| replace:: 0.1.0
 

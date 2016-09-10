@@ -1,3 +1,19 @@
+.. ................................................................................ ..
+..                                                                                  ..
+..  AutoWIG: Automatic Wrapper and Interface Generator                              ..
+..                                                                                  ..
+..  Homepage: http://autowig.readthedocs.io                                         ..
+..                                                                                  ..
+..  Copyright (c) 2016 Pierre Fernique                                              ..
+..                                                                                  ..
+..  This software is distributed under the CeCILL-C license. You should have        ..
+..  received a copy of the legalcode along with this work. If not, see              ..
+..  <http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html>.                  ..
+..                                                                                  ..
+..  File authors: Pierre Fernique <pfernique@gmail.com> (31)                        ..
+..                                                                                  ..
+.. ................................................................................ ..
+
 .. include:: ../README.rst
 
 Installation
@@ -17,31 +33,27 @@ Documentation
     :maxdepth: 2
 
     user_guide
-    examples/index.ipynb
-    faq/index.rst
+    examples/index
+    faq/index
 
 
 License
 =======
 
-**AutoWIG** is distributed under the |LICENSEPAGE|_.
+**AutoWIG** is distributed under the |LICENSENAME|_.
 
 .. note:: 
 
-    |LICENSEPAGE| is LGPL compatible.
+    |LICENSENAME| is LGPL compatible.
     
 Authors
 =======
 
 .. include:: ../AUTHORS.rst
 
-.. |LICENSE| replace:: see `License`_ section
+.. |LICENSENAME| replace:: CeCILL-C license
 
-.. |AUTHORS| replace:: see `Authors`_ section
-
-.. |LICENSEPAGE| replace:: CeCILL-C license
-
-.. _LICENSEPAGE : license.html
+.. _LICENSENAME : license.html
 
 .. |LICENSE| replace:: see `License`_ section
 
