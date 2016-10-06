@@ -912,6 +912,9 @@ class BoostPythonHeaderFileProxy(FileProxy):
         return self.module._clean_default
 
     CONTENT = Template(text=r"""\
+#ifndef ${guard}
+#define ${guard}
+
 #include <boost/python.hpp>
 #include <type_traits>\
 % for header in headers:
@@ -931,7 +934,8 @@ extern "C" {
 % endif
 
 namespace autowig { template<class T> using HeldType = ${held_type}; }
-""")
+
+#endif""")
 
     HELDTYPE = {'raw'               : "T*",
                 'std::shared_ptr'   : "std::shared_ptr< T >",
@@ -950,7 +954,8 @@ namespace autowig { template<class T> using HeldType = ${held_type}; }
     def get_content(self):
         return self.CONTENT.render(headers = [header for header in self._asg.files(header=True) if not header.is_external_dependency and header.is_self_contained],
                                    held_type = self.HELDTYPE[self.helder],
-                                   held_header = self.HELDHEADER[self.helder])
+                                   held_header = self.HELDHEADER[self.helder],
+                                   guard = self.guard)
 
     @property
     def helder(self):
@@ -969,6 +974,21 @@ namespace autowig { template<class T> using HeldType = ${held_type}; }
     def helder(self):
         self._asg[self._node].pop('_helder', 'raw')
 
+    @property
+    def guard(self):
+        if not hasattr(self, '_guard'):
+            return 'AUTOWIG_' + self.localname.capitalize()
+        else:
+            return self._guard
+
+    @guard.setter
+    def guard(self, guard):
+        self._asg[self._node]['_guard'] = guard
+   
+    @helder.deleter
+    def guard(self):
+        self._asg[self._node].pop('_guard', '')
+      
 BoostPythonHeaderFileProxy.content = property(BoostPythonHeaderFileProxy.get_content)
 
 class BoostPythonModuleFileProxy(FileProxy):
