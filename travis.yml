@@ -1,0 +1,44 @@
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: required
+      env: BUILD_TARGETS="python-clang python-autowig"
+    - os: linux
+      dist: trusty
+      sudo: required
+      services:
+        - docker
+    - os: osx
+      osx_image: xcode7.2 
+      env: BUILD_TARGETS="python-clang python-autowig"
+
+install:
+  - git clone https://gist.github.com/319558c83d145620a6d4decdcadfbfb0.git config-travis
+  - cd config-travis
+  - source config.sh
+  - cd ..
+
+script:
+  - if [[ ! -z $BUILD_TARGETS ]]; then
+      cd conda;
+      bash build.sh;
+      cd ..;
+    else
+      docker build -t statiskit/autowig;
+    fi
+
+after_success:
+  - if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]] && [[ ! -z $ANACONDA_USERNAME ]]; then
+      cd conda;
+      bash upload.sh;
+      cd ..;
+    fi
+  - if [[ -z $BUILD_TARGETS ]] && [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]] && [[ "$TRAVIS_OS_NAME" = "linux" ]] && [[ ! -z $DOCKER_USERNAME ]]; then
+      set +x;
+      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
+      set -x;
+      docker push statiskit/ubuntu;
+    fi
