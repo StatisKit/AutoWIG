@@ -27,7 +27,7 @@ script:
       bash build.sh;
       cd ..;
     else
-      docker build -t statiskit/autowig;
+      docker build -t statiskit/autowig .;
     fi
 
 after_success:
