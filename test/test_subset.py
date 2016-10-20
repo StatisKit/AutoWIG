@@ -14,6 +14,7 @@
 #                                                                                #
 ##################################################################################
 
+import os
 import unittest
 from path import path
 from git import Repo
@@ -75,7 +76,7 @@ for func in dir(autowig_parser):
 class TestSubset(unittest.TestCase):
     """Test the wrapping of a library subset"""
 
-    @classmethod
+    @classmethodq
     def setUpClass(cls):
         autowig.parser.plugin = 'libclang'
         srcdir = path('PyClangLite')
