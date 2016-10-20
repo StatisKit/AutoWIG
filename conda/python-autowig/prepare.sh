@@ -2,7 +2,7 @@ set -xe
 
 git checkout -b generate_test_patch
 cd ../../test
-sed -i'' -e '91,97d' test_basic.py
+sed -i'' -e '93,99d' test_basic.py
 rm test_feedback.py
 git diff > ../conda/python-autowig/test.patch
 git add test_feedback.py test_basic.py

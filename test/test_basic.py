@@ -87,7 +87,9 @@ class TestBasic(unittest.TestCase):
                                         prefix = 'wrapper_')
         wrappers.write()
         
-        subprocess.check_call(['scons', 'py', '-C', self.tgt.parent.parent])
+        print(self.tgt.parent.parent)
+        print(self.tgt.parent.parent.abspath())
+        subprocess.check_call(['scons', 'py', '-C', self.tgt.parent.parent.abspath()])
 
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
