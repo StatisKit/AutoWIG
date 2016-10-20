@@ -81,7 +81,7 @@ class TestSubset(unittest.TestCase):
         srcdir = path('PyClangLite')
         Repo.clone_from('https://github.com/StatisKit/PyClangLite.git', srcdir.relpath('.'))
         cls.srcdir = srcdir/'src'/'py'
-        subprocess.check_output(['scons', 'cpp', '--prefix=' + sys.prefix, '-C', cls.srcdir.parent.parent.abspath()])
+        subprocess.check_output(['scons', 'cpp', '--prefix=' + sys.prefix, '-C', cls.srcdir.parent.parent.abspath(), '--toolchain=' + os.environ.get('TOOLCHAIN')])
 
     def test_libclang_parser(self):
         """Test `libclang` parser"""
