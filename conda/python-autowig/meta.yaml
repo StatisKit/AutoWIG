@@ -51,8 +51,8 @@ test:
    requires:
      - nose
      - coverage
-     - python-clanglite
-     - gitpython
+     - python-clanglite # [not win]
+     - pytthon-gitpython
      - python-scons
    commands:
      - cd {{ SRC_DIR }}
