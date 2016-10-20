@@ -3,7 +3,6 @@ platform:
 
 environment:
   matrix:
-    - MINICONDA: "2"
     - MINICONDA: "3"
     
 install:
