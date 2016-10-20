@@ -57,7 +57,7 @@ test:
      - python-scons
    commands:
      - cd {{ SRC_DIR }}
-     - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test
+     - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
      - REPOSITORY_DIR=`readlink -e $RECIPE_DIR/../..`
      - sed -i -e 's#'"$PREFIX"'/lib/python2.7/site-packages#'"$REPOSITORY_DIR"'/src/py#g' .coverage
      - sed -i -e 's#'"$SRC_DIR"'#'"$REPOSITORY_DIR"'#g' .coverage
