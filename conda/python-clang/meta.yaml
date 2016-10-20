@@ -24,11 +24,8 @@ source:
 
 build:
   number: 0
-  script :
-    #- sed -i'' -e '3000,3015d;3024,3027d;3609,3613d' $bindings/python/clang/cindex.py
-    - cp -rf bindings/python/clang $SP_DIR # [not win]
-    - mkdir %SP_DIR%\clang # [win]
-    - xcopy bindings\python\clang %SP_DIR%\clang  /sy # [win]
+  #- sed -i'' -e '3000,3015d;3024,3027d;3609,3613d' $bindings/python/clang/cindex.py
+
 
 about:
   home: http://www.llvm.org/
