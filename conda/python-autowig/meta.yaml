@@ -25,7 +25,6 @@ source:
     
 build:
   number: 0
-  script: python setup.py install
 
 
 about:

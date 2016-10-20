@@ -18,7 +18,7 @@ import unittest
 import sys
 import subprocess
 from path import path
-import __builtin__
+import __builtin__ as builtins
 
 import autowig
 
@@ -36,9 +36,9 @@ class TemplateRender(object):
         code = "import operator\n" + code
         exec code in globals()
         def __call__(**context):
-            for builtin in dir(__builtin__):
+            for builtin in dir(builtins):
                 if not builtin in context:
-                    context[builtin] = getattr(__builtin__, builtin)
+                    context[builtin] = getattr(builtins, builtin)
             return globals()["render_body"](**context)
         return __call__
 
