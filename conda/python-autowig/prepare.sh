@@ -1,3 +1,5 @@
+set -xe
+
 git checkout -b generate_test_patch
 cd ../../test
 sed -i'' -e '91,97d' test_basic.py
