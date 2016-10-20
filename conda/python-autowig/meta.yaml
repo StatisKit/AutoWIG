@@ -40,7 +40,7 @@ requirements:
   run:
     - python
     - mako
-    - dateutil
+    - python-dateutil
     - python-parse
     - pygments
     - pypandoc
