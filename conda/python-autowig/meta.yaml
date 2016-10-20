@@ -46,7 +46,6 @@ requirements:
     - pypandoc
     - path.py
     - python-clang
-    - python-git
     - numpy
     - python-pkgtk
 
@@ -55,7 +54,7 @@ test:
      - nose
      - coverage
      - python-clanglite # [not win]
-     - pytthon-gitpython
+     - python-gitpython
      - python-scons
    commands:
      - cd {{ SRC_DIR }}
