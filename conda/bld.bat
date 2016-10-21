@@ -1,65 +1,73 @@
+Setlocal EnableDelayedExpansion
 echo OFF
 
-set REPOSITORY=AutoWIG
-set DEFAULT_BUILD_TARGETS=python-clang python-autowig
+set GITHUB_USERNAME=StatisKit
+set GITHUB_REPOSITORY=AutoWIG
+set DEFAULT_ANACONDA_BUILD_RECIPES=python-clang python-autowig
+set DEFAULT_ANACONDA_CHANNELS=statiskit conda-forge
 
-set ANACONDA_BUILD_FLAGS=-c conda-forge %ANACONDA_BUILD_FLAGS%
-if "%ANACONDA_CHANNEL%" == "" (
-    set ANACONDA_CHANNEL=statiskit
+if "%ANACONDA_CHANNELS%" == "" (
+    set ANACONDA_CHANNELS=%DEFAULT_ANACONDA_CHANNELS%
 ) else (
-    echo "Using anaconda channel: "%ANACONDA_CHANNEL%
-    set ANACONDA_BUILD_FLAGS=-c statiskit %ANACONDA_BUILD_FLAGS%
+    echo "Channels used: "%ANACONDA_CHANNELS%
 )
 
-if "%BUILD_TARGETS%" == "" (
-    set BUILD_TARGETS=%DEFAULT_BUILD_TARGETS%
+set ANACONDA_CHANNEL_FLAGS=
+for %%i in (%ANACONDA_CHANNELS%) do (
+    set "ANACONDA_CHANNEL_FLAGS=!ANACONDA_CHANNEL_FLAGS! -c %%i"
+)
+
+if "%ANACONDA_BUILD_RECIPES%" == "" (
+    set ANACONDA_BUILD_RECIPES=%DEFAULT_ANACONDA_BUILD_RECIPES%
 ) else (
-    echo "Targets to build: "%BUILD_TARGETS%
+    echo Recipes to build: %ANACONDA_BUILD_RECIPES%
 )
 
 echo ON
 
-if not exist bld.bat (
-    if exist %REPOSITORY% (
-        rmdir %REPOSITORY% /s /q
+if not exist ..\..\%GITHUB_REPOSITORY% (
+    if exist %GITHUB_REPOSITORY% (
+        rmdir %GITHUB_REPOSITORY% /s /q
     )
-    git clone https://github.com/%ANACONDA_CHANNEL%/%REPOSITORY%.git
-    if %errorlevel% neq 0 (
-        exit /b %errorlevel%
+    git clone https://github.com/%GITHUB_USERNAME%/%GITHUB_REPOSITORY%.git
+    if errorlevel 1 (
+        exit /b 1
     )
-    cd %REPOSITORY%/conda
+    cd %GITHUB_REPOSITORY%/conda
 )
 
 git clone https://gist.github.com/c491cb08d570beeba2c417826a50a9c3.git toolchain
-if %errorlevel% neq 0 (
-    if exist %REPOSITORY% (
-        rmdir %REPOSITORY% /s /q
+if errorlevel 1 (
+    if exist %GITHUB_REPOSITORY% (
+        rmdir %GITHUB_REPOSITORY% /s /q
     )
-    exit /b %errorlevel%
+    exit /b 1
 )
 cd toolchain
 call config.bat
-if %errorlevel% neq 0 (
+if errorlevel 1 (
     cd ..
-    if exist %REPOSITORY% (
-        rmdir %REPOSITORY% /s /q
+    if exist %GITHUB_REPOSITORY% (
+        rmdir %GITHUB_REPOSITORY% /s /q
     )
     rmdir toolchain /s /q
-    exit /b %errorlevel%
+    exit /b 1
 )
 cd ..
 rmdir toolchain /s /q
 
-for %%x in (%BUILD_TARGETS%) do (
-    conda build %%x -c %ANACONDA_CHANNEL% %ANACONDA_BUILD_FLAGS%
-    if %errorlevel% neq 0 (
-        if exist %REPOSITORY% (
-            rmdir %REPOSITORY% /s /q
+for %%i in (%ANACONDA_BUILD_RECIPES%) do (
+    conda build %%i %ANACONDA_CHANNEL_FLAGS% %ANACONDA_BUILD_FLAGS%
+    if errorlevel 1 (
+        if exist %GITHUB_REPOSITORY% (
+            rmdir %GITHUB_REPOSITORY% /s /q
         )
-        exit /b %errorlevel%
+        exit /b 1
     )
 )
 
-if exist %REPOSITORY% (
-    rmdir %REPOSITORY% /s /q
+if exist %GITHUB_REPOSITORY% (
+    rmdir %GITHUB_REPOSITORY% /s /q
 )
+
+ECHO OFF
