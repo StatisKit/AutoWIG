@@ -27,7 +27,9 @@ script:
       bash build.sh;
       cd ..;
     else
-      docker build -t statiskit/autowig .;
+      cd docker;
+      bash build.sh;
+      cd ..;
     fi
 
 after_success:
@@ -37,8 +39,7 @@ after_success:
       cd ..;
     fi
   - if [[ -z $BUILD_TARGETS ]] && [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]] && [[ "$TRAVIS_OS_NAME" = "linux" ]] && [[ ! -z $DOCKER_USERNAME ]]; then
-      set +x;
-      docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD";
-      set -x;
-      docker push statiskit/ubuntu;
+      cd docker;
+      bash upload.sh;
+      cd ..;
     fi
