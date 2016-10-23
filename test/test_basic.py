@@ -93,7 +93,7 @@ class TestBasic(unittest.TestCase):
         
         print(self.tgt.parent.parent)
         print(self.tgt.parent.parent.abspath())
-        subprocess.check_call(['scons', 'py', , '--toolchain=' + os.environ.get('TOOLCHAIN')],
+        subprocess.check_call(['scons', 'py', '--toolchain=' + os.environ.get('TOOLCHAIN')],
                               cwd=self.tgt.parent.parent,
                               shell=True)
 
