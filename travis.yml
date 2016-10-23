@@ -2,15 +2,18 @@ language: cpp
 
 matrix:
     include:
-        - os: linux
+        -
+            os: linux
             dist: trusty
             sudo: required
-        - os: linux
+        -
+            os: linux
             dist: trusty
             sudo: required
             services:
                 - docker
-        - os: osx
+        -
+            os: osx
             osx_image: xcode7.2 
 
 install:
@@ -20,10 +23,12 @@ install:
     - cd ..
 
 script:
-    -   if [[ "$TRAVIS_OS_NAME" = "osx" ]]; then
+    -
+        if [[ "$TRAVIS_OS_NAME" = "osx" ]]; then
             cat conda/python-autowig/macosx.patch conda/python-autowig/travis-ci.patch > conda/python-autowig/macosx.patch;
         fi
-    -   if [[ ! -z $BUILD_TARGETS ]]; then
+    -
+        if [[ ! -z $BUILD_TARGETS ]]; then
             cd conda;
             bash build.sh;
             cd ..;
@@ -34,12 +39,14 @@ script:
         fi
 
 after_success:
-    -   if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]] && [[ ! -z $ANACONDA_USERNAME ]]; then
+    -
+        if [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]] && [[ ! -z $ANACONDA_USERNAME ]]; then
             cd conda;
             bash upload.sh;
             cd ..;
         fi
-    -   if [[ -z $BUILD_TARGETS ]] && [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]] && [[ "$TRAVIS_OS_NAME" = "linux" ]] && [[ ! -z $DOCKER_USERNAME ]]; then
+    -
+        if [[ -z $BUILD_TARGETS ]] && [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]] && [[ "$TRAVIS_OS_NAME" = "linux" ]] && [[ ! -z $DOCKER_USERNAME ]]; then
             cd docker;
             bash upload.sh;
             cd ..;
