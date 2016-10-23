@@ -21,7 +21,8 @@ package:
 source:
   path: ../..
   patches:
-    - test.patch # [not linux]
+    - windows.patch # [win]
+    - macosx.patch # [osx]
     
 build:
   number: 0

@@ -1,0 +1,434 @@
+diff --git a/conda/python-autowig/prepare.sh b/conda/python-autowig/prepare.sh
+index 98baf53..da715e2 100644
+--- a/conda/python-autowig/prepare.sh
++++ b/conda/python-autowig/prepare.sh
+@@ -1,11 +1,22 @@
+ set -xe
+ 
+-git checkout -b generate_test_patch
+ cd ../../test
+-sed -i'' -e '93,99d' test_basic.py
++
++git checkout -b generate_test_patch
++sed -i'' -e '91,97d' test_basic.py
+ rm test_feedback.py
+-git diff > ../conda/python-autowig/test.patch
++git diff > ../conda/python-autowig/windows.patch
+ git add test_feedback.py test_basic.py
+ git commit -m 'patch generated'
+ git checkout master
++git branch -D generate_test_patch
++
++git checkout -b generate_test_patch
++rm test_feedback.py
++git diff > ../conda/python-autowig/macosx.patch
++rm test_subset.py
++git diff > ../conda/python-autowig/travis-ci.patch
++git add test_feedback.py test_subset.py
++git commit -m 'patch generated'
++git checkout master
+ git branch -D generate_test_patch
+\ No newline at end of file
+diff --git a/conda/python-autowig/test.patch b/conda/python-autowig/test.patch
+deleted file mode 100644
+index 7de5abe..0000000
+--- a/conda/python-autowig/test.patch
++++ /dev/null
+@@ -1,180 +0,0 @@
+-diff --git a/test/test_basic.py b/test/test_basic.py
+-index 82205ba..e9dff64 100644
+---- a/test/test_basic.py
+-+++ b/test/test_basic.py
+-@@ -91,13 +91,6 @@ class TestBasic(unittest.TestCase):
+-         print(self.tgt.parent.parent.abspath())
+-         subprocess.check_call(['scons', 'py', '-C', self.tgt.parent.parent.abspath()])
+- 
+--    def test_pyclanglite_parser(self):
+--        """Test `pyclanglite` parser"""
+--        plugin = autowig.parser.plugin
+--        autowig.parser.plugin = 'pyclanglite'
+--        self.test_mapping_export()
+--        autowig.parser.plugin = plugin
+--
+-     def test_boost_python_pattern_generator(self):
+-         """Test `boost_python_pattern` generator"""
+-         plugin = autowig.generator.plugin
+-diff --git a/test/test_feedback.py b/test/test_feedback.py
+-deleted file mode 100644
+-index eb09168..0000000
+---- a/test/test_feedback.py
+-+++ /dev/null
+-@@ -1,156 +0,0 @@
+--##################################################################################
+--#                                                                                #
+--# AutoWIG: Automatic Wrapper and Interface Generator                             #
+--#                                                                                #
+--# Homepage: http://autowig.readthedocs.io                                        #
+--#                                                                                #
+--# Copyright (c) 2016 Pierre Fernique                                             #
+--#                                                                                #
+--# This software is distributed under the CeCILL-C license. You should have       #
+--# received a copy of the legalcode along with this work. If not, see             #
+--# <http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html>.                 #
+--#                                                                                #
+--# File authors: Pierre Fernique <pfernique@gmail.com> (5)                        #
+--#                                                                                #
+--##################################################################################
+--
+--import unittest
+--import subprocess
+--from path import path
+--
+--import autowig
+--
+--class TestFeedback(unittest.TestCase):
+--    """Test the feedback of a SCons results"""
+--
+--    @classmethod
+--    def setUpClass(cls):
+--        with open('test.h', 'w') as filehandler:
+--            filehandler.write("""
+--#include <string>
+--
+--namespace test
+--{
+--    template<class T, class U>
+--    class Pair
+--    {
+--        public:
+--            Pair(const std::string& first, const std::string& second)
+--            { 
+--                this->first = first;
+--                this->second = second;
+--            };
+--
+--            void swap(const Pair< T, U >& pair)
+--            { this->first = pair.first; this->second = pair.second; }
+--
+--        protected:
+--            T first;
+--            U second;
+--    };
+--
+--    typedef Pair< const double, double > Point;
+--
+--    enum {
+--        RED,
+--        GREEN,
+--        BLUE
+--    };
+--
+--    int color;
+--}""")
+--
+--        with open('SConstruct', 'w') as filehandler:
+--            filehandler.write("""
+--from distutils import sysconfig
+--import sys
+--
+--variables = Variables()
+--
+--env = Environment()
+--variables.Update(env)
+--
+--env.AppendUnique(LIBS = ['boost_python', 'python' + sysconfig.get_python_version()])
+--env.AppendUnique(CPPPATH = [sysconfig.get_python_inc()])
+--env.AppendUnique(CPPDEFINES = ['BOOST_PYTHON_DYNAMIC_LIB'])
+--
+--env.Prepend(CPPPATH=sys.prefix + '/include')
+--env.Prepend(CPPPATH='.')
+--env.Prepend(LIBPATH=sys.prefix + '/lib')
+--
+--env.AppendUnique(CXXFLAGS = ['-x', 'c++',
+--                             '-std=c++0x',
+--                             '-Wwrite-strings'])
+--
+--pyenv = env.Clone()
+--#pyenv.AppendUnique(LIBS = ['basic'])
+--pyenv.AppendUnique(CXXFLAGS = ['-ftemplate-depth-100'])
+--
+--wrap = pyenv.LoadableModule('_module', pyenv.Glob('wrapper_*.cpp') + ['_module.cpp'],
+--                            LDMODULESUFFIX = '.so',
+--                            FRAMEWORKSFLAGS = '-flat_namespace -undefined suppress')
+--Alias("py", wrap)
+--Alias("build", wrap)
+--
+--Default("build")
+--""")
+--        autowig.parser.plugin = 'pyclanglite'
+--        autowig.generator.plugin = 'boost_python_internal'
+--        autowig.feedback.plugin = 'gcc-5'
+--        cls.srcdir = path('.').abspath()
+--
+--    def test_with_none_overload_export(self, overload="none"):
+--        """Test `feedback` with 'none' overload"""
+--
+--        for wrapper in self.srcdir.walkfiles('wrapper_*.cpp'):
+--            wrapper.unlink()
+--        wrapper = self.srcdir/'_module.h'
+--        if wrapper.exists():
+--            wrapper.unlink()
+--        wrapper = self.srcdir/'_module.py'
+--        if wrapper.exists():
+--            wrapper.unlink()
+--        wrapper = self.srcdir/'_module.cpp'
+--        if wrapper.exists():
+--            wrapper.unlink()
+--
+--        asg = autowig.AbstractSemanticGraph()
+--
+--        asg = autowig.parser(asg, [self.srcdir/'test.h'],
+--                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.srcdir)],
+--                                  silent = True)
+--
+--        autowig.controller.plugin = 'default'
+--        autowig.controller(asg, overload=overload)
+--
+--        module = autowig.generator(asg, module = self.srcdir/'_module.cpp',
+--                                     decorator = self.srcdir/'_module.py',
+--                                     prefix = 'wrapper_')
+--
+--        from autowig._controller import cleaning
+--        cleaning(asg)
+--
+--        module.write()
+--
+--
+--        s = subprocess.Popen(['scons', 'py'],
+--                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+--        prev, curr = s.communicate()
+--
+--        while not prev == curr:
+--            prev = curr
+--            code = autowig.feedback(curr, '.', asg)
+--            if code:
+--                exec(code, locals())
+--
+--    def test_with_all_overload_export(self):
+--        """Test `feedback` with 'all' overload"""
+--        self.test_with_none_overload_export(overload="all")
+--
+--    def test_with_class_overload_export(self):
+--        """Test `feedback` with 'class' overload"""
+--        self.test_with_none_overload_export(overload="class")
+--
+--    def test_with_namespace_overload_export(self):
+--        """Test `feedback` with 'namespace' overload"""
+--        self.test_with_none_overload_export(overload="namespace")
+diff --git a/test/test_basic.py b/test/test_basic.py
+index 05c2aa3..8b50ef4 100644
+--- a/test/test_basic.py
++++ b/test/test_basic.py
+@@ -71,8 +71,6 @@ class TestBasic(unittest.TestCase):
+         if wrapper.exists():
+             wrapper.unlink()
+             
+-        print(self.tgt.parent.parent)
+-        print(self.tgt.parent.parent.abspath())
+         subprocess.check_call(['scons', 'cpp'], cwd=self.tgt.parent.parent, shell=True)
+ 
+         asg = autowig.AbstractSemanticGraph()
+@@ -89,16 +87,7 @@ class TestBasic(unittest.TestCase):
+                                         prefix = 'wrapper_')
+         wrappers.write()
+         
+-        print(self.tgt.parent.parent)
+-        print(self.tgt.parent.parent.abspath())
+-        subprocess.check_call(['scons', 'py', '-C', self.tgt.parent.parent.abspath()])
+-
+-    def test_pyclanglite_parser(self):
+-        """Test `pyclanglite` parser"""
+-        plugin = autowig.parser.plugin
+-        autowig.parser.plugin = 'pyclanglite'
+-        self.test_mapping_export()
+-        autowig.parser.plugin = plugin
++        subprocess.check_call(['scons', 'py'], cmd=self.tgt.parent.parent, shell=True)
+ 
+     def test_boost_python_pattern_generator(self):
+         """Test `boost_python_pattern` generator"""
+diff --git a/test/test_feedback.py b/test/test_feedback.py
+deleted file mode 100644
+index eb09168..0000000
+--- a/test/test_feedback.py
++++ /dev/null
+@@ -1,156 +0,0 @@
+-##################################################################################
+-#                                                                                #
+-# AutoWIG: Automatic Wrapper and Interface Generator                             #
+-#                                                                                #
+-# Homepage: http://autowig.readthedocs.io                                        #
+-#                                                                                #
+-# Copyright (c) 2016 Pierre Fernique                                             #
+-#                                                                                #
+-# This software is distributed under the CeCILL-C license. You should have       #
+-# received a copy of the legalcode along with this work. If not, see             #
+-# <http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html>.                 #
+-#                                                                                #
+-# File authors: Pierre Fernique <pfernique@gmail.com> (5)                        #
+-#                                                                                #
+-##################################################################################
+-
+-import unittest
+-import subprocess
+-from path import path
+-
+-import autowig
+-
+-class TestFeedback(unittest.TestCase):
+-    """Test the feedback of a SCons results"""
+-
+-    @classmethod
+-    def setUpClass(cls):
+-        with open('test.h', 'w') as filehandler:
+-            filehandler.write("""
+-#include <string>
+-
+-namespace test
+-{
+-    template<class T, class U>
+-    class Pair
+-    {
+-        public:
+-            Pair(const std::string& first, const std::string& second)
+-            { 
+-                this->first = first;
+-                this->second = second;
+-            };
+-
+-            void swap(const Pair< T, U >& pair)
+-            { this->first = pair.first; this->second = pair.second; }
+-
+-        protected:
+-            T first;
+-            U second;
+-    };
+-
+-    typedef Pair< const double, double > Point;
+-
+-    enum {
+-        RED,
+-        GREEN,
+-        BLUE
+-    };
+-
+-    int color;
+-}""")
+-
+-        with open('SConstruct', 'w') as filehandler:
+-            filehandler.write("""
+-from distutils import sysconfig
+-import sys
+-
+-variables = Variables()
+-
+-env = Environment()
+-variables.Update(env)
+-
+-env.AppendUnique(LIBS = ['boost_python', 'python' + sysconfig.get_python_version()])
+-env.AppendUnique(CPPPATH = [sysconfig.get_python_inc()])
+-env.AppendUnique(CPPDEFINES = ['BOOST_PYTHON_DYNAMIC_LIB'])
+-
+-env.Prepend(CPPPATH=sys.prefix + '/include')
+-env.Prepend(CPPPATH='.')
+-env.Prepend(LIBPATH=sys.prefix + '/lib')
+-
+-env.AppendUnique(CXXFLAGS = ['-x', 'c++',
+-                             '-std=c++0x',
+-                             '-Wwrite-strings'])
+-
+-pyenv = env.Clone()
+-#pyenv.AppendUnique(LIBS = ['basic'])
+-pyenv.AppendUnique(CXXFLAGS = ['-ftemplate-depth-100'])
+-
+-wrap = pyenv.LoadableModule('_module', pyenv.Glob('wrapper_*.cpp') + ['_module.cpp'],
+-                            LDMODULESUFFIX = '.so',
+-                            FRAMEWORKSFLAGS = '-flat_namespace -undefined suppress')
+-Alias("py", wrap)
+-Alias("build", wrap)
+-
+-Default("build")
+-""")
+-        autowig.parser.plugin = 'pyclanglite'
+-        autowig.generator.plugin = 'boost_python_internal'
+-        autowig.feedback.plugin = 'gcc-5'
+-        cls.srcdir = path('.').abspath()
+-
+-    def test_with_none_overload_export(self, overload="none"):
+-        """Test `feedback` with 'none' overload"""
+-
+-        for wrapper in self.srcdir.walkfiles('wrapper_*.cpp'):
+-            wrapper.unlink()
+-        wrapper = self.srcdir/'_module.h'
+-        if wrapper.exists():
+-            wrapper.unlink()
+-        wrapper = self.srcdir/'_module.py'
+-        if wrapper.exists():
+-            wrapper.unlink()
+-        wrapper = self.srcdir/'_module.cpp'
+-        if wrapper.exists():
+-            wrapper.unlink()
+-
+-        asg = autowig.AbstractSemanticGraph()
+-
+-        asg = autowig.parser(asg, [self.srcdir/'test.h'],
+-                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.srcdir)],
+-                                  silent = True)
+-
+-        autowig.controller.plugin = 'default'
+-        autowig.controller(asg, overload=overload)
+-
+-        module = autowig.generator(asg, module = self.srcdir/'_module.cpp',
+-                                     decorator = self.srcdir/'_module.py',
+-                                     prefix = 'wrapper_')
+-
+-        from autowig._controller import cleaning
+-        cleaning(asg)
+-
+-        module.write()
+-
+-
+-        s = subprocess.Popen(['scons', 'py'],
+-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+-        prev, curr = s.communicate()
+-
+-        while not prev == curr:
+-            prev = curr
+-            code = autowig.feedback(curr, '.', asg)
+-            if code:
+-                exec(code, locals())
+-
+-    def test_with_all_overload_export(self):
+-        """Test `feedback` with 'all' overload"""
+-        self.test_with_none_overload_export(overload="all")
+-
+-    def test_with_class_overload_export(self):
+-        """Test `feedback` with 'class' overload"""
+-        self.test_with_none_overload_export(overload="class")
+-
+-    def test_with_namespace_overload_export(self):
+-        """Test `feedback` with 'namespace' overload"""
+-        self.test_with_none_overload_export(overload="namespace")
+diff --git a/test/test_subset.py b/test/test_subset.py
+index be24501..8789ae0 100644
+--- a/test/test_subset.py
++++ b/test/test_subset.py
+@@ -82,7 +82,9 @@ class TestSubset(unittest.TestCase):
+         srcdir = path('PyClangLite')
+         Repo.clone_from('https://github.com/StatisKit/PyClangLite.git', srcdir.relpath('.'))
+         cls.srcdir = srcdir/'src'/'py'
+-        subprocess.check_output(['scons', 'cpp', '--prefix=' + sys.prefix, '-C', cls.srcdir.parent.parent.abspath(), '--toolchain=' + os.environ.get('TOOLCHAIN')])
++        subprocess.check_output(['scons', 'cpp', '--prefix=' + sys.prefix, '--toolchain=' + os.environ.get('TOOLCHAIN')],
++                                cwd=cls.srcdir.parent.parent,
++                                shell=True)
+ 
+     def test_libclang_parser(self):
+         """Test `libclang` parser"""
+@@ -104,7 +106,7 @@ class TestSubset(unittest.TestCase):
+                              silent = True)
+ 
+         def clanglite_controller(asg):
+-                            
++               
+             for node in asg['::boost::python'].classes(nested = True):
+                 node.is_copyable = True
+                 
