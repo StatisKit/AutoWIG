@@ -73,7 +73,7 @@ class TestBasic(unittest.TestCase):
             
         print(self.tgt.parent.parent)
         print(self.tgt.parent.parent.abspath())
-        subprocess.check_call(['scons', 'cpp', '-C', self.tgt.parent.parent.abspath()])
+        subprocess.check_call(['scons', 'cpp'], cwd=self.tgt.parent.parent)
 
         asg = autowig.AbstractSemanticGraph()
 
