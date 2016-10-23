@@ -72,8 +72,6 @@ class TestBasic(unittest.TestCase):
         if wrapper.exists():
             wrapper.unlink()
             
-        print(self.tgt.parent.parent)
-        print(self.tgt.parent.parent.abspath())
         subprocess.check_call(['scons', 'cpp'],
                               cwd=self.tgt.parent.parent,
                               shell=True)
@@ -92,8 +90,6 @@ class TestBasic(unittest.TestCase):
                                         prefix = 'wrapper_')
         wrappers.write()
         
-        print(self.tgt.parent.parent)
-        print(self.tgt.parent.parent.abspath())
         subprocess.check_call(['scons', 'py'],
                               cwd=self.tgt.parent.parent,
                               shell=True)
