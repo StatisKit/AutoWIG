@@ -53,38 +53,20 @@ if env['TOOLCHAIN'].startswith('vc'):
     env['SHLINKCOM'] = [env['SHLINKCOM'], 'mt.exe -nologo -manifest ${TARGET}.manifest -outputresource:$TARGET;2']
   CCFLAGS = []
   CPPDEFINES = ['WIN32']
-  if env["debug"]:
-     # Optimization
-     # Od2: disable optimizations
-     CCFLAGS.extend(['/Od'])
-     # language
-     # /Zi enable debugging information
-     CCFLAGS.extend(['/Zi'])
-     # code generation
-     # /GZ: enable runtime debug checks
-     # /Gm: enable minimal rebuild
-     CCFLAGS.extend(['/GZ','/Gm'])
-     CPPDEFINES.append('_DEBUG')
-  else:
-     # Optimization
-     # /O2: maximum speed
-     # /ob2: inline expansion (n=2)
-     CCFLAGS.extend(['/O2','/Ob2'])
-     # code generation
-     # /Gy: separate functions for linker
-     # /GF: enable read-only string pooling
-     # /GA: enable for Windows Application
-     # /GR: enable C++ RTTI
-     CCFLAGS.extend(['/Gy','/GF','/GA'])
+  # Optimization
+  # /O2: maximum speed
+  # /ob2: inline expansion (n=2)
+  CCFLAGS.extend(['/O2','/Ob2'])
+  # code generation
+  # /Gy: separate functions for linker
+  # /GF: enable read-only string pooling
+  # /GA: enable for Windows Application
+  # /GR: enable C++ RTTI
+  CCFLAGS.extend(['/Gy','/GF','/GA'])
   CCFLAGS.extend(['/MD','/GR','/EHsc'])
   CPPDEFINES.append('UNICODE')
   env.AppendUnique(CCFLAGS=CCFLAGS,
                    CPPDEFINES=CPPDEFINES)
-else:
-  if env["debug"]:
-    env.Append(CCFLAGS = '-g')
-
-
 
 from distutils import sysconfig
 if sysconfig.get_python_inc():
