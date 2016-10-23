@@ -71,7 +71,9 @@ class TestBasic(unittest.TestCase):
         if wrapper.exists():
             wrapper.unlink()
             
-        subprocess.check_call(['scons', 'cpp', '-C', self.tgt.parent.parent])
+        print(self.tgt.parent.parent)
+        print(self.tgt.parent.parent.abspath())
+        subprocess.check_call(['scons', 'cpp', '-C', self.tgt.parent.parent.abspath()])
 
         asg = autowig.AbstractSemanticGraph()
 
