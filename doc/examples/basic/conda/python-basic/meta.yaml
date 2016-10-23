@@ -15,27 +15,28 @@
 ##################################################################################
 
 package:
-  name: python-basic
-  version: "1.0.0"
+    name: python-basic
+    version: "1.0.0"
 
 source:
-  path: ../..
+    path: ../..
   
 build:
-  number: 0
-  script: 
-    - scons py --prefix={{ PREFIX }} -j{{ CPU_COUNT }}
-    - python setup.py install
+    number: 0
+    script: 
+        - scons py --prefix={{ PREFIX }} -j{{ CPU_COUNT }} # [unix]
+        - scons py --prefix={{ LIBRARY_PREFIX }} -j{{ CPU_COUNT }} # [win]
+        - python setup.py install
 
 about:
-  home: http://autowig.readthedocs.io/
-  license: CeCILL-C
+    home: http://autowig.readthedocs.io/
+    license: CeCILL-C
 
 requirements:
-  build:
-    - scons
-    - libboost
-    - libbasic
-  run:
-    - libboost
-    - libbasic
+    build:
+        - scons
+        - libboost
+        - libbasic
+    run:
+        - libboost
+        - libbasic

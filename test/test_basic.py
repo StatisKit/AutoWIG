@@ -14,11 +14,12 @@
 #                                                                                #
 ##################################################################################
 
+import os
 import unittest
 import sys
 import subprocess
 from path import path
-import __builtin__
+import __builtin__ as builtins
 
 import autowig
 
@@ -36,9 +37,9 @@ class TemplateRender(object):
         code = "import operator\n" + code
         exec code in globals()
         def __call__(**context):
-            for builtin in dir(__builtin__):
+            for builtin in dir(builtins):
                 if not builtin in context:
-                    context[builtin] = getattr(__builtin__, builtin)
+                    context[builtin] = getattr(builtins, builtin)
             return globals()["render_body"](**context)
         return __call__
 
@@ -71,7 +72,11 @@ class TestBasic(unittest.TestCase):
         if wrapper.exists():
             wrapper.unlink()
             
-        subprocess.check_call(['scons', 'cpp', '-C', self.tgt.parent.parent])
+        print(self.tgt.parent.parent)
+        print(self.tgt.parent.parent.abspath())
+        subprocess.check_call(['scons', 'cpp'],
+                              cwd=self.tgt.parent.parent,
+                              shell=True)
 
         asg = autowig.AbstractSemanticGraph()
 
@@ -87,7 +92,11 @@ class TestBasic(unittest.TestCase):
                                         prefix = 'wrapper_')
         wrappers.write()
         
-        subprocess.check_call(['scons', 'py', '-C', self.tgt.parent.parent])
+        print(self.tgt.parent.parent)
+        print(self.tgt.parent.parent.abspath())
+        subprocess.check_call(['scons', 'py'],
+                              cwd=self.tgt.parent.parent,
+                              shell=True)
 
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""

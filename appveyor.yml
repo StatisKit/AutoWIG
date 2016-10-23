@@ -1,0 +1,23 @@
+platform:
+  - x64
+
+environment:
+  matrix:
+    - MINICONDA: "3"
+    
+install:
+  - git clone https://gist.github.com/a08b6eb1c97fad864de50601d70008c8.git config-appveyor
+  - cd config-appveyor
+  - call config.bat
+  - cd ..
+  
+build_script:
+  - cd conda
+  - set ANACONDA_BUILD_FLAGS=--no-test
+  - '%CMD_IN_ENV% call bld.bat'
+  - cd ..
+  
+on_success:
+  - cd conda
+  - if "%APPVEYOR_REPO_BRANCH%"=="master" if "%APPVEYOR_PULL_REQUEST_NUMBER"="" if not "%ANACONDA_USERNAME%"=="" call upload.bat
+  - cd ..

@@ -1,60 +1,92 @@
+# -*-python-*-
+
 import os
 from distutils import sysconfig
 import sys
+import subprocess
+platform = sys.platform
 
-AddOption('--prefix',
-  dest='prefix',
-  type='string',
-  nargs=1,
-  action='store',
-  metavar='DIR',
-  help='installation prefix',
-  default=sys.prefix)
+if platform.startswith('freebsd') or platform.startswith('linux'):
+    TOOLCHAIN = 'gnu'
+elif platform == 'darwin':
+    TOOLCHAIN = 'xcode'
+elif platform == 'win32':
+    TOOLCHAIN = 'vc14'
+else:
+    raise NotImplementedError('OS `' + platform + '` is not supported')
 
-AddOption('--parser',
-    dest='parser',
-    type='string',
-    nargs=1,
-    action='store',
-    help='AutoWIG parser plugin',
-    default='libclang')
+if TOOLCHAIN.startswith('vc'):
+  MSVC_VERSION = TOOLCHAIN.lstrip('vc')
+  if '.' not in MSVC_VERSION:
+    MSVC_VERSION += '.0'
+  env = Environment(PREFIX = sys.prefix, TOOLCHAIN = TOOLCHAIN, MSVC_VERSION = MSVC_VERSION)
+else:
+  env = Environment(PREFIX = sys.prefix, TOOLCHAIN = TOOLCHAIN)  
 
-AddOption('--controller',
-    dest='controller',
-    type='string',
-    nargs=1,
-    action='store',
-    help='AutoWIG controller plugin',
-    default='default')
+if env['TOOLCHAIN'].startswith('vc'):
+  env['CC'] = '"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\x86_amd64\\cl.exe"'
+  env['LINK'] = '"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\x86_amd64\\link.exe"'
+  env.AppendUnique(CPPPATH=['C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\include',
+                            'C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\ATLMFC\\include',
+                            'C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.14393.0\\ucrt',
+                            'C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.6.1\\include\\um',
+                            'C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.14393.0\\shared',
+                            'C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.14393.0\\um',
+                            'C:\\Program Files (x86)\\Windows Kits\\10\\include\\10.0.14393.0\\winrt'])
+  env.AppendUnique(LIBPATH=['C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\lib\\amd64',
+                            'C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\ATLMFC\\LIB\\amd64',
+                            'C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.14393.0\\ucrt\\x64',
+                            'C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.6.1\\lib\\um\\x64',
+                            'C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.14393.0\\um\\x64'])
+  
+  if 8 <= int(float(env['MSVC_VERSION'])) < 10:
+    env['LINKCOM'] = [env['LINKCOM'], 'mt.exe -nologo -manifest ${TARGET}.manifest -outputresource:$TARGET;1']
+    env['SHLINKCOM'] = [env['SHLINKCOM'], 'mt.exe -nologo -manifest ${TARGET}.manifest -outputresource:$TARGET;2']
+  CCFLAGS = []
+  CPPDEFINES = ['WIN32']
+  # Optimization
+  # /O2: maximum speed
+  # /ob2: inline expansion (n=2)
+  CCFLAGS.extend(['/O2','/Ob2'])
+  # code generation
+  # /Gy: separate functions for linker
+  # /GF: enable read-only string pooling
+  # /GA: enable for Windows Application
+  # /GR: enable C++ RTTI
+  CCFLAGS.extend(['/Gy','/GF','/GA'])
+  CCFLAGS.extend(['/MD','/GR','/EHsc'])
+  CPPDEFINES.append('UNICODE')
+  env.AppendUnique(CCFLAGS=CCFLAGS,
+                   CPPDEFINES=CPPDEFINES)
 
-AddOption('--generator',
-    dest='generator',
-    type='string',
-    nargs=1,
-    action='store',
-    help='AutoWIG generator plugin',
-    default='boost_python_internal')
+from distutils import sysconfig
+if sysconfig.get_python_inc():
+  pyinc = sysconfig.get_python_inc()
+  env.AppendUnique(CPPPATH=[pyinc])
+if env['TOOLCHAIN'].startswith('vc'):
+  env.AppendUnique(LIBS = ['boost_python',
+                           'python' + sysconfig.get_python_version().replace('.','')])
+else:
+  env.AppendUnique(LIBS = ['boost_python',
+                           pyinc.split(os.sep)[-1]])
+  env.AppendUnique(LIBPATH=[sysconfig.get_config_var('LIBDIR')])
+env.AppendUnique(CPPDEFINES = ['BOOST_PYTHON_DYNAMIC_LIB', 'BOOST_ALL_NO_LIB'])
+  
+if env['TOOLCHAIN'].startswith('vc'):
+  env.PrependUnique(CPPPATH=['$PREFIX\include'])
+  env.PrependUnique(LIBPATH=['$PREFIX\lib'])
+  env.PrependUnique(LIBPATH=['$PREFIX\..\libs'])
+else:
+  env.Prepend(CPPPATH='$PREFIX/include')
+  env.Prepend(LIBPATH='$PREFIX/lib')
 
-variables = Variables()
-
-env = Environment(PREFIX = GetOption('prefix'),
-                  autowig_parser = GetOption('parser'),
-                  autowig_controller = GetOption('controller'),
-                  autowig_generator = GetOption('generator'))
-variables.Update(env)
-
-env.AppendUnique(LIBS = ['boost_python', 'python' + sysconfig.get_python_version()])
-env.AppendUnique(CPPPATH = [sysconfig.get_python_inc()])
-env.AppendUnique(CPPDEFINES = ['BOOST_PYTHON_DYNAMIC_LIB'])
-
-env.Prepend(CPPPATH='$PREFIX/include')
-env.Prepend(LIBPATH='$PREFIX/lib')
-
-
-env.AppendUnique(CXXFLAGS = ['-x', 'c++',
-                             '-std=c++0x',
-                             '-Wwrite-strings'])
+if not env['TOOLCHAIN'].startswith('vc'):
+    env.AppendUnique(CXXFLAGS = ['-x', 'c++',
+                                 '-std=c++0x',
+                                 '-Wwrite-strings'])
 
 VariantDir('build', 'src')
 SConscript(os.path.join('build', 'cpp', 'SConscript'), exports="env")
 SConscript(os.path.join('build', 'py', 'SConscript'), exports="env")
+
+Default("build")

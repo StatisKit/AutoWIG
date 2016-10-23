@@ -16,16 +16,16 @@
 
 package:
   name: python-clang
-  version: "3.8.0"
+  version: "3.8.1"
 
 source:
-  git_url: https://github.com/llvm-mirror/clang.git
+  fn: cfe-3.8.1.src.tar.xz
+  url: http://llvm.org/releases/3.8.1/cfe-3.8.1.src.tar.xz
 
 build:
   number: 0
-  script :
-    - sed -i'' -e '3000,3015d;3024,3027d;3609,3613d' $SRC_DIR/bindings/python/clang/cindex.py
-    - cp -rf $SRC_DIR/bindings/python/clang $SP_DIR
+  #- sed -i'' -e '3000,3015d;3024,3027d;3609,3613d' $bindings/python/clang/cindex.py
+
 
 about:
   home: http://www.llvm.org/
@@ -34,15 +34,18 @@ about:
 requirements:
   build:
     - python
+    - zlib
+    - xz # [unix]
+    - m2w64-xz         # [py27 and win]
     - libclang
   run:
     - python
     - libclang
 
-test:
-  requires:
-    - nose
-  commands:
-    - env PYTHONPATH=$(echo {{ SRC_DIR }}/bindings/python/) \
-        LD_LIBRARY_PATH=$(llvm-config --libdir) \
-    #- nosetests {{ SRC_DIR }}/bindings/python/tests -v
+# test:
+#   requires:
+#     - nose
+#   commands:
+#     #- env PYTHONPATH=$(echo {{ SRC_DIR }}/bindings/python/) \
+#     #    LD_LIBRARY_PATH=$(llvm-config --libdir) \
+#     #- nosetests {{ SRC_DIR }}/bindings/python/tests -v

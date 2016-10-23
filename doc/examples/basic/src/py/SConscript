@@ -12,12 +12,14 @@ Import("env")
 
 pyenv = env.Clone()
 
-header = pyenv.Glob('*.h')
-if len(header) == 1:
-    cmd = pyenv.Command(header[0].target_from_source('', '.h.gch'), header, '$CXX -o $TARGET -x c++-header -c -fPIC $SHCXXFLAGS $_CCCOMCOM $SOURCE')
+if pyenv['TOOLCHAIN'].startswith('gnu'):
+    header = pyenv.Glob('*.h')
+    if len(header) == 1:
+        cmd = pyenv.Command(header[0].target_from_source('', '.h.gch'), header, '$CXX -o $TARGET -x c++-header -c -fPIC $SHCXXFLAGS $_CCCOMCOM $SOURCE')
+        #pyenv.AppendUnique(CXXFLAGS = ['-include' + header[0].target_from_source('', '.h').abspath ])
 
 targets = list(itertools.chain(*[pyenv.SharedObject(None, source) for source in pyenv.Glob('*.cpp')]))
-if len(header) == 1:
+if pyenv['TOOLCHAIN'].startswith('gnu') and len(header) == 1:
     pyenv.Depends(targets, cmd)
 
 source = pyenv.File('response_file.rsp')
@@ -25,7 +27,7 @@ with open(source.abspath, 'w') as filehandler:
     filehandler.write(' '.join(target.abspath.replace('\\','/') + ' ' for target in targets))
 
 pyenv.AppendUnique(LINKFLAGS = ['@' + source.abspath])
-target = str(pyenv.File("basic/__module").srcnode()) 
+target = str(pyenv.File("basic/__basic").srcnode()) 
 
 pyenv.AppendUnique(LIBS = ['basic'])
 
@@ -42,9 +44,18 @@ if operating_system == "posix":
     pyenv.AppendUnique(CXXFLAGS = ['-ftemplate-depth-100'])
 
 
+# if pyenv['compiler'] == 'msvc' and '8.0' in pyenv['MSVS_VERSION']:
+#     kwargs['SHLINKCOM'] = [pyenv['SHLINKCOM'],
+#     'mt.exe -nologo -manifest ${TARGET}.manifest -outputresource:$TARGET;2']
 
-wrap = pyenv.LoadableModule(target, [], LDMODULESUFFIX='.so',
+if operating_system == 'nt':
+    wrap = pyenv.SharedLibrary(target, [], **kwargs)
+elif platform == 'darwin':
+    wrap = pyenv.LoadableModule(target, [], LDMODULESUFFIX='.so',
         FRAMEWORKSFLAGS = '-flat_namespace -undefined suppress', **kwargs)
+else:
+    wrap = pyenv.LoadableModule(target, [], **kwargs)
+    
 pyenv.Depends(wrap, targets)
 
 Alias("py", wrap)

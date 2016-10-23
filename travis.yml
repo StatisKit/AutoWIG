@@ -1,0 +1,56 @@
+language: cpp
+
+matrix:
+    include:
+        -
+            os: linux
+            dist: trusty
+            sudo: required
+        -
+            os: linux
+            dist: trusty
+            sudo: required
+            services:
+                - docker
+            env:
+                DOCKER="true"
+        -
+            os: osx
+            osx_image: xcode7.2 
+
+install:
+    - git clone https://gist.github.com/319558c83d145620a6d4decdcadfbfb0.git config-travis
+    - cd config-travis
+    - source config.sh
+    - cd ..
+
+script:
+    - export ANACONDA_BUILD_FLAGS="--no-test"
+    -
+        if [[ "$TRAVIS_OS_NAME" = "osx" ]]; then
+            cat conda/python-autowig/macosx.patch conda/python-autowig/travis-ci.patch > conda/python-autowig/macosx.patch;
+        fi
+    -
+        if [[ -z $DOCKER ]]; then
+            cd conda;
+            bash build.sh;
+            cd ..;
+        else
+            cd docker;
+            bash build.sh;
+            cd ..;
+        fi
+
+after_success:
+    -
+        if [[ -z $DOCKER ]] && [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]] && [[ ! -z $ANACONDA_USERNAME ]]; then
+            cd conda;
+            bash upload.sh;
+            cd ..;
+        fi
+    -
+        if [[ ! -z $DOCKER ]] && [[ "$TRAVIS_BRANCH" = "master" ]] && [[ "$TRAVIS_PULL_REQUEST" = "false" ]] && [[ "$TRAVIS_OS_NAME" = "linux" ]] && [[ ! -z $DOCKER_USERNAME ]]; then
+            cd docker;
+            bash upload.sh;
+            cd ..;
+        fi
