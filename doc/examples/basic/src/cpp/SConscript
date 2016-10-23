@@ -1,22 +1,15 @@
 # -*-python-*-
 
-
-import SCons.Action
-import SCons.Builder
-import SCons.Scanner.C
-import SCons.Util
-import SCons.Script
- 
 import os
-bn = os.path.basename
 
 Import("env")
 
 cppenv = env.Clone()
 
+cppenv.AppendUnique(CPPDEFINES = ['BUILD_LIBCLANGLITE'])
+
 headers = cppenv.Glob('*.h*')
 includes = cppenv.Install(os.path.join(cppenv['PREFIX'], "include", "basic"), headers)
-
 Alias("cpp", includes)
 Alias("build", includes)
 
