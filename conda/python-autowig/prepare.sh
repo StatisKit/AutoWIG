@@ -1,12 +1,12 @@
 set -xe
 
-if [[ -f windows.patch ]]; then
+if [[ -f windows.patch ]]; then
     rm windows.patch
 fi
-if [[ -f macosx.patch ]]; then
+if [[ -f macosx.patch ]]; then
     rm macosx.patch
 fi
-if [[ -f travis-ci.patch ]]; then
+if [[ -f travis-ci.patch ]]; then
     rm travis-ci.patch
 fi
 
