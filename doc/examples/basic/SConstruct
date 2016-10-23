@@ -3,31 +3,25 @@
 import os
 from distutils import sysconfig
 import sys
+import subprocess
+platform = sys.platform
 
-AddOption('--prefix',
-          dest    = 'prefix',
-          type    = 'string',
-          nargs   = 1,
-          action  = 'store',
-          metavar = 'DIR',
-          help    = 'installation prefix',
-          default = sys.prefix)
+if platform.startswith('freebsd') or platform.startswith('linux'):
+    TOOLCHAIN = 'gnu'
+elif platform == 'darwin':
+    TOOLCHAIN = 'xcode'
+elif platform == 'win32':
+    TOOLCHAIN = 'vc14'
+else:
+    raise NotImplementedError('OS `' + platform + '` is not supported')
 
-AddOption('--toolchain',
-          dest    = 'toolchain',
-          type    = 'string',
-          nargs   = 1,
-          action  = 'store',
-          help    = 'toolchain to use')
-
-TOOLCHAIN = GetOption('toolchain')
 if TOOLCHAIN.startswith('vc'):
   MSVC_VERSION = TOOLCHAIN.lstrip('vc')
   if '.' not in MSVC_VERSION:
     MSVC_VERSION += '.0'
-  env = Environment(PREFIX = GetOption('prefix'), TOOLCHAIN = TOOLCHAIN, MSVC_VERSION = MSVC_VERSION)
+  env = Environment(PREFIX = sys.prefix, TOOLCHAIN = TOOLCHAIN, MSVC_VERSION = MSVC_VERSION)
 else:
-  env = Environment(PREFIX = GetOption('prefix'), TOOLCHAIN = TOOLCHAIN)  
+  env = Environment(PREFIX = sys.prefix, TOOLCHAIN = TOOLCHAIN)  
 
 if env['TOOLCHAIN'].startswith('vc'):
   env['CC'] = '"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\x86_amd64\\cl.exe"'
