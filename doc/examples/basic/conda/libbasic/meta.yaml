@@ -15,23 +15,25 @@
 ##################################################################################
 
 package:
-  name: libbasic
-  version: "1.0.0"
+    name: libbasic
+    version: "1.0.0"
 
 source:
-  path: ../..
+    path: ../..
 
 build:
-  number: 0
-  script: scons cpp --prefix={{ PREFIX }} -j{{ CPU_COUNT }}
+    number: 0
+    script: 
+        - scons cpp --prefix={{ PREFIX }} -j{{ CPU_COUNT }} # [unix]
+        - scons cpp --prefix={{ LIBRARY_PREFIX }} -j{{ CPU_COUNT }} # [win]
 
 about:
-  home: http://autowig.readthedocs.io/
-  license: CeCILL-C
+    home: http://autowig.readthedocs.io/
+    license: CeCILL-C
 
 requirements:
-  build:
-    - scons
-    - libboost
-  run:
-    - libboost
+    build:
+        - scons
+        - libboost
+    run:
+        - libboost
