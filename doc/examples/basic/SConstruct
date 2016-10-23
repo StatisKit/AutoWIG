@@ -20,8 +20,6 @@ AddOption('--toolchain',
           action  = 'store',
           help    = 'toolchain to use')
 
-variables = Variables()
-
 TOOLCHAIN = GetOption('toolchain')
 if TOOLCHAIN.startswith('vc'):
   MSVC_VERSION = TOOLCHAIN.lstrip('vc')
@@ -30,7 +28,6 @@ if TOOLCHAIN.startswith('vc'):
   env = Environment(PREFIX = GetOption('prefix'), TOOLCHAIN = TOOLCHAIN, MSVC_VERSION = MSVC_VERSION)
 else:
   env = Environment(PREFIX = GetOption('prefix'), TOOLCHAIN = TOOLCHAIN)  
-variables.Update(env)
 
 if env['TOOLCHAIN'].startswith('vc'):
   env['CC'] = '"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\x86_amd64\\cl.exe"'
