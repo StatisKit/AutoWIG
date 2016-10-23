@@ -25,6 +25,7 @@ install:
     - cd ..
 
 script:
+    - export ANACONDA_BUILD_FLAGS="--no-test"
     -
         if [[ "$TRAVIS_OS_NAME" = "osx" ]]; then
             cat conda/python-autowig/macosx.patch conda/python-autowig/travis-ci.patch > conda/python-autowig/macosx.patch;
