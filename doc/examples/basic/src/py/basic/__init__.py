@@ -14,7 +14,7 @@
 #                                                                                #
 ##################################################################################
 
-from __module import BinomialDistribution, Overload, ProbabilityError
+from __basic import BinomialDistribution, Overload, ProbabilityError
 
 def _repr_latex_(self):
     return r"$\mathcal{B}\left(" + str(self.n) + ", " + str(round(self.get_pi(), 2)) + r"\right)$"
