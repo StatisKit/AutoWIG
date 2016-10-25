@@ -3,6 +3,7 @@
 import os
 from distutils import sysconfig
 import sys
+import pickle
 
 if os.path.exists('.options.pkl'):
   with open('.options.pkl', 'rb') as filehandler:
