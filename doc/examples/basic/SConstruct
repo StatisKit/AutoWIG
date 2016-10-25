@@ -32,7 +32,12 @@ AddOption('--prefix',
           help    = 'installation prefix',
           default = defaults['prefix']) 
 
-variables = Variables()
+
+defaults['toolchain'] = GetOption('toolchain')
+defaults['prefix'] = GetOption('prefix')
+with open('.options.pkl', 'wb') as filehandler:
+  pickle.dump(defaults, filehandler)
+  
 variables = Variables(".variables.py", ARGUMENTS)
 
 variables.Add(BoolVariable('debug', 
@@ -54,6 +59,7 @@ if TOOLCHAIN.startswith('vc'):
 else:
   env = Environment(PREFIX = GetOption('prefix'), TOOLCHAIN = TOOLCHAIN)  
 variables.Update(env)
+variables.Save('.variables.py', env)
 
 if env['TOOLCHAIN'].startswith('vc'):
   env['CC'] = '"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\x86_amd64\\cl.exe"'
