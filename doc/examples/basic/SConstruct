@@ -4,10 +4,12 @@ import os
 from distutils import sysconfig
 import sys
 
-
 if os.path.exists('.options.pkl'):
   with open('.options.pkl', 'rb') as filehandler:
     defaults = pickle.load(filehandler)
+else:
+  defaults = dict()
+  
 if not 'toolchain' in defaults:
   defaults['toolchain'] = os.environ.get('TOOLCHAIN')
 if not 'prefix' in defaults:
