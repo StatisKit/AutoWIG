@@ -3,25 +3,34 @@
 import os
 from distutils import sysconfig
 import sys
-import subprocess
-platform = sys.platform
 
-if platform.startswith('freebsd') or platform.startswith('linux'):
-    TOOLCHAIN = 'gnu'
-elif platform == 'darwin':
-    TOOLCHAIN = 'xcode'
-elif platform == 'win32':
-    TOOLCHAIN = 'vc14'
-else:
-    raise NotImplementedError('OS `' + platform + '` is not supported')
+AddOption('--prefix',
+          dest    = 'prefix',
+          type    = 'string',
+          nargs   = 1,
+          action  = 'store',
+          metavar = 'DIR',
+          help    = 'installation prefix',
+          default = sys.prefix)
 
+AddOption('--toolchain',
+          dest    = 'toolchain',
+          type    = 'string',
+          nargs   = 1,
+          action  = 'store',
+          help    = 'toolchain to use')
+
+variables = Variables()
+
+TOOLCHAIN = GetOption('toolchain')
 if TOOLCHAIN.startswith('vc'):
   MSVC_VERSION = TOOLCHAIN.lstrip('vc')
   if '.' not in MSVC_VERSION:
     MSVC_VERSION += '.0'
-  env = Environment(PREFIX = sys.prefix, TOOLCHAIN = TOOLCHAIN, MSVC_VERSION = MSVC_VERSION)
+  env = Environment(PREFIX = GetOption('prefix'), TOOLCHAIN = TOOLCHAIN, MSVC_VERSION = MSVC_VERSION)
 else:
-  env = Environment(PREFIX = sys.prefix, TOOLCHAIN = TOOLCHAIN)  
+  env = Environment(PREFIX = GetOption('prefix'), TOOLCHAIN = TOOLCHAIN)  
+variables.Update(env)
 
 if env['TOOLCHAIN'].startswith('vc'):
   env['CC'] = '"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\bin\\x86_amd64\\cl.exe"'
@@ -44,20 +53,38 @@ if env['TOOLCHAIN'].startswith('vc'):
     env['SHLINKCOM'] = [env['SHLINKCOM'], 'mt.exe -nologo -manifest ${TARGET}.manifest -outputresource:$TARGET;2']
   CCFLAGS = []
   CPPDEFINES = ['WIN32']
-  # Optimization
-  # /O2: maximum speed
-  # /ob2: inline expansion (n=2)
-  CCFLAGS.extend(['/O2','/Ob2'])
-  # code generation
-  # /Gy: separate functions for linker
-  # /GF: enable read-only string pooling
-  # /GA: enable for Windows Application
-  # /GR: enable C++ RTTI
-  CCFLAGS.extend(['/Gy','/GF','/GA'])
+  if env["debug"]:
+     # Optimization
+     # Od2: disable optimizations
+     CCFLAGS.extend(['/Od'])
+     # language
+     # /Zi enable debugging information
+     CCFLAGS.extend(['/Zi'])
+     # code generation
+     # /GZ: enable runtime debug checks
+     # /Gm: enable minimal rebuild
+     CCFLAGS.extend(['/GZ','/Gm'])
+     CPPDEFINES.append('_DEBUG')
+  else:
+     # Optimization
+     # /O2: maximum speed
+     # /ob2: inline expansion (n=2)
+     CCFLAGS.extend(['/O2','/Ob2'])
+     # code generation
+     # /Gy: separate functions for linker
+     # /GF: enable read-only string pooling
+     # /GA: enable for Windows Application
+     # /GR: enable C++ RTTI
+     CCFLAGS.extend(['/Gy','/GF','/GA'])
   CCFLAGS.extend(['/MD','/GR','/EHsc'])
   CPPDEFINES.append('UNICODE')
   env.AppendUnique(CCFLAGS=CCFLAGS,
                    CPPDEFINES=CPPDEFINES)
+else:
+  if env["debug"]:
+    env.Append(CCFLAGS = '-g')
+
+
 
 from distutils import sysconfig
 if sysconfig.get_python_inc():
