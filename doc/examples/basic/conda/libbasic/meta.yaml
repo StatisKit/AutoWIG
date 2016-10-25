@@ -24,9 +24,15 @@ source:
 build:
     number: 0
     script: 
-        - scons cpp --prefix={{ PREFIX }} -j{{ CPU_COUNT }} # [unix]
-        - scons cpp --prefix={{ LIBRARY_PREFIX }} -j{{ CPU_COUNT }} # [win]
-
+        - scons cpp --prefix={{ PREFIX }} -j{{ CPU_COUNT }} --toolchain={{ TOOLCHAIN }} # [unix]
+        - scons cpp --prefix={{ LIBRARY_PREFIX }} -j{{ CPU_COUNT }} --toolchain={{ TOOLCHAIN }} # [win]
+    script_env:
+        - TOOLCHAIN
+    features:
+        - {{ TOOLCHAIN }}
+    track_features:
+        - {{ TOOLCHAIN }}
+    
 about:
     home: http://autowig.readthedocs.io/
     license: CeCILL-C
