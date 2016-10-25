@@ -4,6 +4,23 @@ import os
 from distutils import sysconfig
 import sys
 
+
+if os.path.exists('.options.pkl'):
+  with open('.options.pkl', 'rb') as filehandler:
+    defaults = pickle.load(filehandler)
+if not 'toolchain' in defaults:
+  defaults['toolchain'] = os.environ.get('TOOLCHAIN')
+if not 'prefix' in defaults:
+  defaults['prefix'] = sys.prefix
+
+AddOption('--toolchain',
+          dest    = 'toolchain',
+          type    = 'string',
+          nargs   = 1,
+          action  = 'store',
+          help    = 'toolchain to use',
+          default = defaults['toolchain'])
+  
 AddOption('--prefix',
           dest    = 'prefix',
           type    = 'string',
@@ -11,16 +28,20 @@ AddOption('--prefix',
           action  = 'store',
           metavar = 'DIR',
           help    = 'installation prefix',
-          default = sys.prefix)
-
-AddOption('--toolchain',
-          dest    = 'toolchain',
-          type    = 'string',
-          nargs   = 1,
-          action  = 'store',
-          help    = 'toolchain to use')
+          default = defaults['prefix']) 
 
 variables = Variables()
+variables = Variables(".variables.py", ARGUMENTS)
+
+variables.Add(BoolVariable('debug', 
+                     'compilation in a debug mode',
+                      False))
+variables.Add(BoolVariable('warnings',
+                      'compilation with -Wall and similar',
+                      False))
+variables.Add(BoolVariable('static',
+                      '',
+                      False))
 
 TOOLCHAIN = GetOption('toolchain')
 if TOOLCHAIN.startswith('vc'):
