@@ -977,7 +977,7 @@ namespace autowig { template<class T> using HeldType = ${held_type}; }
     @property
     def guard(self):
         if not hasattr(self, '_guard'):
-            return 'AUTOWIG_' + self.localname.capitalize()
+            return 'AUTOWIG_' + self.prefix.upper()
         else:
             return self._guard
 
