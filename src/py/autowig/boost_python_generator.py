@@ -321,11 +321,11 @@ class BoostPythonExportFileProxy(FileProxy):
     def module(self, module):
         _module = self.module
         if _module:
-            _module._exports.remove(self._node)
+            self._asg._nodes[_module._node]['_exports'].remove(self._node)
         if isinstance(module, BoostPythonModuleFileProxy):
             module = module._node
         self._asg._nodes[self._node]['_module'] = module
-        self.module._exports.add(self._node)
+        self._asg._nodes[module]['_exports'].add(self._node)
 
     @module.deleter
     def module(self):
