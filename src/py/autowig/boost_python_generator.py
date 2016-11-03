@@ -109,6 +109,8 @@ def get_boost_python_export(self):
         return desugared_type.unqualified_type.boost_python_export
 
 def set_boost_python_export(self, boost_python_export):
+    if isinstance(boost_python_export, NodeProxy):
+        boost_python_export = boost_python_export._node
     self.desugared_type.unqualified_type.boost_python_export = boost_python_export
 
 def del_boost_python_export(self):
@@ -156,11 +158,11 @@ def set_boost_python_export(self, boost_python_export):
     elif not isinstance(boost_python_export, bool):
         raise TypeError('\'boost_python_export\' parameter must be boolean, a \'' + BoostPythonExportFileProxy.__class__.__name__ + '\' instance or identifer')
     del self.boost_python_export
-    self._asg._nodes[self._node]['_boost_python_export'] = boost_python_export
     if isinstance(boost_python_export, BoostPythonExportFileProxy):
         scope = boost_python_export.scope
         boost_python_export._declarations.add(self._node)
         boost_python_export = boost_python_export._node
+    self._asg._nodes[self._node]['_boost_python_export'] = boost_python_export
 
 def del_boost_python_export(self):
     if hasattr(self, '_boost_python_export'):
