@@ -20,7 +20,7 @@ package:
 
 source:
   path: ../..
-  patches:
+  patches: # [not linux]
     - windows.patch # [win]
     - macosx.patch # [osx]
     

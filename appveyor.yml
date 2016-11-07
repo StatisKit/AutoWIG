@@ -13,11 +13,11 @@ install:
   
 build_script:
   - cd conda
-  - set ANACONADA_BUILD_FLAGS=--no-test
+  - set ANACONDA_BUILD_FLAGS=--no-test
   - '%CMD_IN_ENV% call bld.bat'
   - cd ..
   
 on_success:
   - cd conda
-  - if "%APPVEYOR_REPO_BRANCH%"=="master" if "%APPVEYOR_PULL_REQUEST_NUMBER"="" if not "%ANACONDA_USERNAME%"=="" call upload.bat
+  - if "%APPVEYOR_REPO_BRANCH%"=="master" if "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" if not "%ANACONDA_USERNAME%"=="" call upload.bat
   - cd ..

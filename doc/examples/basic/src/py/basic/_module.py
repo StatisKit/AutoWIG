@@ -18,7 +18,7 @@ __all__ = []
 
 
 # Import Boost.Python module
-import basic.__module
+import basic.__basic
 
 
 
