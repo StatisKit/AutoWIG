@@ -61,60 +61,79 @@ Article 1 - DEFINITIONS
 -----------------------
 For the purpose of this Agreement, when the following expressions
 commence with a capital letter, they shall have the following meaning:
+
 Agreement
   means this license agreement, and its possible subsequent versions and annexes.
+  
 Software
   means the software in its Object Code and/or Source Code form 
   and, where applicable, its documentation, "as is" when the Licensee
   accepts the Agreement.
+  
 Initial Software
   means the Software in its Source Code and possibly its 
   Object Code form and, where applicable, its documentation, "as is" when
   it is first distributed under the terms and conditions of the Agreement.
+  
 Modified Software
   means the Software modified by at least one Contribution.
+  
 Source Code
   means all the Software's instructions and program lines to
   which access is required so as to modify the Software.
+  
 Object Code
   means the binary files originating from the compilation of
   the Source Code.
+  
 Holder
   means the holder(s) of the economic rights over the Initial
   Software.
+  
 Licensee
   means the Software user(s) having accepted the Agreement.
+  
 Contributor
   means a Licensee having made at least one Contribution.
+  
 Licensor
   means the Holder, or any other individual or legal entity, who
   distributes the Software under the Agreement.
+  
 Contribution
   means any or all modifications, corrections, translations,
   adaptations and/or new functions integrated into the Software by any or
   all Contributors, as well as any or all Internal Modules.
+  
 Module
   means a set of sources files including their documentation that
   enables supplementary functions or services in addition to those offered
   by the Software.
+  
 External Module
   means any or all Modules, not derived from the
   Software, so that this Module and the Software run in separate address
   spaces, with one calling the other when they are run.
+  
 Internal Module
   means any or all Module, connected to the Software so
   that they both execute in the same address space.
+  
 GNU GPL
   means the GNU General Public License version 2 or any
   subsequent version, as published by the Free Software Foundation Inc.
+  
 GNU Affero GPL
   means the GNU Affero General Public License version 3 or
   any subsequent version, as published by the Free Software Foundation Inc.
+  
 EUPL
   means the European Union Public License version 1.1 or any
   subsequent version, as published by the European Commission.
+  
 Parties
   mean both the Licensee and the Licensor.
+  
 These expressions may be used both in singular and plural form.
 
 Article 2 - PURPOSE
