@@ -207,8 +207,8 @@ that this comprises:
    elements of said Software. This shall apply when the Licensee
    carries out any or all loading, displaying, running, transmission or
    storage operation as regards the Software, that it is entitled to
-   
    carry out hereunder.
+   
 5.2 ENTITLEMENT TO MAKE CONTRIBUTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The right to make Contributions includes the right to translate, adapt,
@@ -257,9 +257,8 @@ complies with all the provisions of the Agreement and is accompanied by:
 
 1. a copy of the Agreement,
 2. a notice relating to the limitation of both the Licensor's warranty
-   and liability as set forth in Articles 8 and 9,
-and, in the event that only the object code of the Modified Software is
-redistributed,
+   and liability as set forth in Articles 8 and 9, and, in the event
+   that only the object code of the Modified Software is redistributed,
 3. a note stating the conditions of effective access to the full source
    code of the Modified Software for a period of at least three years
    from the distribution of the Modified Software, it being understood
