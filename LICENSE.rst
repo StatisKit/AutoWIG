@@ -5,14 +5,17 @@ Notice
 This Agreement is a Free Software license agreement that is the result
 of discussions between its authors in order to ensure compliance with
 the two main principles guiding its drafting:
+
 * firstly, compliance with the principles governing the distribution
   of Free Software: access to source code, broad rights granted to users,
 * secondly, the election of a governing law, French law, with which it
   is conformant, both as regards the law of torts and intellectual
   property law, and the protection that it offers to both authors and
   holders of the economic rights over software.
+  
 The authors of the CeCILL (for Ce[a] C[nrs] I[nria] L[ogiciel] L[ibre]) 
 license are: 
+
 Commissariat à l'énergie atomique et aux énergies alternatives (CEA)
   a public scientific, technical and industrial research establishment, 
   having its principal place of business at 25 rue Leblanc, immeuble Le 
@@ -24,6 +27,7 @@ Institut National de Recherche en Informatique et en Automatique (Inria)
   a public scientific and technological establishment, having its 
   principal place of business at Domaine de Voluceau, Rocquencourt, BP105,
   78153 Le Chesnay cedex, France.
+  
 Preamble
 --------
 The purpose of this Free Software license agreement is to grant users
@@ -52,6 +56,7 @@ the economic rights decides to submit the use thereof to its provisions.
 Frequently asked questions can be found on the official website of the
 CeCILL licenses family (http://www.cecill.info/index.en.html) for any 
 necessary clarification.
+
 Article 1 - DEFINITIONS
 -----------------------
 For the purpose of this Agreement, when the following expressions
@@ -111,14 +116,17 @@ EUPL
 Parties
   mean both the Licensee and the Licensor.
 These expressions may be used both in singular and plural form.
+
 Article 2 - PURPOSE
 -------------------
 The purpose of the Agreement is the grant by the Licensor to the
 Licensee of a non-exclusive, transferable and worldwide license for the
 Software as set forth in Article 5 <#scope> hereinafter for the whole
 term of the protection granted by the rights over said Software.
+
 Article 3 - ACCEPTANCE
 ----------------------
+
 3.1
 ~~~
 The Licensee shall be deemed as having accepted the terms and
@@ -128,6 +136,7 @@ i. loading the Software by any or all means, notably, by
    downloading from a remote server, or by loading from a physical medium;
 ii. the first time the Licensee exercises any of the rights granted
     hereunder.
+    
 3.2
 ~~~
 One copy of the Agreement, containing a notice relating to the
@@ -136,16 +145,20 @@ fact that its use is restricted to experienced users has been provided
 to the Licensee prior to its acceptance as set forth in Article 3.1
 <#accepting> hereinabove, and the Licensee hereby acknowledges that it
 has read and understood it.
+
 Article 4 - EFFECTIVE DATE AND TERM
 -----------------------------------
+
 4.1 EFFECTIVE DATE
 ~~~~~~~~~~~~~~~~~~
 The Agreement shall become effective on the date when it is accepted by
 the Licensee as set forth in Article 3.1 <#accepting>.
+
 4.2 TERM
 ~~~~~~~~
 The Agreement shall remain in force for the entire legal term of
 protection of the economic rights over the Software.
+
 Article 5 - SCOPE OF RIGHTS GRANTED
 -----------------------------------
 The Licensor hereby grants to the Licensee, who accepts, the following
@@ -158,6 +171,7 @@ these patents against successive Licensees using, exploiting or
 modifying the Software. If these patents are transferred, the Licensor
 undertakes to have the transferees subscribe to the obligations set
 forth in this paragraph.
+
 5.1 RIGHT OF USE
 ~~~~~~~~~~~~~~~~
 The Licensee is authorized to use the Software, without any limitation
@@ -172,6 +186,7 @@ that this comprises:
    elements of said Software. This shall apply when the Licensee
    carries out any or all loading, displaying, running, transmission or
    storage operation as regards the Software, that it is entitled to
+   
    carry out hereunder.
 5.2 ENTITLEMENT TO MAKE CONTRIBUTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -181,6 +196,7 @@ to reproduce the resulting software.
 The Licensee is authorized to make any or all Contributions to the
 Software provided that it includes an explicit notice that it is the
 author of said Contribution and indicates the date of the creation thereof.
+
 5.3 RIGHT OF DISTRIBUTION
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 In particular, the right of distribution includes the right to publish,
@@ -191,6 +207,7 @@ Software by any means.
 The Licensee is further authorized to distribute copies of the modified
 or unmodified Software to third parties according to the terms and
 conditions set forth hereinafter.
+
 5.3.1 DISTRIBUTION OF SOFTWARE WITHOUT MODIFICATION
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The Licensee is authorized to distribute true copies of the Software in
@@ -205,6 +222,7 @@ Code of the Software for a period of at least three years from the
 distribution of the Software, it being understood that the additional
 acquisition cost of the Source Code shall not exceed the cost of the
 data transfer.
+
 5.3.2 DISTRIBUTION OF MODIFIED SOFTWARE
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 When the Licensee makes a Contribution to the Software, the terms and
@@ -223,11 +241,13 @@ redistributed,
    from the distribution of the Modified Software, it being understood
    that the additional acquisition cost of the source code shall not
    exceed the cost of the data transfer.
+   
 5.3.3 DISTRIBUTION OF EXTERNAL MODULES
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 When the Licensee has developed an External Module, the terms and
 conditions of this Agreement do not apply to said External Module, that
 may be distributed under a separate license agreement.
+
 5.3.4 COMPATIBILITY WITH OTHER LICENSES
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The Licensee can include a code that is subject to the provisions of one
@@ -238,8 +258,10 @@ The Licensee can include the Modified or unmodified Software in a code
 that is subject to the provisions of one of the versions of the GNU GPL,
 GNU Affero GPL and/or EUPL and distribute that entire code under the
 terms of the same version of the GNU GPL, GNU Affero GPL and/or EUPL.
+
 Article 6 - INTELLECTUAL PROPERTY
 ---------------------------------
+
 6.1 OVER THE INITIAL SOFTWARE
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The Holder owns the economic rights over the Initial Software. Any or
@@ -249,17 +271,20 @@ and no one shall be entitled to modify the terms and conditions for the
 distribution of said Initial Software.
 The Holder undertakes that the Initial Software will remain ruled at
 least by this Agreement, for the duration set forth in Article 4.2 <#term>.
+
 6.2 OVER THE CONTRIBUTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 The Licensee who develops a Contribution is the owner of the
 intellectual property rights over this Contribution as defined by
 applicable law.
+
 6.3 OVER THE EXTERNAL MODULES
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The Licensee who develops an External Module is the owner of the
 intellectual property rights over this External Module as defined by
 applicable law and is free to choose the type of agreement that shall
 govern its distribution.
+
 6.4 JOINT PROVISIONS
 ~~~~~~~~~~~~~~~~~~~~
 The Licensee expressly undertakes:
@@ -272,8 +297,10 @@ intellectual property rights on the Software of the Holder and/or
 Contributors, and to take, where applicable, vis-à-vis its staff, any
 and all measures required to ensure respect of said intellectual
 property rights of the Holder and/or Contributors.
+
 Article 7 - RELATED SERVICES
 ----------------------------
+
 7.1
 ~~~
 Under no circumstances shall the Agreement oblige the Licensor to
@@ -283,6 +310,7 @@ terms and conditions of such technical assistance, and/or such
 maintenance, shall be set forth in a separate instrument. Only the
 Licensor offering said maintenance and/or technical assistance services
 shall incur liability therefor.
+
 7.2
 ~~~
 Similarly, any Licensor is entitled to offer to its licensees, under
@@ -292,14 +320,17 @@ Software, under terms and conditions that it is free to decide. Said
 warranty, and the financial terms and conditions of its application,
 shall be subject of a separate instrument executed between the Licensor
 and the Licensee.
+
 Article 8 - LIABILITY
 ---------------------
+
 8.1
 ~~~
 Subject to the provisions of Article 8.2, the Licensee shall be
 entitled to claim compensation for any direct loss it may have suffered
 from the Software as a result of a fault on the part of the relevant
 Licensor, subject to providing evidence thereof.
+
 8.2
 ~~~
 The Licensor's liability is limited to the commitments made under
@@ -314,8 +345,10 @@ opportunity cost, any disturbance to business activities) or any or all
 legal proceedings instituted against the Licensee by a third party,
 shall constitute consequential loss and shall not provide entitlement to
 any or all compensation from the Licensor.
+
 Article 9 - WARRANTY
 --------------------
+
 9.1
 ~~~
 The Licensee acknowledges that the scientific and technical
@@ -329,11 +362,13 @@ The Licensee shall be responsible for verifying, by any or all means,
 the suitability of the product for its requirements, its good working
 order, and for ensuring that it shall not cause damage to either persons
 or properties.
+
 9.2
 ~~~
 The Licensor hereby represents, in good faith, that it is entitled
 to grant all the rights over the Software (including in particular the
 rights set forth in Article 5 <#scope>).
+
 9.3
 ~~~
 The Licensee acknowledges that the Software is supplied "as is" by
@@ -345,6 +380,7 @@ Specifically, the Licensor does not warrant that the Software is free
 from any error, that it will operate without interruption, that it will
 be compatible with the Licensee's own equipment and software
 configuration, nor that it will meet the Licensee's requirements.
+
 9.4
 ~~~
 The Licensor does not either expressly or tacitly warrant that the
@@ -362,14 +398,17 @@ disclaims any and all liability as regards the Licensee's use of the
 name of the Software. No warranty is given as regards the existence of
 prior rights over the name of the Software or as regards the existence
 of a trademark.
+
 Article 10 - TERMINATION
 ------------------------
+
 10.1
 ~~~~
 In the event of a breach by the Licensee of its obligations
 hereunder, the Licensor may automatically terminate this Agreement
 thirty (30) days after notice has been sent to the Licensee and has
 remained ineffective.
+
 10.2
 ~~~~
 A Licensee whose Agreement is terminated shall no longer be
@@ -377,8 +416,10 @@ authorized to use, modify or distribute the Software. However, any
 licenses that it may have granted prior to termination of the Agreement
 shall remain valid subject to their having been granted in compliance
 with the terms and conditions hereof.
+
 Article 11 - MISCELLANEOUS
 --------------------------
+
 11.1 EXCUSABLE EVENTS
 ~~~~~~~~~~~~~~~~~~~~~
 Neither Party shall be liable for any or all delay, or failure to
@@ -388,12 +429,14 @@ functioning or interruptions of the electricity or telecommunications
 networks, network paralysis following a virus attack, intervention by
 government authorities, natural disasters, water damage, earthquakes,
 fire, explosions, strikes and labor unrest, war, etc.
+
 11.2
 ~~~~
 Any failure by either Party, on one or more occasions, to invoke
 one or more of the provisions hereof, shall under no circumstances be
 interpreted as being a waiver by the interested Party of its right to
 invoke said provision(s) subsequently.
+
 11.3
 ~~~~
 The Agreement cancels and replaces any or all previous agreements,
@@ -403,6 +446,7 @@ Parties concerning said purpose. No supplement or modification to the
 terms and conditions hereof shall be effective as between the Parties
 unless it is made in writing and signed by their duly authorized
 representatives.
+
 11.4
 ~~~~
 In the event that one or more of the provisions hereof were to
@@ -412,10 +456,12 @@ the necessary amendments so as to comply with said act or legislative
 text. All other provisions shall remain effective. Similarly, invalidity
 of a provision of the Agreement, for any reason whatsoever, shall not
 cause the Agreement as a whole to be invalid.
+
 11.5 LANGUAGE
 ~~~~~~~~~~~~~
 The Agreement is drafted in both French and English and both versions
 are deemed authentic.
+
 Article 12 - NEW VERSIONS OF THE AGREEMENT
 ------------------------------------------
 12.1
@@ -435,8 +481,10 @@ Any Software distributed under a given version of the Agreement may
 only be subsequently distributed under the same version of the Agreement
 or a subsequent version, subject to the provisions of Article 5.3.4
 <#compatibility>.
+
 Article 13 - GOVERNING LAW AND JURISDICTION
 -------------------------------------------
+
 13.1
 ~~~~
 The Agreement is governed by French law. The Parties agree to
