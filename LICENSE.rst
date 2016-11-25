@@ -151,6 +151,7 @@ Article 3 - ACCEPTANCE
 The Licensee shall be deemed as having accepted the terms and
 conditions of this Agreement upon the occurrence of the first of the
 following events:
+
 i. loading the Software by any or all means, notably, by
    downloading from a remote server, or by loading from a physical medium;
 ii. the first time the Licensee exercises any of the rights granted
@@ -196,6 +197,7 @@ forth in this paragraph.
 The Licensee is authorized to use the Software, without any limitation
 as to its fields of application, with it being hereinafter specified
 that this comprises:
+
 1. permanent or temporary reproduction of all or part of the Software
    by any or all means and in any or all form.
 2. loading, displaying, running, or storing the Software on any or all
@@ -232,9 +234,11 @@ conditions set forth hereinafter.
 The Licensee is authorized to distribute true copies of the Software in
 Source Code or Object Code form, provided that said distribution
 complies with all the provisions of the Agreement and is accompanied by:
+
 1. a copy of the Agreement,
 2. a notice relating to the limitation of both the Licensor's warranty
    and liability as set forth in Articles 8 and 9,
+   
 and that, in the event that only the Object Code of the Software is
 redistributed, the Licensee allows effective access to the full Source
 Code of the Software for a period of at least three years from the
@@ -250,6 +254,7 @@ become subject to all the provisions of this Agreement.
 The Licensee is authorized to distribute the Modified Software, in
 source code or object code form, provided that said distribution
 complies with all the provisions of the Agreement and is accompanied by:
+
 1. a copy of the Agreement,
 2. a notice relating to the limitation of both the Licensor's warranty
    and liability as set forth in Articles 8 and 9,
@@ -307,10 +312,12 @@ govern its distribution.
 6.4 JOINT PROVISIONS
 ~~~~~~~~~~~~~~~~~~~~
 The Licensee expressly undertakes:
+
 1. not to remove, or modify, in any manner, the intellectual property
    notices attached to the Software;
 2. to reproduce said notices, in an identical manner, in the copies of
    the Software modified or not.
+   
 The Licensee undertakes not to directly or indirectly infringe the
 intellectual property rights on the Software of the Holder and/or
 Contributors, and to take, where applicable, vis-à-vis its staff, any
@@ -483,6 +490,7 @@ are deemed authentic.
 
 Article 12 - NEW VERSIONS OF THE AGREEMENT
 ------------------------------------------
+
 12.1
 ~~~~
 Any person is authorized to duplicate and distribute copies of this
@@ -509,10 +517,12 @@ Article 13 - GOVERNING LAW AND JURISDICTION
 The Agreement is governed by French law. The Parties agree to
 endeavor to seek an amicable solution to any disagreements or disputes
 that may arise during the performance of the Agreement.
+
 13.2
 ~~~~
 Failing an amicable solution within two (2) months as from their
 occurrence, and unless emergency proceedings are necessary, the
 disagreements or disputes shall be referred to the Paris Courts having
 jurisdiction, by the more diligent Party.
+
 Version 2.1 dated 2013-06-21
