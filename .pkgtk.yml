@@ -20,5 +20,5 @@ license:
   - ./.pkgtk.yml
   - ./CONTRIBUTORS.rst
   - ./LICENSE.rst
-  plugin: CeCILL-C
+  plugin: CeCILL
   width: 78
