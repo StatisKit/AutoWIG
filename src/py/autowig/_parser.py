@@ -23,6 +23,7 @@ from tempfile import NamedTemporaryFile
 import os
 import warnings
 from pkgtk.plugin import PluginManager
+import sys
 
 from .asg import (NamespaceProxy,
                   FundamentalTypeProxy,
@@ -126,6 +127,14 @@ def pre_processing(asg, headers, flags, **kwargs):
                 for sysinclude in sysincludes:
                     asg.add_directory(sysinclude).is_searchpath = True
 
+    print sys.prefix 
+    print '/home/pfernique/Desktop/miniconda2/conda-bld/python-autowig_1483954881621/_t_env/gcc/include/c++'
+    sysinclude = sys.prefix + '/gcc/include/c++'
+    asg.add_directory(sysinclude).is_searchpath = True
+    flags.append('-I' + sysinclude)
+    sysinclude += '/x86_64-unknown-linux-gnu'
+    asg.add_directory(sysinclude).is_searchpath = True
+    flags.append('-I' + sysinclude)
     if '::' not in asg._nodes:
         asg._nodes['::'] = dict(_proxy = NamespaceProxy)
     if '::' not in asg._syntax_edges:

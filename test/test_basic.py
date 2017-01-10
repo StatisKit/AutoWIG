@@ -72,9 +72,9 @@ class TestBasic(unittest.TestCase):
         if wrapper.exists():
             wrapper.unlink()
             
-        subprocess.check_call(['scons', 'cpp'],
-                              cwd=self.tgt.parent.parent,
-                              shell=True)
+        #subprocess.check_call(['scons', 'cpp'],
+        #                      cwd=self.tgt.parent.parent,
+        #                      shell=True)
 
         asg = autowig.AbstractSemanticGraph()
 
@@ -82,6 +82,7 @@ class TestBasic(unittest.TestCase):
                                   ['-x', 'c++', '-std=c++11', '-I' + str(self.src.parent)],
                                   silent = True)
 
+        print asg.nodes()
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 

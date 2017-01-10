@@ -24,14 +24,8 @@ source:
 build:
     number: 0
     script: 
-        - scons cpp --prefix={{ PREFIX }} -j{{ CPU_COUNT }} --toolchain={{ TOOLCHAIN }} # [unix]
-        - scons cpp --prefix={{ LIBRARY_PREFIX }} -j{{ CPU_COUNT }} --toolchain={{ TOOLCHAIN }} # [win]
-    script_env:
-        - TOOLCHAIN
-    features:
-        - {{ TOOLCHAIN }}
-    track_features:
-        - {{ TOOLCHAIN }}
+        - scons cpp --prefix={{ PREFIX }} -j{{ CPU_COUNT }} # [unix]
+        - scons cpp --prefix={{ LIBRARY_PREFIX }} -j{{ CPU_COUNT }} # [win]
     
 about:
     home: http://autowig.readthedocs.io/
@@ -39,7 +33,10 @@ about:
 
 requirements:
     build:
-        - scons
+        - cpp-build
+        - py-build
         - libboost
     run:
+        - cpp-run
+        - py-run
         - libboost

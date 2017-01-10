@@ -34,11 +34,9 @@ about:
 
 requirements:
   build:
-    - python
-    - pyyaml
-    - python-pkgtk
+    - py-build
   run:
-    - python
+    - py-run
     - mako
     - python-dateutil
     - python-parse
@@ -51,15 +49,19 @@ requirements:
 
 test:
    requires:
-     - nose
-     - coverage
-     - python-clanglite # [not win]
-     - python-gitpython
+     - cpp-build
+     - py-build
+     - python-clanglite                 [unix]
+     - gitpython
      - python-scons
+     - libbasic
+     - libboost
    commands:
-     - cd {{ SRC_DIR }}
+     - cd {{ RECIPE_DIR }}
+     - cd ..
+     - cd ..
+     - REPOSITORY_DIR=`pwd`                                                                          [unix]
      - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
-     - REPOSITORY_DIR=`readlink -e $RECIPE_DIR/../..`
-     - sed -i -e 's#'"$PREFIX"'/lib/python2.7/site-packages#'"$REPOSITORY_DIR"'/src/py#g' .coverage
-     - sed -i -e 's#'"$SRC_DIR"'#'"$REPOSITORY_DIR"'#g' .coverage
-     - mv .coverage $REPOSITORY_DIR
+     - sed -i -e 's#'"$PREFIX"'/lib/python2.7/site-packages#'"$REPOSITORY_DIR"'/src/py#g' .coverage  [unix]
+     - sed -i -e 's#'"$SRC_DIR"'#'"$REPOSITORY_DIR"'#g' .coverage                                    [unix]
+     - mv .coverage $REPOSITORY_DIR                                                                  [unix]

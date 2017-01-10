@@ -33,14 +33,14 @@ about:
 
 requirements:
   build:
-    - python
+    - py-build
     - zlib
     - xz # [unix]
     - m2w64-xz         # [py27 and win]
-    - libclang
+    - clang
   run:
-    - python
-    - libclang
+    - py-run
+    - clang
 
 # test:
 #   requires:
