@@ -27,16 +27,16 @@ source:
 build:
   number: 0
 
-
 about:
   home: http://autowig.readthedocs.org
   license: CeCILL
 
 requirements:
   build:
-    - py-build
+    - python
+    - python-dev
   run:
-    - py-run
+    - python
     - mako
     - python-dateutil
     - python-parse
@@ -45,23 +45,29 @@ requirements:
     - path.py
     - python-clang
     - numpy
-    - python-pkgtk
+    - python-pkg
 
 test:
-   requires:
-     - cpp-build
-     - py-build
-     - python-clanglite                 [unix]
-     - gitpython
-     - python-scons
-     - libbasic
-     - libboost
-   commands:
-     - cd {{ RECIPE_DIR }}
-     - cd ..
-     - cd ..
-     - REPOSITORY_DIR=`pwd`                                                                          [unix]
-     - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
-     - sed -i -e 's#'"$PREFIX"'/lib/python2.7/site-packages#'"$REPOSITORY_DIR"'/src/py#g' .coverage  [unix]
-     - sed -i -e 's#'"$SRC_DIR"'#'"$REPOSITORY_DIR"'#g' .coverage                                    [unix]
-     - mv .coverage $REPOSITORY_DIR                                                                  [unix]
+  source_files:
+    - test/test_basic.py
+    - doc
+    - src
+  requires:
+    - libdev
+    - python-dev
+    - python-dbg
+    - python-clanglite
+    - gitpython
+    - libboost
+  commands:
+    - conda build doc/examples/basic/conda/libbasic -c statiskit -c conda-forge
+    - conda install libbasic --use-local -c statiskit -c conda-forge
+    - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
+    # - cd {{ RECIPE_DIR }}
+    # - cd ..
+    # - cd ..
+    # - REPOSITORY_DIR=`pwd`                                                                          [unix]
+    # - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
+    # - sed -i -e 's#'"$PREFIX"'/lib/python2.7/site-packages#'"$REPOSITORY_DIR"'/src/py#g' .coverage  [unix]
+    # - sed -i -e 's#'"$SRC_DIR"'#'"$REPOSITORY_DIR"'#g' .coverage                                    [unix]
+    # - mv .coverage $REPOSITORY_DIR                                                                  [unix]

@@ -39,7 +39,10 @@ AddOption('--prefix',
 
 
 # defaults['toolchain'] = GetOption('toolchain')
+print defaults['prefix']
 defaults['prefix'] = GetOption('prefix')
+print defaults['prefix']
+
 with open('.options.pkl', 'wb') as filehandler:
   pickle.dump(defaults, filehandler)
   
@@ -149,6 +152,6 @@ if not system is 'windows':
 
 VariantDir('build', 'src')
 SConscript(os.path.join('build', 'cpp', 'SConscript'), exports="env")
-SConscript(os.path.join('build', 'py', 'SConscript'), exports="env")
+#SConscript(os.path.join('build', 'py', 'SConscript'), exports="env")
 
 Default("build")

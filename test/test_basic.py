@@ -55,10 +55,14 @@ class TestBasic(unittest.TestCase):
         autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
         cls.tgt = path('.').abspath()/'doc'/'examples'/'basic'/'src'/'py'
-        cls.src = path(sys.prefix).abspath()/'include'/'basic'
+        #cls.src = path(sys.prefix).abspath()/'include'/'basic'
+        cls.src = cls.tgt.parent/'cpp'
 
     def test_mapping_export(self):
         """Test `mapping` export"""
+
+        import sys
+        prefix = sys.prefix
 
         for wrapper in self.tgt.walkfiles('wrapper_*.cpp'):
             wrapper.unlink()
@@ -72,9 +76,9 @@ class TestBasic(unittest.TestCase):
         if wrapper.exists():
             wrapper.unlink()
             
-        #subprocess.check_call(['scons', 'cpp'],
-        #                      cwd=self.tgt.parent.parent,
-        #                      shell=True)
+        subprocess.check_call(['scons', 'cpp', '--prefix=' + prefix],
+                              cwd=self.tgt.parent.parent,
+                              shell=True)
 
         asg = autowig.AbstractSemanticGraph()
 
