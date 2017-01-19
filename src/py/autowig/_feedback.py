@@ -14,7 +14,7 @@
 #                                                                                #
 ##################################################################################
 
-from pkgtk.plugin import PluginManager
+from pkg.plugin import PluginManager
 
 feedback = PluginManager('autowig.feedback', brief="",
         details="""""")

@@ -21,7 +21,7 @@ from .asg import DeclarationProxy, EnumeratorProxy
 
 __all__ = []
 
-from pkgtk.plugin import PluginManager
+from pkg.plugin import PluginManager
 
 node_path = PluginManager('autowig.node_path', brief="",
         details="")

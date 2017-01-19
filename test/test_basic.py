@@ -18,6 +18,7 @@ import os
 import unittest
 import sys
 import subprocess
+import shutil
 from path import path
 import __builtin__ as builtins
 
@@ -55,8 +56,7 @@ class TestBasic(unittest.TestCase):
         autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
         cls.tgt = path('.').abspath()/'doc'/'examples'/'basic'/'src'/'py'
-        #cls.src = path(sys.prefix).abspath()/'include'/'basic'
-        cls.src = cls.tgt.parent/'cpp'
+        cls.src = path(sys.prefix).abspath()/'include'/'basic'
 
     def test_mapping_export(self):
         """Test `mapping` export"""
@@ -64,6 +64,10 @@ class TestBasic(unittest.TestCase):
         import sys
         prefix = sys.prefix
 
+        build = self.tgt.parent.parent/'build'
+        print build
+        if build.exists():
+            shutil.rmtree(build)
         for wrapper in self.tgt.walkfiles('wrapper_*.cpp'):
             wrapper.unlink()
         wrapper = self.tgt/'_module.h'
@@ -86,7 +90,6 @@ class TestBasic(unittest.TestCase):
                                   ['-x', 'c++', '-std=c++11', '-I' + str(self.src.parent)],
                                   silent = True)
 
-        print asg.nodes()
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
@@ -95,7 +98,7 @@ class TestBasic(unittest.TestCase):
                                         prefix = 'wrapper_')
         wrappers.write()
         
-        subprocess.check_call(['scons', 'py'],
+        subprocess.check_call(['scons', 'py', '--prefix=' + prefix],
                               cwd=self.tgt.parent.parent,
                               shell=True)
 

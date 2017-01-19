@@ -2,7 +2,7 @@
 
 Import("env")
 pyenv = env.Clone(tools = ['boost_python'],
-                LIBS  = ['basic'])
+                  LIBS  = ['basic'])
 
 exclude = """
 """.split()

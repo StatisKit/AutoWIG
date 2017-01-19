@@ -14,7 +14,7 @@
 #                                                                                #
 ##################################################################################
 
-from pkgtk.plugin import PluginManager
+from pkg.plugin import PluginManager
 
 from .tools import camel_case_to_lower, to_camel_case, camel_case_to_upper
 from .asg import (FunctionProxy,

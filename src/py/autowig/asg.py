@@ -22,7 +22,7 @@ import itertools
 import os
 import re
 from path import path
-from pkgtk.plugin import PluginManager
+from pkg.plugin import PluginManager
 
 from .tools import subclasses
 

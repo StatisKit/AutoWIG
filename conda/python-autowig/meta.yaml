@@ -59,6 +59,7 @@ requirements:
 test:
   source_files:
     - test/test_basic.py
+    - test/test_feedback.py
     - doc
     - src
   requires:
@@ -69,8 +70,6 @@ test:
     - gitpython
     - libboost
   commands:
-    - conda build doc/examples/basic/conda/libbasic -c statiskit -c conda-forge
-    - conda install libbasic --use-local -c statiskit -c conda-forge
     - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
     # - cd {{ RECIPE_DIR }}
     # - cd ..
