@@ -15,7 +15,7 @@ git ci -a -m "Prepare for new patches"
 cd ../../test
 
 git checkout -b generate_test_patch
-sed -i'' -e '100,106d' test_basic.py
+sed -i'' -e '96,102d' test_basic.py
 rm test_feedback.py
 git diff > ../conda/python-autowig/windows.patch
 git add test_feedback.py test_basic.py
@@ -25,7 +25,7 @@ git branch -D generate_test_patch
 
 git checkout -b generate_test_patch
 rm test_feedback.py
-git diff > ../conda/python-autowig/macosx.patch
+git diff > ../conda/python-autowig/osx.patch
 rm test_subset.py
 git diff > ../conda/python-autowig/travis-ci.patch
 git add test_feedback.py test_subset.py

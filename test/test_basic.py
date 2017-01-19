@@ -55,10 +55,14 @@ class TestBasic(unittest.TestCase):
         autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
         cls.tgt = path('.').abspath()/'doc'/'examples'/'basic'/'src'/'py'
-        cls.src = path(sys.prefix).abspath()/'include'/'basic'
+        #cls.src = path(sys.prefix).abspath()/'include'/'basic'
+        cls.src = cls.tgt.parent/'cpp'
 
     def test_mapping_export(self):
         """Test `mapping` export"""
+
+        import sys
+        prefix = sys.prefix
 
         for wrapper in self.tgt.walkfiles('wrapper_*.cpp'):
             wrapper.unlink()
@@ -72,9 +76,7 @@ class TestBasic(unittest.TestCase):
         if wrapper.exists():
             wrapper.unlink()
             
-        print(self.tgt.parent.parent)
-        print(self.tgt.parent.parent.abspath())
-        subprocess.check_call(['scons', 'cpp'],
+        subprocess.check_call(['scons', 'cpp', '--prefix=' + prefix],
                               cwd=self.tgt.parent.parent,
                               shell=True)
 
@@ -84,6 +86,7 @@ class TestBasic(unittest.TestCase):
                                   ['-x', 'c++', '-std=c++11', '-I' + str(self.src.parent)],
                                   silent = True)
 
+        print asg.nodes()
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
@@ -92,8 +95,6 @@ class TestBasic(unittest.TestCase):
                                         prefix = 'wrapper_')
         wrappers.write()
         
-        print(self.tgt.parent.parent)
-        print(self.tgt.parent.parent.abspath())
         subprocess.check_call(['scons', 'py'],
                               cwd=self.tgt.parent.parent,
                               shell=True)

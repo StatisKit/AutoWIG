@@ -1,8 +1,8 @@
 diff --git a/test/test_basic.py b/test/test_basic.py
-index 97f6397..8c13cb1 100644
+index 9262e8d..d09d4f4 100644
 --- a/test/test_basic.py
 +++ b/test/test_basic.py
-@@ -98,13 +98,6 @@ class TestBasic(unittest.TestCase):
+@@ -94,13 +94,6 @@ class TestBasic(unittest.TestCase):
                                cwd=self.tgt.parent.parent,
                                shell=True)
  
