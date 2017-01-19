@@ -66,6 +66,7 @@ test:
     - libdev
     - python-dev
     - python-dbg
+    - clang                  [win]
     - python-clanglite       [unix]
     - gitpython
     - libboost
