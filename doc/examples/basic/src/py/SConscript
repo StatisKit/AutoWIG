@@ -1,65 +1,14 @@
-# -*-python-*-
-
-import os
-import platform
-
-system = platform.system().lower()
-import sys
-import itertools
-from distutils import sysconfig
-
-os = os.name.lower()
-platform = sys.platform.lower()
+# # -*-python-*-
 
 Import("env")
+pyenv = env.Clone(tools = ['boost_python'],
+                LIBS  = ['basic'])
 
-pyenv = env.Clone()
+exclude = """
+""".split()
 
-if system is 'linux':
-    header = pyenv.Glob('*.h')
-    if len(header) == 1:
-        cmd = pyenv.Command(header[0].target_from_source('', '.h.gch'), header, '$CXX -o $TARGET -x c++-header -c -fPIC $SHCXXFLAGS $_CCCOMCOM $SOURCE')
-        #pyenv.AppendUnique(CXXFLAGS = ['-include' + header[0].target_from_source('', '.h').abspath ])
+sources = [source for source in pyenv.Glob('*.*') if source.name not in exclude]
 
-targets = list(itertools.chain(*[pyenv.SharedObject(None, source) for source in pyenv.Glob('*.cpp')]))
-if system is 'linux' and len(header) == 1:
-    pyenv.Depends(targets, cmd)
-
-source = pyenv.File('response_file.rsp')
-with open(source.abspath, 'w') as filehandler:
-    filehandler.write(' '.join(target.abspath.replace('\\','/') + ' ' for target in targets))
-
-pyenv.AppendUnique(LINKFLAGS = ['@' + source.abspath])
-target = str(pyenv.File("basic/__basic").srcnode()) 
-
-pyenv.AppendUnique(LIBS = ['basic'])
-
-kwargs = dict()
-
-if os is 'nt':
-    kwargs['SHLIBSUFFIX'] = '.pyd'
-else:
-    kwargs['SHLIBSUFFIX'] = '.so'
-
-kwargs['SHLIBPREFIX'] = ''
-
-if os is "posix":
-    pyenv.AppendUnique(CXXFLAGS = ['-ftemplate-depth-100'])
-
-
-# if pyenv['compiler'] == 'msvc' and '8.0' in pyenv['MSVS_VERSION']:
-#     kwargs['SHLINKCOM'] = [pyenv['SHLINKCOM'],
-#     'mt.exe -nologo -manifest ${TARGET}.manifest -outputresource:$TARGET;2']
-
-if os is 'nt':
-    wrap = pyenv.SharedLibrary(target, [], **kwargs)
-elif system is 'darwin':
-    wrap = pyenv.LoadableModule(target, [], LDMODULESUFFIX='.so',
-        FRAMEWORKSFLAGS = '-flat_namespace -undefined suppress', **kwargs)
-else:
-    wrap = pyenv.LoadableModule(target, [], **kwargs)
-    
-pyenv.Depends(wrap, targets)
-
-Alias("py", wrap)
-Alias("build", wrap)
+targets = pyenv.BuildBoostPython("basic/__basic", sources)
+Alias("py", targets)
+Alias("build", targets)
