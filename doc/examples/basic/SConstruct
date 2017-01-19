@@ -3,7 +3,7 @@
 import os
 
 env = Environment(tools = ['toolchain'])
-echo env['CXXFLAGS']
+print(env['CXXFLAGS'])
 
 VariantDir('build', 'src')
 try:
