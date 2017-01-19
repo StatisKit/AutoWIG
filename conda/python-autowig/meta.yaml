@@ -43,6 +43,7 @@ requirements:
   build:
     - python
     - python-dev
+    - python-pkg
   run:
     - python
     - mako
