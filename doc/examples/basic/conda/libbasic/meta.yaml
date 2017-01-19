@@ -36,4 +36,6 @@ requirements:
         - libdev
         - libboost
     run:
+        - cpp-run
+        - py-run
         - libboost

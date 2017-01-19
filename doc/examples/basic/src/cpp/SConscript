@@ -1,6 +1,9 @@
 # -*-python-*-
 
 import os
+import platform
+
+system = platform.system().lower()
 
 Import("env")
 

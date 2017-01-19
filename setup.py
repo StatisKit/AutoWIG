@@ -21,7 +21,7 @@ packages = {"" : "src" + os.sep + "py"}
 for package in find_packages("src" + os.sep + "py"):
     packages[package] = "src" + os.sep + "py"
 
-from pkgtk.metadata import load_metadata
+from pkg.metadata import load_metadata
 metadata = load_metadata('.')
 
 setup(packages = packages.keys(),

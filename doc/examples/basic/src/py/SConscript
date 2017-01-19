@@ -1,10 +1,5 @@
 # # -*-python-*-
 
-# import os
-# -*-python-*-
-
-import os
-
 Import("env")
 pyenv = env.Clone(tools = ['boost_python'],
                 LIBS  = ['basic'])

@@ -20,13 +20,20 @@ package:
 
 source:
   path: ../..
-  patches: # [not linux]
-    - windows.patch # [win]
-    - macosx.patch # [osx]
-    
+  patches:            [not linux]
+    - windows.patch   [win]
+    - osx.patch       [osx]
+
 build:
   number: 0
-
+  script:
+    - python setup.py install
+    # - mkdir $SP_DIR/autowig/site_autowig                                                               [not win]
+    # - mkdir -p $SP_DIR/SCons/site_scons/site_tools                                                     [not win]
+    # - cp $RECIPE_DIR/autowig.py  $SP_DIR/SCons/site_scons/site_tools/autowig.py                        [not win]
+    # - if not exist %SP_DIR%\AutoWIG\site_autowig mkdir %SP_DIR%\SCons\site_autowig                     [win]
+    # - if not exist %SP_DIR%\SCons\site_scons\site_tools mkdir %SP_DIR%\SCons\site_scons\site_tools     [win]
+    # - copy %RECIPE_DIR%\autowig.py %SP_DIR%\SCons\site_scons\site_tools\autowig.py                     [win]
 
 about:
   home: http://autowig.readthedocs.org
@@ -35,8 +42,8 @@ about:
 requirements:
   build:
     - python
-    - pyyaml
-    - python-pkgtk
+    - python-dev
+    - python-pkg
   run:
     - python
     - mako
@@ -47,19 +54,29 @@ requirements:
     - path.py
     - python-clang
     - numpy
-    - python-pkgtk
+    - python-pkg
 
 test:
-   requires:
-     - nose
-     - coverage
-     - python-clanglite # [not win]
-     - python-gitpython
-     - python-scons
-   commands:
-     - cd {{ SRC_DIR }}
-     - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
-     - REPOSITORY_DIR=`readlink -e $RECIPE_DIR/../..`
-     - sed -i -e 's#'"$PREFIX"'/lib/python2.7/site-packages#'"$REPOSITORY_DIR"'/src/py#g' .coverage
-     - sed -i -e 's#'"$SRC_DIR"'#'"$REPOSITORY_DIR"'#g' .coverage
-     - mv .coverage $REPOSITORY_DIR
+  source_files:
+    - test/test_basic.py
+    - doc
+    - src
+  requires:
+    - libdev
+    - python-dev
+    - python-dbg
+    - python-clanglite
+    - gitpython
+    - libboost
+  commands:
+    - conda build doc/examples/basic/conda/libbasic -c statiskit -c conda-forge
+    - conda install libbasic --use-local -c statiskit -c conda-forge
+    - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
+    # - cd {{ RECIPE_DIR }}
+    # - cd ..
+    # - cd ..
+    # - REPOSITORY_DIR=`pwd`                                                                          [unix]
+    # - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
+    # - sed -i -e 's#'"$PREFIX"'/lib/python2.7/site-packages#'"$REPOSITORY_DIR"'/src/py#g' .coverage  [unix]
+    # - sed -i -e 's#'"$SRC_DIR"'#'"$REPOSITORY_DIR"'#g' .coverage                                    [unix]
+    # - mv .coverage $REPOSITORY_DIR                                                                  [unix]

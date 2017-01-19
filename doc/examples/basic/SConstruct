@@ -1,7 +1,5 @@
 # -*-python-*-
 
-import os
-
 env = Environment(tools = ['toolchain'])
 
 VariantDir('build', 'src')
@@ -15,5 +13,3 @@ try:
 except Exception as e:
   print e
   pass
-
-# Default("build")
