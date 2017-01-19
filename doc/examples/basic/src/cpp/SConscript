@@ -4,16 +4,14 @@ import os
 
 Import("env")
 
-cppenv = env.Clone()
+cppenv = env.Clone(tools = ['cpp'],
+                   CPPDEFINES = ['LIBBASIC'])
 
-cppenv.AppendUnique(CPPDEFINES = ['BUILD_LIBCLANGLITE'])
+exclude = """
+""".split()
 
-headers = cppenv.Glob('*.h*')
-includes = cppenv.Install(os.path.join(cppenv['PREFIX'], "include", "basic"), headers)
-Alias("cpp", includes)
-Alias("build", includes)
+sources = [source for source in cppenv.Glob('*.*') if not source.name in exclude]
 
-sources = cppenv.Glob('*.cpp')
-lib = cppenv.SharedLibrary(os.path.join(cppenv['PREFIX'], "lib", "basic"), sources)
-Alias("cpp", lib)
-Alias("build", lib)
+targets = cppenv.BuildCpp("basic", sources)
+Alias("cpp", targets)
+Alias("build", targets)
