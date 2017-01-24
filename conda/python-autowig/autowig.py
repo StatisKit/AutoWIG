@@ -4,7 +4,7 @@ import autowig
 def generate(env):
     """Add Builders and construction variables to the Environment."""
 
-    if not if not 'autowig' in env['TOOLS'][:-1]:
+    if not 'autowig' in env['TOOLS'][:-1]:
 
         AddOption('--autowig-site-dir',
                   dest    = 'autowig-site-dir',
