@@ -11,7 +11,7 @@ def generate(env):
                   type    = 'string',
                   nargs   = 1,
                   action  = 'store',
-                  metavar = 'DIR'
+                  metavar = 'DIR',
                   help    = 'autowig cache directory',
                   default = os.path.join(autowig.__path__[0], 'site_autowig'))
         env['AUTOWIG_SITE_DIR'] = GetOption('autowig-site-dir')
