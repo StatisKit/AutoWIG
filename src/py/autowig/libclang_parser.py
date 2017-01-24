@@ -98,29 +98,29 @@ def is_copyable_record(self):
 Cursor.is_copyable_record = is_copyable_record
 del is_copyable_record
 
-def libclang_parser(asg, filepaths, flags, libpath=None, silent=False, **kwargs):
+def libclang_parser(asg, filepaths, flags, silent=False, **kwargs):
     warnings.warn('The libclang parser is no more maintened', DeprecationWarning)
     content = pre_processing(asg, filepaths, flags, **kwargs)
     if content:
-        if libpath is not None:
-            if Config.loaded:
-                warnings.warn('\'libpath\' parameter not used since libclang config is already loaded', SyntaxWarning)
-            else:
-                libpath = path(libpath)
-                libpath = libpath.abspath()
-                if not libpath.exists():
-                    raise ValueError('\'libpath\' parameter: \'' + str(libpath) + '\' doesn\'t exists')
-                if libpath.isdir():
-                    Config.set_library_path(str(libpath))
-                elif libpath.isfile():
-                    Config.set_library_file(str(libpath))
-                else:
-                    raise ValueError('\'libpath\' parameter: should be a path to a directory or a file')
-        else:
-            if not Config.loaded:
-                import sys
-                Config.set_library_path(os.path.join(sys.prefix, 'lib'))
-                #raise ValueError('\'libpath\' parameter: should not be set to \'None\'')
+        #         if libpath is not None:
+        #             if Config.loaded:
+        #                 warnings.warn('\'libpath\' parameter not used since libclang config is already loaded', SyntaxWarning)
+        #             else:
+        #                 libpath = path(libpath)
+        #                 libpath = libpath.abspath()
+        #                 if not libpath.exists():
+        #                     raise ValueError('\'libpath\' parameter: \'' + str(libpath) + '\' doesn\'t exists')
+        #                 if libpath.isdir():
+        #                     Config.set_library_path(str(libpath))
+        #                 elif libpath.isfile():
+        #                     Config.set_library_file(str(libpath))
+        #                 else:
+        #                     raise ValueError('\'libpath\' parameter: should be a path to a directory or a file')
+        #         else:
+        #             if not Config.loaded:
+        #                 import sys
+        #                 Config.set_library_path(os.path.join(sys.prefix, 'lib'))
+        #                 #raise ValueError('\'libpath\' parameter: should not be set to \'None\'')
         index = Index.create()
         tempfilehandler = NamedTemporaryFile(delete=False)
         tempfilehandler.write(content)
