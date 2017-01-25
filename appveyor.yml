@@ -6,7 +6,7 @@ environment:
     - RECIPE: python-autowig
 
 install:
-  - git clone https://gist.github.com/a08b6eb1c97fad864de50601d70008c8.git appveyor-ci
+  - git clone https://github.com/StatisKit/appveyor-ci.git appveyor-ci
   - cd appveyor-ci
   - call install.bat
     
