@@ -70,7 +70,7 @@ test:
     - gitpython
     - libboost
   commands:
-    - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
+    - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture [not win]
     # - cd {{ RECIPE_DIR }}
     # - cd ..
     # - cd ..
