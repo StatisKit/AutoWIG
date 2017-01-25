@@ -34,7 +34,7 @@ def generate(env):
                     if 'flags' not in parser_kwargs:
                         parser_kwargs['flags'] = env.subst('$_CCCOMCOM $CXXFLAGS')
                 else:
-                    raise NotImplementedError('The ' + language ' is not supported')
+                    raise NotImplementedError('The ' + language + ' is not supported')
                 parser_kwargs['language'] = language
                 asg = autowig.parser(asg, sources, **parser_kwargs)
                 if isinstance(controller, basestring):
