@@ -102,3 +102,16 @@ class TestBasic(unittest.TestCase):
                               cwd=self.tgt.parent.parent,
                               shell=True)
 
+    def test_pyclanglite_parser(self):
+        """Test `pyclanglite` parser"""
+        plugin = autowig.parser.plugin
+        autowig.parser.plugin = 'pyclanglite'
+        self.test_mapping_export()
+        autowig.parser.plugin = plugin
+
+    def test_boost_python_pattern_generator(self):
+        """Test `boost_python_pattern` generator"""
+        plugin = autowig.generator.plugin
+        autowig.generator.plugin = 'boost_python_pattern'
+        self.test_mapping_export()
+        autowig.generator.plugin = plugin
