@@ -1,4 +1,4 @@
-set -xe
+set -v
 
 if [[ -f windows.patch ]]; then
     rm windows.patch
@@ -48,3 +48,5 @@ git branch -D generate_test_patch
 cd ../conda/python-autowig
 git add windows.patch appveyor-ci.patch osx.patch travis-ci.patch
 git ci -a -m "Add new patches"
+
+set +v
