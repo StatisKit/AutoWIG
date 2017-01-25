@@ -24,25 +24,30 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
         raise TypeError('\'err\' parameter')
     if not isinstance(directory, path):
         directory = path(directory)
-    variantdir = kwargs.pop('variantdir', None)
-    if variantdir:
-        variantdir = directory/variantdir
+    variant_dir = kwargs.pop('variant_dir', None)
+    if variant_dir:
+        variant_dir = directory/variant_dir
     else:
-        variantdir = directory
+        variant_dir = directory
+    src_dir = kwargs.pop('src_dir', None)
+    if src_dir:
+        src_dir = directory/src_dir
+    else:
+        src_dir = directory
     indent = kwargs.pop('indent', 0)
-    directory = str(directory.abspath()) + os.sep
-    variantdir = str(variantdir.relpath(directory))
-    if variantdir == '.':
-        variantdir = ''
+    src_dir = str(directory.abspath()) + os.sep
+    variant_dir = str(variant_dir.relpath(directory))
+    if variant_dir == '.':
+        variant_dir = ''
     else:
-        variantdir += os.sep
+        variant_dir += os.sep
     wrappers = dict()
     for line in err.splitlines():
-        parsed = parse.parse(variantdir+'{filename}:{row}:{column}:{message}', line)
+        parsed = parse.parse(variant_dir+'{filename}:{row}:{column}:{message}', line)
         if parsed:
             try:
                 row = int(parsed['row'])
-                node = directory + parsed['filename']
+                node = src_dir + parsed['filename']
                 if node in asg:
                     if node not in wrappers:
                         wrappers[node] = [row]
