@@ -1,0 +1,14 @@
+diff --git a/test/test_basic.py b/test/test_basic.py
+index f277b49..fd3aad5 100644
+--- a/test/test_basic.py
++++ b/test/test_basic.py
+@@ -102,9 +102,3 @@ class TestBasic(unittest.TestCase):
+                               cwd=self.tgt.parent.parent,
+                               shell=True)
+ 
+-    def test_boost_python_pattern_generator(self):
+-        """Test `boost_python_pattern` generator"""
+-        plugin = autowig.generator.plugin
+-        autowig.generator.plugin = 'boost_python_pattern'
+-        self.test_mapping_export()
+-        autowig.generator.plugin = plugin
