@@ -21,7 +21,7 @@ git checkout -b generate_test_patch
 sed -i'' -e '105,111d' test_basic.py
 rm test_feedback.py
 git diff > ../conda/python-autowig/windows.patch
-git add test_feedback.py
+git add test_basic.py test_feedback.py
 git commit -m 'patch generated'
 git checkout master
 git branch -D generate_test_patch
