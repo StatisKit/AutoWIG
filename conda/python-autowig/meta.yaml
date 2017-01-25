@@ -58,8 +58,7 @@ requirements:
 
 test:
   source_files:
-    - test/test_basic.py
-    - test/test_feedback.py  [unix]
+    - test
     - doc
     - src
   requires:
