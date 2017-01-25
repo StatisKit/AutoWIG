@@ -30,7 +30,7 @@ def generate(env):
                     autowig.parser['SCons'] = parser
                     autowig.parser.plugin = 'SCons'
                 parser_kwargs = {key.strip('parser_') : value for key, value in kwargs if key.startswith('parser_')}
-                if language = 'c++':
+                if language == 'c++':
                     if 'flags' not in parser_kwargs:
                         parser_kwargs['flags'] env.subst('$_CCCOMCOM $CXXFLAGS')
                 else:
