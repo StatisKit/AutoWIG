@@ -33,14 +33,14 @@ git branch -D generate_test_patch
 git checkout -b generate_test_patch
 rm test_feedback.py
 git diff > ../conda/python-autowig/osx.patch
-git add test_feedback.py test_subset.py
+git add test_feedback.py
 git commit -m 'patch generated'
 git checkout master
 git branch -D generate_test_patch
 
 rm test_subset.py
 git diff > ../conda/python-autowig/travis-ci.patch
-git add test_feedback.py test_subset.py
+git add test_subset.py
 git commit -m 'patch generated'
 git checkout master
 git branch -D generate_test_patch
