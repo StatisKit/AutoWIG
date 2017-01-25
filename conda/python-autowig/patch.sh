@@ -34,5 +34,5 @@ git checkout master
 git branch -D generate_test_patch
 
 cd ../conda/python-autowig
-git add windows.patch macosx.patch travis-ci.patch
+git add windows.patch osx.patch travis-ci.patch
 git ci -a -m "Add new patches"
