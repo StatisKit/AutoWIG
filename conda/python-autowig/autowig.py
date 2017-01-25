@@ -32,7 +32,7 @@ def generate(env):
                 parser_kwargs = {key.strip('parser_') : value for key, value in kwargs if key.startswith('parser_')}
                 if language == 'c++':
                     if 'flags' not in parser_kwargs:
-                        parser_kwargs['flags'] env.subst('$_CCCOMCOM $CXXFLAGS')
+                        parser_kwargs['flags'] = env.subst('$_CCCOMCOM $CXXFLAGS')
                 else:
                     raise NotImplementedError('The ' + language ' is not supported')
                 parser_kwargs['language'] = language
