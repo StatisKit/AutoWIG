@@ -15,6 +15,7 @@
 ##################################################################################
 
 test-warnings: true
+
 pylint:
   disable:
     - protected-access
@@ -24,9 +25,11 @@ pylint:
     - too-many-locals
     - too-many-arguments
     - bare-except
+    
 mccabe:
   disable:
     - MC0001
+    
 pyflakes:
   disable:
     - F812
