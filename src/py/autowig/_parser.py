@@ -24,6 +24,7 @@ import os
 import warnings
 from pkg.plugin import PluginManager
 import sys
+import platform
 
 from .asg import (NamespaceProxy,
                   FundamentalTypeProxy,
@@ -100,14 +101,18 @@ def pre_processing(asg, headers, flags, **kwargs):
             if flag.startswith('-I'):
                 includedir = asg.add_directory(flag.strip('-I'))
                 includedir.is_searchpath = True
-
+                
+    if any(platform.win32_ver()):
+      devnull = 'nul'
+    else:
+      devnull = '/dev/null'
     if '-x c++' in cmd:
         asg._language = 'c++'
-        s = subprocess.Popen(['clang++', '-x', 'c++', '-v', '-E', '/dev/null'],
+        s = subprocess.Popen(['clang++', '-x', 'c++', '-v', '-E', devnull],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     elif '-x c' in cmd:
         asg._language = 'c'
-        s = subprocess.Popen(['clang', '-x', 'c', '-v', '-E', '/dev/null'],
+        s = subprocess.Popen(['clang', '-x', 'c', '-v', '-E', devnull],
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
