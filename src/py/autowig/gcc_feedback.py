@@ -35,7 +35,7 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
     else:
         src_dir = directory
     indent = kwargs.pop('indent', 0)
-    src_dir = str(directory.abspath()) + os.sep
+    src_dir = str(src_dir.abspath()) + os.sep
     variant_dir = str(variant_dir.relpath(directory))
     if variant_dir == '.':
         variant_dir = ''
