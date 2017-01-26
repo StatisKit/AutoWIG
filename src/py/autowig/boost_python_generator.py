@@ -361,23 +361,21 @@ class BoostPythonExportDefaultFileProxy(BoostPythonExportFileProxy):
 """)
 
     ENUMERATION = Template(text=r"""\
-    boost::python::enum_< ${enumeration.globalname} >("${node_rename(enumeration)}")\
+    boost::python::enum_< ${enumeration.globalname} > enum_${enumeration.hash}("${node_rename(enumeration)}");
     % if enumeration.is_scoped:
         % for enumerator in enumeration.enumerators:
             % if enumerator.boost_python_export:
-
-        .value("${node_rename(enumerator)}", ${enumerator.globalname})\
+    enum_${enumeration.hash}.value("${node_rename(enumerator)}", ${enumerator.globalname});
             % endif
         % endfor
     % else:
         % for enumerator in enumeration.enumerators:
             % if enumerator.boost_python_export:
 
-        .value("${node_rename(enumerator)}", ${enumerator.globalname[::-1].replace((enumeration.localname + '::')[::-1], '', 1)[::-1]})\
+    enum_${enumeration.hash}.value("${node_rename(enumerator)}", ${enumerator.globalname[::-1].replace((enumeration.localname + '::')[::-1], '', 1)[::-1]});
             % endif
         % endfor
-    % endif
-;""")
+    % endif""")
 
     VARIABLE = Template(text="""\
     boost::python::scope().attr("${node_rename(variable)}") = ${variable.globalname};\
@@ -404,8 +402,7 @@ namespace autowig
 {
     PyObject* error_${error.hash} = nullptr;
 
-    void translate_${error.hash}(${error.globalname} const & error)
-    { PyErr_SetString(error_${error.hash}, error.what()); };
+    void translate_${error.hash}(${error.globalname} const & error) { PyErr_SetString(error_${error.hash}, error.what()); };
 }""")
 
     DECORATOR = Template(text=r"""\
@@ -416,7 +413,7 @@ namespace autowig
         % if method.boost_python_export and method.return_type.is_reference and not method.return_type.is_const and method.return_type.unqualified_type.is_assignable:
     void method_decorator_${method.hash}\
 (${cls.globalname + " const" * bool(method.is_const) + " & instance, " + \
-   ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0) + 'const ' * method.return_type.is_fundamental_type + method.return_type.globalname + ' param_out'})
+   ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0) + 'const ' * method.return_type.is_fundamental_type + method.return_type.globalname + ' param_out'}) \
     { instance.${method.localname}\
 (${", ".join('param_in_' + str(parameter.index) for parameter in method.parameters)}) = param_out; }
         % endif

@@ -14,48 +14,10 @@
 #                                                                                #
 ##################################################################################
 
-import os
-import parse
-from path import path
+from _feedback import parse_errors
 
-
-def gcc_5_feedback(err, directory, asg, **kwargs):
-    if not isinstance(err, basestring):
-        raise TypeError('\'err\' parameter')
-    if not isinstance(directory, path):
-        directory = path(directory)
-    variant_dir = kwargs.pop('variant_dir', None)
-    if variant_dir:
-        variant_dir = directory/variant_dir
-    else:
-        variant_dir = directory
-    src_dir = kwargs.pop('src_dir', None)
-    if src_dir:
-        src_dir = directory/src_dir
-    else:
-        src_dir = directory
-    indent = kwargs.pop('indent', 0)
-    src_dir = str(directory.abspath()) + os.sep
-    variant_dir = str(variant_dir.relpath(directory))
-    if variant_dir == '.':
-        variant_dir = ''
-    else:
-        variant_dir += os.sep
-    wrappers = dict()
-    for line in err.splitlines():
-        parsed = parse.parse(variant_dir+'{filename}:{row}:{column}:{message}', line)
-        if parsed:
-            try:
-                row = int(parsed['row'])
-                node = src_dir + parsed['filename']
-                if node in asg:
-                    if node not in wrappers:
-                        wrappers[node] = [row]
-                    else:
-                        wrappers[node].append(row)
-            except:
-                pass
-    code = []
+def edit_feedback(err, directory, asg, **kwargs):
+	wrappers = parse_errors(err, directory, asg, **kwargs)
     for wrapper, rows in wrappers.iteritems():
         wrapper = asg[wrapper]
         for row in rows:
@@ -63,4 +25,4 @@ def gcc_5_feedback(err, directory, asg, **kwargs):
     code = "\t" * indent + ("\n" + "\t" * indent).join(code for code in code if code)
     if not code.isspace():
         code += '\n'
-    return code
+    return code.strip()
