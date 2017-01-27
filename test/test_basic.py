@@ -98,7 +98,7 @@ class TestBasic(unittest.TestCase):
                                         prefix = 'wrapper_')
         wrappers.write()
         with open(wrappers.header.globalname, 'r') as filehandler:
-            print '\n'.join(filehander.readlines())
+            print '\n'.join(filehandler.readlines())
         
         subprocess.check_call(['scons', 'py', '--prefix=' + prefix],
                               cwd=self.tgt.parent.parent,
