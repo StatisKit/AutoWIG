@@ -16,8 +16,8 @@
 
 from _feedback import parse_errors
 
-def edit_feedback(err, directory, asg, **kwargs):
-	wrappers = parse_errors(err, directory, asg, **kwargs)
+def edit_feedback(err, directory, asg, **kwargs):  
+    wrappers = parse_errors(err, directory, asg, **kwargs)
     for wrapper, rows in wrappers.iteritems():
         wrapper = asg[wrapper]
         for row in rows:
