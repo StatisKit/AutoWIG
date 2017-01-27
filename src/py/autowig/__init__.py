@@ -33,7 +33,7 @@ from ._controller import controller
 controller.plugin = 'default'
 
 from ._feedback import feedback
-feedback.plugin = 'gcc-5'
+feedback.plugin = 'edit'
 
 from ._node_rename import node_rename
 node_rename.plugin = 'PEP8'
