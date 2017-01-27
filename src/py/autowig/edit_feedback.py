@@ -23,6 +23,7 @@ def edit_feedback(err, directory, asg, **kwargs):
         wrapper = asg[wrapper]
         for row in rows:
             code.extend(wrapper.edit(row).splitlines())
+    indent = kwargs.pop('indent', 0)
     code = "\t" * indent + ("\n" + "\t" * indent).join(code for code in code if code)
     if not code.isspace():
         code += '\n'
