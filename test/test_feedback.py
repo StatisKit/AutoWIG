@@ -96,7 +96,7 @@ Default("build")
 """)
         autowig.parser.plugin = 'pyclanglite'
         autowig.generator.plugin = 'boost_python_internal'
-        autowig.feedback.plugin = 'gcc-5'
+        autowig.feedback.plugin = 'edit'
         cls.srcdir = path('.').abspath()
 
     def test_with_none_overload_export(self, overload="none"):
