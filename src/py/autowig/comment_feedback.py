@@ -23,7 +23,7 @@ def comment_feedback(err, directory, asg, **kwargs):
             content = filehandler.readlines()
         for row in rows:
             if row < len(content):
-                content[row - 1] = '// TODO ' + content[row]
+                content[row - 1] = '// TODO ' + content[row - 1]
             with open(wrapper, 'w') as filehandler:
             	filehandler.writelines(content)
     return hash(frozenset(wrappers))
