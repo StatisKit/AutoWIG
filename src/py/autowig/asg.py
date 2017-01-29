@@ -777,7 +777,7 @@ class QualifiedTypeProxy(EdgeProxy):
     @property
     def qualifiers(self):
         """Type qualifiers"""
-        return self._qualifiers
+        return self._qualifiers.strip()
 
     @property
     def is_qualified(self):
