@@ -410,7 +410,7 @@ namespace autowig
 namespace autowig
 {
     % for method in cls.methods(access='public'):
-        % if method.boost_python_export and method.return_type.is_reference and not method.return_type.is_const and method.return_type.unqualified_type.is_assignable:
+        % if method.boost_python_export and method.return_type.desugared_type.is_reference and not method.return_type.desugared_type.is_const and method.return_type.desugared_type.unqualified_type.is_assignable:
     void method_decorator_${method.hash}\
 (${cls.globalname + " const" * bool(method.is_const) + " & instance, " + \
    ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0) + 'const ' * method.return_type.is_fundamental_type + method.return_type.globalname + ' param_out'}) \
@@ -489,7 +489,7 @@ method_pointer_${method.hash}, \
 ${method.boost_python_call_policy}, \
                 % endif
 "${documenter(method)}");
-                % if method.return_type.is_reference and not method.return_type.is_const and method.return_type.unqualified_type.is_assignable:
+                % if method.return_type.desugared_type.is_reference and not method.return_type.desugared_type.is_const and method.return_type.desugared_type.unqualified_type.is_assignable:
     class_${cls.hash}.def("${node_rename(method)}", autowig::method_decorator_${method.hash});
                 % endif
         % endif
@@ -755,6 +755,8 @@ ${field.globalname}, "${documenter(field)}");
            
     @property         
     def _content(self):
+        # import pdb
+        # pdb.set_trace()
         content = '#include "' + self.header.localname + '"\n'
         for arg in self.declarations:
             if isinstance(arg, ClassProxy) and arg.is_error:
