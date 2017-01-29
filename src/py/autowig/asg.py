@@ -770,7 +770,8 @@ class QualifiedTypeProxy(EdgeProxy):
         while isinstance(desugared_type, TypedefProxy):
             desugared_type = desugared_type.qualified_type
             qualifiers = desugared_type.qualifiers + ' ' + qualifiers
-            desugared_type = desugared_type.qualifed_type
+        if isinstance(desugared_type, QualifiedTypeProxy):
+            desugared_type = self._asg[desugared_type._target]
         return QualifiedTypeProxy(self._asg, self._source, desugared_type._node, qualifiers)
 
     @property
