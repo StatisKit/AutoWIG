@@ -461,7 +461,7 @@ ${function.globalname}\
         % endfor
     };
     % endif
-    boost::python::class_< ${cls.globalname}, autowig::HeldType< ${cls.globalname} >\
+    boost::python::class_< ${cls.globalname}, autowig::Held< ${cls.globalname} >::Type\
     % if any(base for base in cls.bases(access='public') if base.boost_python_export):
 , boost::python::bases< ${", ".join(base.globalname for base in cls.bases(access='public') if base.boost_python_export)} >\
     % endif
@@ -522,11 +522,11 @@ ${field.globalname}, "${documenter(field)}");
     % endfor
     %if any(base for base in cls.bases(access='public') if base.boost_python_export):
 
-    if(std::is_class< autowig::HeldType< ${cls.globalname} > >::value)
+    if(std::is_class< autowig::Held< ${cls.globalname} >::Type >::value)
     {
         % for bse in cls.bases(access='public'):
             % if bse.boost_python_export:
-        boost::python::implicitly_convertible< autowig::HeldType< ${cls.globalname} >, autowig::HeldType< ${bse.globalname} > >();
+        boost::python::implicitly_convertible< autowig::Held< ${cls.globalname} >::Type, autowig::Held< ${bse.globalname} >::Type >();
             % endif
         % endfor
     }
@@ -823,16 +823,16 @@ ${field.globalname}, "${documenter(field)}");
             if not row == len(lines):
                 row = row - 1
                 line = lines[row]
-                parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', line)
+                parsed = parse.parse('    boost::python::class_< {globalname}, autowig::Held{suffix}', line)
                 if parsed:
                     return "if asg['" + parsed["globalname"] + "'].is_copyable:\n\tasg['" + parsed["globalname"] + "'].is_copyable = False\nelse:\n\tasg['" + parsed["globalname"] + "'].boost_python_export = False\n\t\n\tif '" + self.globalname + "' in asg:\n\t\tasg['" + self.globalname + "'].remove()\n"
                 else:
                     while row > 0 and parsed is None:
                         row = row - 1
-                        parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', lines[row])
+                        parsed = parse.parse('    boost::python::class_< {globalname}, autowig::Held{suffix}', lines[row])
                     row = row + 1
                     while row < len(lines) and parsed is None:
-                        parsed = parse.parse('    boost::python::class_< {globalname}, autowig::HeldType{suffix}', lines[row])
+                        parsed = parse.parse('    boost::python::class_< {globalname}, autowig::Held{suffix}', lines[row])
                         row = row + 1
                     if parsed:
                         node = self._asg[parsed["globalname"]]
@@ -911,8 +911,8 @@ class BoostPythonHeaderFileProxy(FileProxy):
         return self.module._clean_default
 
     CONTENT = Template(text=r"""\
-#ifndef ${guard}
-#define ${guard}
+#ifndef ${header_guard}
+#define ${header_guard}
 
 #include <boost/python.hpp>
 #include <type_traits>\
@@ -932,7 +932,12 @@ extern "C" {
 #include <${held_header}>
 % endif
 
-namespace autowig { template<class T> using HeldType = ${held_type}; }
+namespace autowig
+{
+     template<class T> struct Held {
+        typedef ${held_type} Type;
+    };
+}
 
 #endif""")
 
@@ -954,7 +959,7 @@ namespace autowig { template<class T> using HeldType = ${held_type}; }
         return self.CONTENT.render(headers = [header for header in self._asg.files(header=True) if not header.is_external_dependency and header.is_self_contained],
                                    held_type = self.HELDTYPE[self.helder],
                                    held_header = self.HELDHEADER[self.helder],
-                                   guard = self.guard)
+                                   header_guard = self.guard)
 
     @property
     def helder(self):
@@ -984,7 +989,7 @@ namespace autowig { template<class T> using HeldType = ${held_type}; }
     def guard(self, guard):
         self._asg[self._node]['_guard'] = guard
    
-    @helder.deleter
+    @guard.deleter
     def guard(self):
         self._asg[self._node].pop('_guard', '')
       
