@@ -16,7 +16,7 @@ def generate(env):
                   default = os.path.join(autowig.__path__[0], 'site_autowig'))
         env['AUTOWIG_SITE_DIR'] = GetOption('autowig-site-dir')
 
-        def AutoWIG(env, target, sources, parser, controller, generator, language, **kwargs):
+        def AutoWIG(target, sources, env, **kwargs):
             #
             sources = [source.sourcenode().abspath for source in sources]
             if any(source.has_changed_since_last_build):
