@@ -3,7 +3,7 @@
 
 namespace autowig
 {
-    PyObject* error_92d464d1243554009adc48a065a5be3e = nullptr;
+    PyObject* error_92d464d1243554009adc48a065a5be3e = NULL;
 
     void translate_92d464d1243554009adc48a065a5be3e(struct ::ProbabilityError const & error) { PyErr_SetString(error_92d464d1243554009adc48a065a5be3e, error.what()); };
 }
