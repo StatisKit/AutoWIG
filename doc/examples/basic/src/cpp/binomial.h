@@ -16,14 +16,14 @@
 
 #include <exception>
 
-struct ProbabilityError : std::exception
+struct BASIC_API ProbabilityError : std::exception
 {
     /// \brief Compute the exception content
     /// \returns The message "a probability must be in the interval [0,1]"
     virtual const char* what() const noexcept; 
 };
 
-class BinomialDistribution
+class BASIC_API BinomialDistribution
 {
   public:
     BinomialDistribution(const unsigned int n, const double pi);

@@ -14,6 +14,7 @@
 /*                                                                                */
 /**********************************************************************************/
 
+#include "base.h"
 /**
  * \brief This class is used to illustrate problems that can arise with
  *        overloading
@@ -26,7 +27,7 @@
  * \todo Any problem concerning method overloading should be added in this
  *       class
  * */
-struct Overload 
+struct BASIC_API Overload 
 {
     Overload();
  

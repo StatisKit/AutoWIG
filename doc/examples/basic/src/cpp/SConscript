@@ -7,8 +7,9 @@ system = platform.system().lower()
 
 Import("env")
 
-cppenv = env.Clone(tools = ['cpp'],
-                   CPPDEFINES = ['LIBBASIC'])
+cppenv = env.Clone(tools = ['cpp'])
+
+cppenv.AppendUnique(CPPDEFINES = ['LIBBASIC'])
 
 exclude = """
 """.split()
