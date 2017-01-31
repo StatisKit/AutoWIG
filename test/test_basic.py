@@ -93,8 +93,8 @@ class TestBasic(unittest.TestCase):
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
-        wrappers = autowig.generator(asg, module = self.tgt/'_module.cpp',
-                                        decorator = self.tgt/'basic'/'_module.py',
+        wrappers = autowig.generator(asg, module = self.tgt/'__basic.cpp',
+                                        decorator = self.tgt/'basic'/'_basic.py',
                                         prefix = 'wrapper_')
         wrappers.write()
         with open(wrappers.header.globalname, 'r') as filehandler:
