@@ -14,6 +14,7 @@
 /*                                                                                */
 /**********************************************************************************/
 
+#include "base.h"
 #include <exception>
 
 struct BASIC_API ProbabilityError : std::exception
