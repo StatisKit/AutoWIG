@@ -70,11 +70,6 @@ test:
     - gitpython
     - libboost
   commands:
-    - cd doc/examples/basic/conda [not win]
-    - cd doc\examples\basic\conda     [win]
-    - conda build python-basic -c statiskit -c conda-forge
-    - cd ../../../../             [not win]
-    - cd ..\..\..\..\                 [win]
     - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture [not win]
     # - cd {{ RECIPE_DIR }}
     # - cd ..
