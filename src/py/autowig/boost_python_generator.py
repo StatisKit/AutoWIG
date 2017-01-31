@@ -522,7 +522,7 @@ ${field.globalname}, "${documenter(field)}");
     % endfor
     %if any(base for base in cls.bases(access='public') if base.boost_python_export):
 
-    if(std::is_class< autowig::Held< ${cls.globalname} >::Type >::value)
+    if(autowig::Held< ${cls.globalname} >::is_class)
     {
         % for bse in cls.bases(access='public'):
             % if bse.boost_python_export:
@@ -936,6 +936,12 @@ namespace autowig
 {
      template<class T> struct Held {
         typedef ${held_type} Type;
+        static bool const is_class = \
+        % if held_header:
+true;
+        % else:
+false;
+        % endif
     };
 }
 
