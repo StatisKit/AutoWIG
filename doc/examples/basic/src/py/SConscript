@@ -1,8 +1,9 @@
 # # -*-python-*-
 
 Import("env")
-pyenv = env.Clone(tools = ['boost_python'],
-                  LIBS  = ['basic'])
+pyenv = env.Clone(tools = ['boost_python'])
+
+pyenv.AppendUnique(LIBS  = ['basic'])
 
 exclude = """
 """.split()
