@@ -46,6 +46,6 @@ requirements:
         - libboost
         - libbasic
 
-# test:
-#   commands:
-#     - python -c "from basic import __basic"
+test:
+  commands:
+    - python -c "from basic import __basic"
