@@ -17,7 +17,7 @@
 #include <basic/binomial.h>
 #include <cmath>
 
-const char * ProbabilityError::what() const noexcept
+const char * ProbabilityError::what() const NOEXCEPT
 { return "a probability must be in the interval [0,1]"; }
 
 BinomialDistribution::BinomialDistribution(const unsigned int n, const double pi)
@@ -41,7 +41,7 @@ double BinomialDistribution::pmf(const unsigned int value) const
     if(value > n)
     { p = 0; }
     else
-    { p = factorial(n)/(factorial(n-value) * factorial(value)) * pow(1-_pi, n-value) * pow(_pi, value); }
+    { p = factorial(n)/(factorial(n-value) * factorial(value)) * pow(1-_pi, (double)(n-value)) * pow(_pi, (double)(value)); }
     return p;
 }
 

@@ -17,15 +17,17 @@
 #include "base.h"
 #include <exception>
 
+#ifdef WIN32
+#define NOEXCEPT 
+#else
+#define NOEXCEPT noexcept
+#endif
+
 struct BASIC_API ProbabilityError : std::exception
 {
     /// \brief Compute the exception content
     /// \returns The message "a probability must be in the interval [0,1]"
-    #ifdef WIN32
-    virtual const char* what() const; 
-    #else
-    virtual const char* what() const noexcept; 
-    #endif
+    virtual const char* what() const NOEXCEPT; 
 };
 
 class BASIC_API BinomialDistribution
