@@ -400,7 +400,7 @@ ${function.globalname}\
     ERROR = Template(text=r"""\
 namespace autowig
 {
-    PyObject* error_${error.hash} = nullptr;
+    PyObject* error_${error.hash} = NULL;
 
     void translate_${error.hash}(${error.globalname} const & error) { PyErr_SetString(error_${error.hash}, error.what()); };
 }""")
