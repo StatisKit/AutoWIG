@@ -30,7 +30,7 @@ setup(packages = packages.keys(),
       description = 'A basic library',
       long_description = 'This library is designed to be an example for AutoWIG',
       license = 'none',
-      package_data = {package: ['*.pyd', '*.so', '*.dylib'] for package in packages},
+      package_data = {package: ['*.pyd', '*.so', '*.dylib', '*.exp', '*.lib'] for package in packages},
       zip_safe = False)
 
 

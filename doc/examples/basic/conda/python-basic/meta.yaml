@@ -26,6 +26,7 @@ build:
     script: 
         - scons py --prefix={{ PREFIX }} -j{{ CPU_COUNT }}          [unix]
         - scons py --prefix={{ LIBRARY_PREFIX }} -j{{ CPU_COUNT }}  [win]
+        - type build/py/response_file.rsp [win]
         - python setup.py install
         
 about:
