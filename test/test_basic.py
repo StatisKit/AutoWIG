@@ -90,6 +90,8 @@ class TestBasic(unittest.TestCase):
                                   ['-x', 'c++', '-std=c++11', '-I' + str(self.src.parent)],
                                   silent = True)
 
+        print asg.files()
+        
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
