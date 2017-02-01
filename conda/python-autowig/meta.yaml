@@ -26,14 +26,6 @@ source:
 
 build:
   number: 0
-  script:
-    - python setup.py install
-    - mkdir -p $SP_DIR/autowig/site_autowig                                                            [not win]
-    # - mkdir -p $SP_DIR/SCons/site_scons/site_tools                                                     [not win]
-    - cp $RECIPE_DIR/autowig.py $SP_DIR/SCons/site_scons/site_tools/autowig.py                         [not win]
-    # - if not exist %SP_DIR%\AutoWIG\site_autowig mkdir %SP_DIR%\SCons\site_autowig                     [win]
-    # - if not exist %SP_DIR%\SCons\site_scons\site_tools mkdir %SP_DIR%\SCons\site_scons\site_tools     [win]
-    # - copy %RECIPE_DIR%\autowig.py %SP_DIR%\SCons\site_scons\site_tools\autowig.py                     [win]
 
 about:
   home: http://autowig.readthedocs.org
@@ -70,12 +62,4 @@ test:
     - gitpython
     - libboost
   commands:
-    - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture [not win]
-    # - cd {{ RECIPE_DIR }}
-    # - cd ..
-    # - cd ..
-    # - REPOSITORY_DIR=`pwd`                                                                          [unix]
-    # - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
-    # - sed -i -e 's#'"$PREFIX"'/lib/python2.7/site-packages#'"$REPOSITORY_DIR"'/src/py#g' .coverage  [unix]
-    # - sed -i -e 's#'"$SRC_DIR"'#'"$REPOSITORY_DIR"'#g' .coverage                                    [unix]
-    # - mv .coverage $REPOSITORY_DIR                                                                  [unix]
+    - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
