@@ -1,12 +1,12 @@
 platform:
   - x86
-  - x64
+  # - x64
 
 environment:
   matrix:
-    - RECIPE: ..\doc\examples\basic\conda\libbasic
+    # - RECIPE: ..\doc\examples\basic\conda\libbasic
     - RECIPE: ..\doc\examples\basic\conda\python-basic
-    - RECIPE: python-autowig
+    # - RECIPE: python-autowig
 
 install:
   - git clone https://github.com/StatisKit/appveyor-ci.git appveyor-ci
