@@ -16,7 +16,6 @@ exclude = """
 
 sources = [source for source in cppenv.Glob('*.*') if not source.name in exclude]
 
-# targets =
-cppenv.BuildCpp("basic", sources)
-# Alias("cpp", targets)
-# Alias("build", targets)
+targets = cppenv.BuildCpp("basic", sources)
+Alias("cpp", targets)
+Alias("install", targets)
