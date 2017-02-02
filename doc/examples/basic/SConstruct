@@ -18,3 +18,5 @@ except EnvironmentError:
   pass
 except Exception:
     raise
+    
+Default("install")
