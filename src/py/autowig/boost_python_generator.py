@@ -96,6 +96,13 @@ def boost_python_visitor(node):
     else:
         return isinstance(node, FundamentalTypeProxy)
 
+def boost_python_closure_visitor(node):
+    if isinstance(node, FundamentalTypeProxy):
+        return True
+    else:
+        boost_python_export = getattr(node, 'boost_python_export', False)
+        return isinstance(boost_python_export, bool) and boost_python_export
+
 def get_boost_python_export(self):
     desugared_type = self.desugared_type
     if desugared_type.is_pointer_chain or desugared_type.is_rvalue_reference:
@@ -1326,53 +1333,13 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
                      _module = module.suffix,
                      proxy= BoostPythonHeaderFileProxy)
 
-    # white = [asg['::']]
-    # while len(white) > 0:
-    #     node = white.pop()
-    #     export = node.boost_python_export
-    #     if not export:
-    #         black = [node]
-    #         while len(black) > 0:
-    #             temp = black.pop()
-    #             if not getattr(temp, '_boost_python_export', False):
-    #                 temp.boost_python_export = False
-    #                 if isinstance(temp, NamespaceProxy):
-    #                     black.extend(temp.declarations())
-    #                 elif isinstance(temp, EnumerationProxy):
-    #                     black.extend(temp.enumerators)
-    #                 elif isinstance(temp, ClassProxy):
-    #                     black.extend(temp.declarations())
-    #     else:
-    #         if isinstance(node, NamespaceProxy):
-    #             node.boost_python_export = export
-    #             white.extend(node.declarations())
-    #         elif isinstance(node, EnumerationProxy):
-    #             node.boost_python_export = export
-    #             white.extend(node.enumerators)
-    #         elif isinstance(node, ClassProxy):
-    #             node.boost_python_export = export
-    #             white.extend(node.declarations())
-
-    # white = [asg['::']]
-    # while len(white) > 0:
-    #     node = white.pop()
-    #     export = node.boost_python_export
-    #     if export:
-    #         node.boost_python_export = export
-    #         if isinstance(node, NamespaceProxy):
-    #             white.extend(node.declarations())
-    #         elif isinstance(node, EnumerationProxy):
-    #             white.extend(node.enumerators)
-    #         elif isinstance(node, ClassProxy):
-    #             white.extend(node.declarations())
-
     directory = module.parent
     suffix = module.suffix
     prefix = kwargs.pop('prefix', 'wrapper_')
 
     if kwargs.pop('closure', True):
         plugin = visitor.plugin
-        visitor.plugin = 'boost_python'
+        visitor.plugin = 'boost_python_closure'
         nodes += asg.dependencies(*nodes)
         visitor.plugin = plugin
 
