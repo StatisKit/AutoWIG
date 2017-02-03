@@ -89,8 +89,6 @@ class TestBasic(unittest.TestCase):
         asg = autowig.parser(asg, self.src.files('*.h'),
                                   ['-x', 'c++', '-std=c++11', '-I' + str(self.src.parent)],
                                   silent = True)
-
-        print asg.files()
         
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
@@ -99,8 +97,6 @@ class TestBasic(unittest.TestCase):
                                         decorator = self.tgt/'basic'/'_basic.py',
                                         prefix = 'wrapper_')
         wrappers.write()
-        with open(wrappers.header.globalname, 'r') as filehandler:
-            print '\n'.join(filehandler.readlines())
         
         subprocess.check_call(['scons', 'py', '--prefix=' + prefix],
                               cwd=self.tgt.parent.parent,
