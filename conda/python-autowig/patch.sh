@@ -1,4 +1,4 @@
-set -v
+set -ev
 
 if [[ -f windows.patch ]]; then
     rm windows.patch
@@ -13,7 +13,7 @@ if [[ -f travis-ci.patch ]]; then
     rm travis-ci.patch
 fi
 
-git ci -a -m "Prepare for new patches"
+git commit -a -m "Prepare for new patches"
 
 cd ../../test
 
@@ -52,6 +52,6 @@ git branch -D generate_test_patch
 
 cd ../conda/python-autowig
 git add windows.patch appveyor-ci.patch osx.patch travis-ci.patch
-git ci -a -m "Add new patches"
+git commit -a -m "Add new patches"
 
-set +v
+set +ve
