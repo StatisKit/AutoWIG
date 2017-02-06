@@ -1,6 +1,6 @@
 echo ON
 
-python setup.py install
+python setup.py install --prefix=%PREFIX%
 if errorlevel 1 exit 1
 if not exist %SP_DIR%\AutoWIG\site_autowig mkdir %SP_DIR%\SCons\site_autowig
 if errorlevel 1 exit 1
