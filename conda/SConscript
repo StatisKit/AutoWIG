@@ -15,8 +15,8 @@ sources = [source for source in sources if not source.name in exclude]
 targets = conda_env.CondaPackages(sources)
 Alias("conda-build", targets)
 
-targets = conda_env.AnacondaUpload(sources)
-Alias("anaconda-upload", targets)
+# targets = conda_env.AnacondaUpload(sources)
+# Alias("anaconda-upload", targets)
 
 # Exclude here all Conda recipes that must not be installed
 # in the current Environment. These recipes that must not be
