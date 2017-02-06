@@ -10,10 +10,10 @@ exclude = """
 
 sources = [source for source in pyenv.Glob('*.*') if source.name not in exclude]
 
-targets = pyenv.BuildBoostPython("basic/__basic", sources)
+targets = pyenv.BoostPythonExtension("basic/__basic", sources)
 Alias("py", targets)
 Alias("install", targets)
 
-targets = pyenv.BuildPython("basic")
+targets = pyenv.PythonPackage("basic")
 Alias("py", targets)
 Alias("install", targets)
