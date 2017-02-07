@@ -240,7 +240,7 @@ FieldProxy._valid_boost_python_export = property(_valid_boost_python_export)
 def _default_boost_python_export(self):
     if self.parent.boost_python_export:
         qualified_type = self.qualified_type
-        return not qualified_type.is_reference and not qualified_type.is_pointer and bool(qualified_type.unqualified_type.boost_python_export)
+        return not qualified_type.is_reference and not qualified_type.is_pointer and (bool(qualified_type.unqualified_type.boost_python_export) or qualified_type.unqualified_type.is_fundamental_type)
     else:
         return False
 

@@ -21,18 +21,18 @@ packages = {"" : "src" + os.sep + "py"}
 for package in find_packages("src" + os.sep + "py"):
     packages[package] = "src" + os.sep + "py"
 
-from pkg.metadata import load_metadata
-metadata = load_metadata('.')
+# from pkg.metadata import load_metadata
+# metadata = load_metadata('.')
 
 setup(packages = packages.keys(),
       package_dir = {"" : "src" + os.sep + "py"},
-      name = metadata.name,
-      version = metadata.version,
-      author = metadata.authors,
-      author_email = metadata.email,
-      description = metadata.description,
-      long_description = metadata.long_description,
-      license = metadata.license,
+      name = 'AutoWIG',
+      version = '1.0.0',
+      author = 'Pierre Fernique',
+      author_email = 'pfernique@gmail',
+      description = '',
+      long_description = '',
+      license = 'CeCILL',
       package_data = {package: [ "*.so", "*.dll"] for package in packages},
       entry_points = {
         'autowig.parser': ['libclang = autowig.libclang_parser:libclang_parser'],

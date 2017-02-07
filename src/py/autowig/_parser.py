@@ -317,6 +317,21 @@ def update_overload(asg, overload='none', **kwargs):
 def suppress_forward_declaration(asg, **kwargs):
     """
     """
+    # TODO More
+    for cls in asg.classes(templated=False, specialized=True):
+        tpl = cls.specialize
+        for mtd in cls.methods():
+            qtype = mtd.return_type
+            if qtype.unqualified_type.parent == tpl:
+                utype = asg._type_edges[mtd._node]["target"].replace('::' + tpl.localname + '::', '::' + cls.localname + '::', 1)
+                if utype in asg:
+                    asg._type_edges[mtd._node]["target"] = utype
+            for parm in mtd.parameters:
+                qtype = parm.qualified_type
+                if qtype.unqualified_type.parent == tpl:
+                    utype = asg._parameter_edges[mtd._node][parm.index]["target"].replace('::' + tpl.localname + '::', '::' + cls.localname + '::', 1)
+                    if utype in asg:
+                        asg._parameter_edges[mtd._node][parm.index]["target"] = utype
     black = set()
     def blacklist(cls, black):
         black.add(cls._node)
@@ -330,9 +345,6 @@ def suppress_forward_declaration(asg, **kwargs):
     def blacklisted(type, black):
         return type.unqualified_type._node in black or type.desugared_type.unqualified_type._node in black
     for cls in asg.classes(templated=False):
-        # if cls._node == 'struct ::Eigen::EigenBase':
-        #     import pdb
-        #     pdb.set_trace()
         if cls._node not in black and not cls._node.startswith('union '):
             if cls.is_complete:
                 complete = cls
