@@ -59,6 +59,7 @@ test:
     - python-dbg
     - clang                  [win]
     - python-clanglite       [unix]
+    - git
     - gitpython
     - libboost
   commands:
