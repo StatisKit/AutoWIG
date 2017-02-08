@@ -67,13 +67,18 @@ PYTHON_OPERATOR['>>='] = '__irshift__'
 PYTHON_OPERATOR['()'] = '__call__'
 PYTHON_OPERATOR['[]'] = '__getitem__'
 
+PYTHON_FUNCTION = dict()
+PYTHON_FUNCTION['generator'] = '__iter__'
+PYTHON_FUNCTION['size'] = '__len__'
+
 def pep8_node_rename(node, scope=False):
     if isinstance(node, FunctionProxy) and node.localname.startswith('operator'):
         return PYTHON_OPERATOR[node.localname.strip('operator').strip()]
     elif isinstance(node, FunctionProxy):
-        return camel_case_to_lower(node.localname)
-    elif isinstance(node, FunctionProxy):
-        return camel_case_to_lower(node.localname)
+        if node.localname in PYTHON_FUNCTION:
+            return PYTHON_FUNCTION[node.localname]
+        else:
+            return camel_case_to_lower(node.localname)
     elif isinstance(node, VariableProxy):
         return camel_case_to_lower(node.localname)
     elif isinstance(node, EnumerationProxy):

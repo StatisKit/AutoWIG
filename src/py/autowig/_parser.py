@@ -332,6 +332,13 @@ def suppress_forward_declaration(asg, **kwargs):
                     utype = asg._parameter_edges[mtd._node][parm.index]["target"].replace('::' + tpl.localname + '::', '::' + cls.localname + '::', 1)
                     if utype in asg:
                         asg._parameter_edges[mtd._node][parm.index]["target"] = utype
+        for ctr in cls.constructors():
+            for parm in ctr.parameters:
+                qtype = parm.qualified_type
+                if qtype.unqualified_type.parent == tpl:
+                    utype = asg._parameter_edges[ctr._node][parm.index]["target"].replace('::' + tpl.localname + '::', '::' + cls.localname + '::', 1)
+                    if utype in asg:
+                        asg._parameter_edges[ctr._node][parm.index]["target"] = utype
     black = set()
     def blacklist(cls, black):
         black.add(cls._node)
