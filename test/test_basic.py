@@ -84,9 +84,6 @@ class TestBasic(unittest.TestCase):
         wrapper = self.tgt/'_basic.cpp'
         if wrapper.exists():
             wrapper.unlink()
-            
-        import pdb
-        pdb.set_trace()
 
         subprocess.check_call(['scons', 'cpp', '--prefix=' + prefix],
                               cwd=self.tgt.parent.parent)
@@ -96,9 +93,6 @@ class TestBasic(unittest.TestCase):
         asg = autowig.parser(asg, self.src.files('*.h'),
                                   ['-x', 'c++', '-std=c++11', '-I' + str(self.src.parent)],
                                   silent = True)
-        
-        import pdb
-        pdb.set_trace()
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
