@@ -18,7 +18,7 @@ git commit -a -m "Prepare for new patches"
 cd ../../test
 
 git checkout -b generate_test_patch
-sed -i'' -e '104,110d' test_basic.py
+sed -i'' -e '113,119d' test_basic.py
 rm test_feedback.py
 git diff > ../conda/python-autowig/windows.patch
 git add test_basic.py test_feedback.py

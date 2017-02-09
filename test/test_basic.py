@@ -24,6 +24,9 @@ import __builtin__ as builtins
 
 import autowig
 
+import platform
+is_windows = any(platform.win32_ver())
+
 class TemplateRender(object):
 
     def __get__(self, obj, objtype, **kwargs):
@@ -63,6 +66,8 @@ class TestBasic(unittest.TestCase):
 
         import sys
         prefix = sys.prefix
+        if is_windows:
+        	prefix = os.path.join(prefix, 'Library')
 
         build = self.tgt.parent.parent/'build'
         print build
@@ -70,19 +75,21 @@ class TestBasic(unittest.TestCase):
             shutil.rmtree(build)
         for wrapper in self.tgt.walkfiles('wrapper_*.cpp'):
             wrapper.unlink()
-        wrapper = self.tgt/'_module.h'
+        wrapper = self.tgt/'_basi.h'
         if wrapper.exists():
             wrapper.unlink()
-        wrapper = self.tgt/'_module.py'
+        wrapper = self.tgt/'basic'/'_basic.py'
         if wrapper.exists():
             wrapper.unlink()
-        wrapper = self.tgt/'_module.cpp'
+        wrapper = self.tgt/'_basic.cpp'
         if wrapper.exists():
             wrapper.unlink()
             
+        import pdb
+        pdb.set_trace()
+
         subprocess.check_call(['scons', 'cpp', '--prefix=' + prefix],
-                              cwd=self.tgt.parent.parent,
-                              shell=True)
+                              cwd=self.tgt.parent.parent)
 
         asg = autowig.AbstractSemanticGraph()
 
@@ -90,6 +97,9 @@ class TestBasic(unittest.TestCase):
                                   ['-x', 'c++', '-std=c++11', '-I' + str(self.src.parent)],
                                   silent = True)
         
+        import pdb
+        pdb.set_trace()
+
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
@@ -99,8 +109,7 @@ class TestBasic(unittest.TestCase):
         wrappers.write()
         
         subprocess.check_call(['scons', 'py', '--prefix=' + prefix],
-                              cwd=self.tgt.parent.parent,
-                              shell=True)
+                              cwd=self.tgt.parent.parent)
 
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""

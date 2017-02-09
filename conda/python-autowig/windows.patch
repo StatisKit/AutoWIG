@@ -3,8 +3,7 @@ index 94d6af3..a6f2047 100644
 --- a/test/test_basic.py
 +++ b/test/test_basic.py
 @@ -102,13 +102,6 @@ class TestBasic(unittest.TestCase):
-                               cwd=self.tgt.parent.parent,
-                               shell=True)
+                               cwd=self.tgt.parent.parent)
  
 -    def test_pyclanglite_parser(self):
 -        """Test `pyclanglite` parser"""
