@@ -67,7 +67,10 @@ class TestBasic(unittest.TestCase):
         import sys
         prefix = sys.prefix
         if is_windows:
-        	prefix = os.path.join(prefix, 'Library')
+            prefix = os.path.join(prefix, 'Library')
+            scons = subprocess.check_output(['where', 'scons']).strip()
+        else:
+            scons = subprocess.check_output(['which', 'scons']).strip()
 
         build = self.tgt.parent.parent/'build'
         print build
@@ -84,11 +87,8 @@ class TestBasic(unittest.TestCase):
         wrapper = self.tgt/'_basic.cpp'
         if wrapper.exists():
             wrapper.unlink()
-            
-        import pdb
-        pdb.set_trace()
 
-        subprocess.check_call(['scons', 'cpp', '--prefix=' + prefix],
+        subprocess.check_call([scons, 'cpp', '--prefix=' + prefix],
                               cwd=self.tgt.parent.parent)
 
         asg = autowig.AbstractSemanticGraph()
@@ -96,9 +96,6 @@ class TestBasic(unittest.TestCase):
         asg = autowig.parser(asg, self.src.files('*.h'),
                                   ['-x', 'c++', '-std=c++11', '-I' + str(self.src.parent)],
                                   silent = True)
-        
-        import pdb
-        pdb.set_trace()
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
@@ -108,7 +105,7 @@ class TestBasic(unittest.TestCase):
                                         prefix = 'wrapper_')
         wrappers.write()
         
-        subprocess.check_call(['scons', 'py', '--prefix=' + prefix],
+        subprocess.check_call([scons, 'py', '--prefix=' + prefix],
                               cwd=self.tgt.parent.parent)
 
     def test_pyclanglite_parser(self):
