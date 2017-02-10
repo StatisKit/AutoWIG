@@ -1348,7 +1348,7 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         if node.boost_python_export is True:
             if isinstance(node, EnumeratorProxy) and isinstance(node.parent, (EnumerationProxy, ClassProxy)) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)) or isinstance(node, FunctionProxy) and isinstance(node.parent, ClassProxy):
                 continue
-            elif not isinstance(node, NamespaceProxy):
+            elif not isinstance(node, NamespaceProxy) and not any(isinstance(ancestor, ClassTemplateProxy) for ancestor in reversed(node.ancestors)):
                 export = directory.globalname + node_path(node, prefix=prefix, suffix=suffix).strip('./')
                 if export in asg:
                     export = asg[export]
