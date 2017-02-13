@@ -414,6 +414,15 @@ namespace autowig
 
     DECORATOR = Template(text=r"""\
 % if not cls.is_error:
+#if defined(_MSC_VER)
+    #if (_MSC_VER == 1900)
+namespace boost
+{
+    template <> ${cls.globalname} const volatile * get_pointer<${cls.globalname} const volatile >(${cls.globalname} const volatile *c) { return c; }
+}
+    #endif
+#endif
+
 namespace autowig
 {
     % for method in cls.methods(access='public'):

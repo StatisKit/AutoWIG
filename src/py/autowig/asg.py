@@ -1121,7 +1121,7 @@ class ClassProxy(DeclarationProxy):
 
     @property
     def is_complete(self):
-        return self._is_complete or len(self.declarations()) > 0
+        return self._is_complete # or len(self.declarations()) > 0
 
     @property
     def is_abstract(self):
