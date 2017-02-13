@@ -17,7 +17,7 @@
 """
 """
 
-from .asg import DeclarationProxy, EnumeratorProxy
+from .asg import DeclarationProxy, EnumeratorProxy, TypedefProxy, VariableProxy
 
 __all__ = []
 
