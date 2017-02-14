@@ -994,11 +994,11 @@ false;
     def helder(self, helder):
         if helder not in self.HELDTYPE or helder not in self.HELDHEADER:
             raise ValueError('`helder` parameter')
-        self._asg[self._node]['_helder'] = helder
+        self._asg._nodes[self._node]['_helder'] = helder
    
     @helder.deleter
     def helder(self):
-        self._asg[self._node].pop('_helder', 'raw')
+        self._asg._nodes[self._node].pop('_helder', 'raw')
 
     @property
     def guard(self):
@@ -1009,11 +1009,11 @@ false;
 
     @guard.setter
     def guard(self, guard):
-        self._asg[self._node]['_guard'] = guard
+        self._asg._nodes[self._node]['_guard'] = guard
    
     @guard.deleter
     def guard(self):
-        self._asg[self._node].pop('_guard', '')
+        self._asg._nodes[self._node].pop('_guard', '')
       
 BoostPythonHeaderFileProxy.content = property(BoostPythonHeaderFileProxy.get_content)
 
@@ -1376,6 +1376,9 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         else:
             decorator = asg.add_file(decorator, proxy=boost_python_decorator())
         decorator.module = module
+
+    if 'helder' in kwargs:
+        module.header.helder = kwargs.pop('helder')
 
     return module
 
