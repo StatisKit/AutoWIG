@@ -771,8 +771,6 @@ ${field.globalname}, "${documenter(field)}");
            
     @property         
     def _content(self):
-        # import pdb
-        # pdb.set_trace()
         content = '#include "' + self.header.localname + '"\n'
         for arg in self.declarations:
             if isinstance(arg, ClassProxy) and arg.is_error:
