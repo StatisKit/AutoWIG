@@ -1292,20 +1292,36 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
 % endif""")
 
     def get_content(self):
+
+        IGNORE = self.module.exports[0].IGNORE
+
+        def ignore(decl):
+            if not decl.globalname in IGNORE:
+                if isinstance(decl, NamespaceProxy):
+                    return False
+                elif isinstance(decl, ClassTemplateSpecializationProxy):
+                    return ignore(decl.specialize) or ignore(decl.parent)
+                elif isinstance(decl, TypedefProxy):
+                    return ignore(decl.qualified_type.unqualified_type) or ignore(decl.parent)
+                else:
+                    return ignore(decl.parent)
+            else:
+                return True
+
         dependencies = [module for module in self.module.get_dependencies()]
         content = [self.IMPORTS.render(decorator = self, module = self.module, dependencies = [module.decorator for module in sorted(dependencies, key = lambda dependency: dependency.depth)])]
         scopes = []
         for export in self.module.exports:
             for declaration in export.declarations:
-                if isinstance(declaration.parent, ClassProxy):
+                if isinstance(declaration.parent, ClassProxy) and not ignore(declaration):
                     scopes.append(declaration)
         content.append(self.SCOPES.render(scopes = scopes, decorator = self, module = self.module,
                 node_rename = node_rename))
         templates = dict()
         for export in self.module.exports:
             for declaration in export.declarations:
-                if isinstance(declaration, ClassTemplateSpecializationProxy):
-                    spc = declaration.specialize._node
+                if isinstance(declaration, ClassTemplateSpecializationProxy) and not ignore(declaration):
+                    spc = declaration.specialize.globalname
                     if spc in templates:
                         templates[spc].append(declaration)
                     else:
@@ -1315,9 +1331,9 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
         typedefs = []
         for export in self.module.exports:
             for declaration in export.declarations:
-                if isinstance(declaration, TypedefProxy) and declaration.qualified_type.desugared_type.unqualified_type.boost_python_export and declaration.qualified_type.desugared_type.unqualified_type.boost_python_export is not True:
+                if isinstance(declaration, TypedefProxy) and declaration.qualified_type.desugared_type.unqualified_type.boost_python_export and declaration.qualified_type.desugared_type.unqualified_type.boost_python_export is not True and not ignore(declaration):
                     typedefs.append(declaration)
-                elif isinstance(declaration, ClassProxy):
+                elif isinstance(declaration, ClassProxy) and not ignore(declaration):
                     typedefs.extend([tdf for tdf in declaration.typedefs() if tdf.boost_python_export and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export and tdf.qualified_type.desugared_type.unqualified_type.boost_python_export is not True])
         content.append(self.TYPEDEFS.render(decorator = self, module = self.module, typedefs = typedefs, node_rename=node_rename))
         return "\n".join(content)
