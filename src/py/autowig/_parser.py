@@ -26,7 +26,8 @@ from pkg.plugin import PluginManager
 import sys
 import platform
 
-from .asg import (NamespaceProxy,
+from .asg import (DeclarationProxy,
+                  NamespaceProxy,
                   FundamentalTypeProxy,
                   HeaderProxy,
                   VariableProxy,
@@ -170,6 +171,7 @@ def post_processing(asg, flags, **kwargs):
 def bootstrap(asg, flags, **kwargs):
     bootstrap = kwargs.pop('bootstrap', True)
     maximum = kwargs.pop('maximum', 1000)
+    maxdepth = kwargs.pop('depth', 1)
     if bootstrap:
         __index = 0
         if isinstance(bootstrap, bool):
@@ -178,64 +180,61 @@ def bootstrap(asg, flags, **kwargs):
         forbidden = set()
         while not nodes == len(asg) and __index < bootstrap:
             nodes = len(asg)
-            white = []
             black = set()
-            for node in asg.nodes():
-                if not node.clean:
-                    white.append(node)
-                    black.add(node._node)
+            white = {asg['::'] : 0 }
             gray = set()
             while len(white) > 0:
-                node = white.pop()
-                if isinstance(node, (TypedefProxy, VariableProxy)):
-                    target = node.qualified_type.desugared_type.unqualified_type
-                    if target._node not in black:
-                        white.append(target)
-                        black.add(target._node)
-                elif isinstance(node, FunctionProxy):
-                    return_type = node.return_type.desugared_type.unqualified_type
-                    if return_type._node not in black:
-                        white.append(return_type)
-                        black.add(return_type._node)
-                    for parameter in node.parameters:
-                        target = parameter.qualified_type.desugared_type.unqualified_type
+                node, depth = white.popitem()
+                if node.access in ['none', 'public']:
+                    if isinstance(node, NamespaceProxy):
+                        for dcl in node.declarations():
+                            header = dcl.header
+                            if isinstance(dcl, NamespaceProxy) or header and not header.is_external_dependency and dcl._node not in black:
+                                white[dcl] = depth
+                                black.add(dcl._node)              
+                    elif isinstance(node, (TypedefProxy, VariableProxy)) and depth <= maxdepth - 1:
+                        target = node.qualified_type.desugared_type.unqualified_type
                         if target._node not in black:
-                            white.append(target)
+                            if isinstance(node, TypedefProxy):
+                                white[target] = depth
+                            else:
+                                white[target] = depth + 1
                             black.add(target._node)
-                elif isinstance(node, ConstructorProxy):
-                    for parameter in node.parameters:
-                        target = parameter.qualified_type.desugared_type.unqualified_type
-                        if target._node not in black:
-                            white.append(target)
-                            black.add(target._node)
-                elif isinstance(node, ClassProxy):
-                    for base in node.bases():
-                        if base.access == 'public':
-                            if base._node not in black:
-                                white.append(base)
-                                black.add(base._node)
-                    for dcl in node.declarations():
-                        try:
-                            if dcl.access == 'public':
-                                if dcl._node not in black:
-                                    white.append(dcl)
-                                    black.add(dcl._node)
-                        except:
-                            pass
-                    if isinstance(node, ClassTemplateSpecializationProxy):
-                        if not node.is_complete:
+                    elif isinstance(node, FunctionProxy) and depth <= maxdepth - 1:
+                        return_type = node.return_type.desugared_type.unqualified_type
+                        if return_type._node not in black:
+                            white[return_type] = depth + 1
+                            black.add(return_type._node)
+                        for parameter in node.parameters:
+                            target = parameter.qualified_type.desugared_type.unqualified_type
+                            if target._node not in black:
+                                white[return_type] = depth + 1
+                                black.add(target._node)
+                    elif isinstance(node, ConstructorProxy) and depth <= maxdepth - 1:
+                        for parameter in node.parameters:
+                            target = parameter.qualified_type.desugared_type.unqualified_type
+                            if target._node not in black:
+                                white[target] = depth + 1
+                                black.add(target._node)
+                    elif isinstance(node, ClassProxy)  and depth <= maxdepth:
+                        for base in node.bases():
+                            if base.access == 'public':
+                                if base._node not in black:
+                                    white[base] = depth
+                                    black.add(base._node)
+                        for dcl in node.declarations():
+                            try:
+                                if dcl.access == 'public':
+                                    if dcl._node not in black:
+                                        white[dcl] = depth
+                                        black.add(dcl._node)
+                            except:
+                                pass
+                        if isinstance(node, ClassTemplateSpecializationProxy):
+                            if not node.is_complete:
+                                gray.add(node._node)
+                        elif not node.is_complete and node.access in ['none', 'public']:
                             gray.add(node._node)
-                        specialize = node.specialize
-                        if specialize._node not in black:
-                            white.append(node.specialize)
-                            black.add(node.specialize._node)
-                    elif not node.is_complete and node.access in ['none', 'public']:
-                        gray.add(node._node)
-                elif isinstance(node, ClassTemplateProxy):
-                    for specialization in node.specializations():
-                        if specialization._node not in black:
-                            white.append(specialization)
-                            black.add(specialization._node)
             gray = list(gray)
             for gray in [gray[index:index+maximum] for index in xrange(0, len(gray), maximum)]:
                 headers = []

@@ -467,7 +467,7 @@ class DeclarationProxy(NodeProxy):
             return localname[localname.rindex(':')+1:]
 
     @property
-    def access(self):
+    def access(self): 
         return getattr(self, '_access', "none")
 
     @access.setter
@@ -1066,7 +1066,6 @@ class ConstructorProxy(DeclarationProxy):
             return self._comment
         else:
             return ""
-
 
     _pakwargs = ['class ', 'struct ', 'union ', '']
 
