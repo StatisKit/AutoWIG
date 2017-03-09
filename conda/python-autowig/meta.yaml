@@ -56,7 +56,6 @@ test:
   requires:
     - libdev
     - python-dev
-    - python-dbg
     - clang                  [win]
     - python-clanglite       [unix]
     - git

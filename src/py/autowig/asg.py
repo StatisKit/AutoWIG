@@ -1213,7 +1213,7 @@ class ClassProxy(DeclarationProxy):
             declarations = self.declarations(pattern=pattern, inherited=False, access=access) + \
                 self.declarations(pattern=pattern, inherited=True, access=access)
         elif inherited:
-            declarations = []
+            declarations = self.declarations(pattern=pattern, inherited=False, access=access)
             for base in self.bases(True):
                 if isinstance(base, TypedefProxy):
                     basedeclarations = [basedeclaration for basedeclaration in base.qualified_type.desugared_type.unqualified_type.declarations(pattern=pattern, inherited=False) \
@@ -1229,6 +1229,7 @@ class ClassProxy(DeclarationProxy):
                     for basedeclaration in basedeclarations:
                         basedeclaration.access = 'private'
                 declarations += basedeclarations
+            declarations = reversed(sorted(declarations, key= lambda declaration: declaration.parent.depth))
         else:
             if pattern is None:
                 declarations = [self._asg[node] for node in self._asg._syntax_edges[self._node]]

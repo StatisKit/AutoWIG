@@ -414,17 +414,51 @@ namespace autowig
 
     DECORATOR = Template(text=r"""\
 % if not cls.is_error:
-#if defined(_MSC_VER)
-    #if (_MSC_VER == 1900)
-namespace boost
-{
-    template <> ${cls.globalname} const volatile * get_pointer<${cls.globalname} const volatile >(${cls.globalname} const volatile *c) { return c; }
-}
-    #endif
-#endif
 
 namespace autowig
 {
+    % if cls.is_abstract:
+    class Wrap_${cls.hash} : public ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)}, public boost::python::wrapper< ${cls.globalname} >
+    {
+        % for access in ['public', 'protected', 'private']:
+        ${access}:
+            <% prototypes = set() %>
+            % for mtd in cls.methods(access=access, inherited=True):
+                % if mtd.access == access:
+                    %if mtd.prototype not in prototypes and mtd.is_virtual and mtd.is_pure:
+            virtual ${mtd.return_type.globalname} ${mtd.localname}(${', '.join(parameter.qualified_type.globalname + ' param_' + str(parameter.index) for parameter in mtd.parameters)}) \
+                        % if mtd.is_const:
+const
+                        % else:
+
+                        % endif
+                        % if mtd.return_type.desugared_type.globalname.startswith('class ::std::unique_ptr'):
+            {
+                 ${mtd.return_type.globalname.replace("class ", "", 1)}::element_type* result = this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.index) for parameter in mtd.parameters)});
+                 return ${mtd.return_type.globalname.replace('class ', '', 1)}(result);
+            }
+                        % elif mtd.return_type.is_reference:
+            {
+                 ${mtd.return_type.unqualified_type.globalname.replace("class ", "", 1).replace("struct ", "", 1)}* result = this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.index) for parameter in mtd.parameters)});
+                 return *result;
+            }                 
+                        % else:
+            { \
+                            % if not mtd.return_type.desugared_type.globalname.strip() == 'void':
+return \
+                            % endif
+this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.index) for parameter in mtd.parameters)}); }
+                        % endif
+                        
+                    % endif
+<% prototypes.add(mtd.prototype) %>\
+                % endif
+            % endfor
+
+        % endfor
+    };
+    % endif
+
     % for method in cls.methods(access='public'):
         % if method.boost_python_export and method.return_type.desugared_type.is_reference and not method.return_type.desugared_type.is_const and method.return_type.desugared_type.unqualified_type.is_assignable:
     void method_decorator_${method.hash}\
@@ -435,9 +469,31 @@ namespace autowig
         % endif
     % endfor
 }
+
+#if defined(_MSC_VER)
+    #if (_MSC_VER == 1900)
+namespace boost
+{
+    <% 
+    if cls.is_abstract:
+        globalname = 'autowig::' + 'Wrap_' + cls.hash
+    else:
+        globalname = cls.globalname
+    %>template <> ${globalname} const volatile * get_pointer<${globalname} const volatile >(${globalname} const volatile *c) { return c; }
+}
+    #endif
+#endif
+
 %endif""")
 
     CLASS = Template(text=r"""\
+<%
+def wrapper_name(cls):
+    if cls.is_abstract:
+        return 'autowig::' + 'Wrap_' + cls.hash
+    else:
+        return cls.globalname
+%>\
 % if not cls.is_error:
     % for method in cls.methods(access='public'):
         % if method.boost_python_export and method.is_overloaded:
@@ -477,7 +533,7 @@ ${function.globalname}\
         % endfor
     };
     % endif
-    boost::python::class_< ${cls.globalname}, autowig::Held< ${cls.globalname} >::Type\
+    boost::python::class_< ${wrapper_name(cls)}, autowig::Held< ${wrapper_name(cls)} >::Type\
     % if any(base for base in cls.bases(access='public') if base.boost_python_export):
 , boost::python::bases< ${", ".join(base.globalname for base in cls.bases(access='public') if base.boost_python_export)} >\
     % endif
@@ -496,11 +552,18 @@ boost::python::init< ${", ".join(parameter.qualified_type.globalname for paramet
     % for method in cls.methods(access = 'public'):
         % if method.boost_python_export:
     class_${cls.hash}.def("${node_rename(method)}", \
-                % if method.is_overloaded:
-method_pointer_${method.hash}, \
-                % else:
-&${method.globalname}, \
+                % if method.is_virtual and method.is_pure:
+boost::python::pure_virtual(\
                 % endif
+                % if method.is_overloaded:
+method_pointer_${method.hash}\
+                % else:
+&${method.globalname}
+                % endif
+                % if method.is_virtual and method.is_pure:
+)\
+                % endif
+, \
                 % if method.boost_python_call_policy:
 ${method.boost_python_call_policy}, \
                 % endif
@@ -545,7 +608,17 @@ ${field.globalname}, "${documenter(field)}");
         boost::python::implicitly_convertible< autowig::Held< ${cls.globalname} >::Type, autowig::Held< ${bse.globalname} >::Type >();
             % endif
         % endfor
+        % if cls.is_abstract:
+        boost::python::objects::class_value_wrapper< autowig::Held< ${cls.globalname} >::Type, boost::python::objects::make_ptr_instance< ${cls.globalname}, boost::python::objects::pointer_holder< autowig::Held< ${cls.globalname} >::Type, ${cls.globalname} > > >();
+        //boost::python::implicitly_convertible< autowig::Held< ${wrapper_name(cls)} >::Type, autowig::Held< ${cls.globalname} >::Type >();
+        % endif
     }
+    % elif cls.is_abstract:
+    if(autowig::Held< ${cls.globalname} >::is_class)
+    {
+        boost::python::objects::class_value_wrapper< autowig::Held< ${cls.globalname} >::Type, boost::python::objects::make_ptr_instance< ${cls.globalname}, boost::python::objects::pointer_holder< autowig::Held< ${cls.globalname} >::Type, ${cls.globalname} > > >();
+        //boost::python::implicitly_convertible< autowig::Held< ${wrapper_name(cls)} >::Type, autowig::Held< ${cls.globalname} >::Type >();
+    }    
     % endif
 % else:
     std::string name_${cls.hash} = boost::python::extract< std::string >(boost::python::scope().attr("__name__"));
@@ -562,6 +635,7 @@ ${field.globalname}, "${documenter(field)}");
     {
         static PyObject* convert(${cls.globalname} const & unique_ptr_${cls.hash})
         {
+            //return boost::python::incref(boost::python::object(const_cast< ${cls.globalname} & >(unique_ptr_${cls.hash}).release()).ptr());
             std::shared_ptr< ${cls.templates[0].globalname} > shared_ptr_${cls.hash}(std::move(const_cast< ${cls.globalname} & >(unique_ptr_${cls.hash})));
             return boost::python::incref(boost::python::object(shared_ptr_${cls.hash}).ptr());
         }
@@ -773,8 +847,13 @@ ${field.globalname}, "${documenter(field)}");
     def _content(self):
         content = '#include "' + self.header.localname + '"\n'
         for arg in self.declarations:
+            # if arg.globalname == 'struct ::statiskit::DiscreteUnivariateDistribution':
+            #     import pdb
+            #     pdb.set_trace()
             if isinstance(arg, ClassProxy) and arg.is_error:
                 content += '\n\n' + self.ERROR.render(error = arg)
+            # if arg.is_abstract:
+            #     content += '\n\n' + self.ABSTRACT_CLASS.render(cls = arg)
         for arg in self.declarations:
             if isinstance(arg, ClassProxy):
                 if arg.globalname not in self.IGNORE:
@@ -959,7 +1038,7 @@ false;
     };
 }
 
-#endif""")
+""")
 
     HELDTYPE = {'raw'               : "T*",
                 'std::shared_ptr'   : "std::shared_ptr< T >",
@@ -971,15 +1050,64 @@ false;
                   'std::unique_ptr'   : 'memory',
                   'boost::shared_ptr' : 'boost/shared_ptr'}
 
+    ABSTRACTS = Template(text=r"""\
+/*namespace autowig
+{\
+    % for cls in abstracts:
+
+    class Wrap_${cls.hash} : public ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)}, public boost::python::wrapper< ${cls.globalname} >
+    {
+        % for access in ['public', 'protected', 'private']:
+        ${access}:
+            <% prototypes = set() %>
+            % for mtd in cls.methods(access=access, inherited=True):
+                % if mtd.access == access:
+                    %if mtd.prototype not in prototypes and mtd.is_virtual and mtd.is_pure:
+            virtual ${mtd.return_type.globalname} ${mtd.localname}(${', '.join(parameter.qualified_type.globalname + ' param_' + str(parameter.index) for parameter in mtd.parameters)}) \
+                        % if mtd.is_const:
+const
+                        % else:
+
+                        % endif
+                        % if mtd.return_type.desugared_type.globalname.startswith('class ::std::unique_ptr'):
+            {
+                 ${mtd.return_type.globalname.replace("class ", "", 1)}::element_type* result = this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.index) for parameter in mtd.parameters)});
+                 return ${mtd.return_type.globalname.replace('class ', '', 1)}(result);
+            }
+                        % else:
+            { \
+                            % if not mtd.return_type.desugared_type.globalname.strip() == 'void':
+return \
+                            % endif
+this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.index) for parameter in mtd.parameters)}); }
+                        % endif
+                    % endif
+<% prototypes.add(mtd.prototype) %>\
+                % endif
+            % endfor
+
+        % endfor
+    };
+    % endfor
+}*/
+""")
+
     @property
     def module(self):
         return self._asg[self.globalname.rstrip(self.suffix) + self._module]
 
     def get_content(self):
-        return self.CONTENT.render(headers = [header for header in self._asg.files(header=True) if not header.is_external_dependency and header.is_self_contained],
-                                   held_type = self.HELDTYPE[self.helder],
-                                   held_header = self.HELDHEADER[self.helder],
-                                   header_guard = self.guard)
+        content = self.CONTENT.render(headers = [header for header in self._asg.files(header=True) if not header.is_external_dependency and header.is_self_contained],
+                                      held_type = self.HELDTYPE[self.helder],
+                                      held_header = self.HELDHEADER[self.helder],
+                                      header_guard = self.guard)
+        abstracts = []
+        for export in self.module.exports:
+            for cls in export.declarations:
+                if isinstance(cls, ClassProxy) and cls.is_abstract:
+                    abstracts.append(cls)
+        content += self.ABSTRACTS.render(abstracts=sorted(abstracts, key=lambda abstract: abstract.depth))
+        return content + "#endif"
 
     @property
     def helder(self):

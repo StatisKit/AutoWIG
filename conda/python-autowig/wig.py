@@ -25,6 +25,7 @@ def generate(env):
         env['SITE_AUTOWIG'] = GetOption('site-autowig')
 
         def boost_python_builder(target, source, env):
+            SITE_AUTOWIG = env['SITE_AUTOWIG']
             asg = autowig.AbstractSemanticGraph()
             for dependency in env['AUTOWIG_DEPENDS']:
                 with open(os.path.join(SITE_AUTOWIG, 'ASG', dependency + '.pkl'), 'r') as filehandler:
@@ -51,17 +52,19 @@ def generate(env):
             autowig.generator.plugin = AUTOWIG_GENERATOR
             wrappers = autowig.generator(asg,
                                          **{kwarg[len('AUTOWIG_generator_'):] : env[kwarg] for kwarg in env.Dictionary() if isinstance(kwarg, basestring) and kwarg.startswith('AUTOWIG_generator_')})
+            wrappers.header.helder = env['AUTOWIG_HELDER']
             wrappers.write()
             with open(target[-1].abspath, 'w') as filehandler:
                 pickle.dump(asg, filehandler)
             return None
 
-        def BoostPythonWIG(env, target, sources, module, decorator=None, parser='pyclanglite', controller='default', generator='boost_python_internal', depends=[], **kwargs):
+        def BoostPythonWIG(env, target, sources, module, decorator=None, parser='pyclanglite', controller='default', generator='boost_python_internal', depends=[], helder='std::shared_ptr', **kwargs):
             #
             SITE_AUTOWIG = env['SITE_AUTOWIG']
             autowig_env = env.Clone()
             autowig_env['BUILDERS']['_BoostPythonWIG'] = Builder(action = Action(boost_python_builder, 'autowig: Generating Boost.Python interface ...'))
             autowig_env['AUTOWIG_DEPENDS'] = depends
+            autowig_env['AUTOWIG_HELDER'] = helder
             for kwarg in kwargs:
                 autowig_env['AUTOWIG_' + kwarg] = kwargs[kwarg]
             autowig_env['AUTOWIG_generator_module'] = env.File(module).srcnode()
