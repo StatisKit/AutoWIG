@@ -474,12 +474,10 @@ this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.inde
     #if (_MSC_VER == 1900)
 namespace boost
 {
-    <% 
-    if cls.is_abstract:
-        globalname = 'autowig::' + 'Wrap_' + cls.hash
-    else:
-        globalname = cls.globalname
-    %>template <> ${globalname} const volatile * get_pointer<${globalname} const volatile >(${globalname} const volatile *c) { return c; }
+    % if cls.is_abstract:
+    template <> autowig::Wrap_${cls.hash} const volatile * get_pointer<autowig::Wrap_${cls.hash} const volatile >(autowig::Wrap_${cls.hash} const volatile *c) { return c; }
+    % endif
+    template <> ${cls.globalname} const volatile * get_pointer<${cls.globalname} const volatile >(${cls.globalname} const volatile *c) { return c; }
 }
     #endif
 #endif
