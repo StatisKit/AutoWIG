@@ -62,6 +62,6 @@ test:
     - gitpython
     - libboost
   commands:
-   - nosetests test -x -s -v -A 'level <= {{ environ.get('TEST_LEVEL', 1) }} and "linux" in system' [linux]
-   - nosetests test -x -s -v -A 'level <= {{ environ.get('TEST_LEVEL', 1) }} and "osx" in system'   [osx]
-   - nosetests test -x -s -v -A 'level <= {{ environ.get('TEST_LEVEL', 1) }} and "win" in system'   [win]
+   - nosetests test -x -s -v -A 'level <= {{ environ.get('TEST_LEVEL', 1) }} and linux' [linux]
+   - nosetests test -x -s -v -A 'level <= {{ environ.get('TEST_LEVEL', 1) }} and osx'   [osx]
+   - nosetests test -x -s -v -A 'level <= {{ environ.get('TEST_LEVEL', 1) }} and win'   [win]
