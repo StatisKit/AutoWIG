@@ -51,7 +51,9 @@ from autowig.boost_python_generator import Template
 
 Template.render = TemplateRender()
 
-@attr(system=["linux", "osx", "win"], 
+@attr(win=True,
+      linux=True,
+      osx=True,
       level=1)
 class TestBasic(unittest.TestCase):
     """Test the wrapping of a basic library"""
@@ -110,7 +112,7 @@ class TestBasic(unittest.TestCase):
         subprocess.check_call([scons, 'py', '--prefix=' + prefix],
                               cwd=self.tgt.parent.parent)
 
-    @attr(system=["linux", "osx"])
+    @attr(win=False)
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
         plugin = autowig.parser.plugin

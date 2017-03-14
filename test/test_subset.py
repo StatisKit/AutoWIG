@@ -14,8 +14,13 @@
 #                                                                                #
 ##################################################################################
 
-import os
+
+import autowig
+
 import unittest
+from nose.plugins.attrib import attr
+
+import os
 from path import path
 from git import Repo
 import subprocess
@@ -73,6 +78,10 @@ for func in dir(autowig_parser):
     if func.startswith('read_'):
         setattr(autowig_parser, func, wrapper(getattr(autowig_parser, func)))
 
+@attr(linux=True,
+      osx=True,
+      win=False,
+      level=1)
 class TestSubset(unittest.TestCase):
     """Test the wrapping of a library subset"""
 

@@ -22,7 +22,9 @@ from nose.plugins.attrib import attr
 import subprocess
 from path import path
 
-@attr(system=["linux", "osx", "win"], 
+@attr(linux=True,
+      osx=True,
+      win=False,
       level=1)
 class TestFeedback(unittest.TestCase):
     """Test the feedback of a SCons results"""
