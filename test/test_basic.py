@@ -14,18 +14,18 @@
 #                                                                                #
 ##################################################################################
 
-import os
+import autowig
+
 import unittest
+from nose.plugins.attrib import attr
+
+import os
 import sys
 import subprocess
 import shutil
 from path import path
 import __builtin__ as builtins
-
-import autowig
-
 import platform
-is_windows = any(platform.win32_ver())
 
 class TemplateRender(object):
 
@@ -51,6 +51,8 @@ from autowig.boost_python_generator import Template
 
 Template.render = TemplateRender()
 
+@attr(system=["linux", "osx", "win"], 
+      level=1)
 class TestBasic(unittest.TestCase):
     """Test the wrapping of a basic library"""
 
@@ -66,7 +68,7 @@ class TestBasic(unittest.TestCase):
 
         import sys
         prefix = sys.prefix
-        if is_windows:
+        if any(platform.win32_ver()):
             prefix = os.path.join(prefix, 'Library')
             scons = subprocess.check_output(['where', 'scons']).strip()
         else:
@@ -108,6 +110,7 @@ class TestBasic(unittest.TestCase):
         subprocess.check_call([scons, 'py', '--prefix=' + prefix],
                               cwd=self.tgt.parent.parent)
 
+    @attr(system=["linux", "osx"])
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
         plugin = autowig.parser.plugin

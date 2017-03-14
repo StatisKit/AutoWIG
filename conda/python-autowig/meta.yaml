@@ -20,9 +20,9 @@ package:
 
 source:
   path: ../..
-  patches:            [not linux]
-    - windows.patch   [win]
-    - osx.patch       [osx]
+  # patches:            [not linux]
+  #   - windows.patch   [win]
+  #   - osx.patch       [osx]
 
 build:
   number: 0
@@ -62,4 +62,6 @@ test:
     - gitpython
     - libboost
   commands:
-    - nosetests test -x -s -v --with-coverage --cover-tests --cover-package=autowig --cover-package=test --nocapture
+   - nosetests test -x -s -v -A 'level <= {{ environ.get('TEST_LEVEL', 1) }} and "linux" in system' [linux]
+   - nosetests test -x -s -v -A 'level <= {{ environ.get('TEST_LEVEL', 1) }} and "osx" in system'   [osx]
+   - nosetests test -x -s -v -A 'level <= {{ environ.get('TEST_LEVEL', 1) }} and "win" in system'   [win]

@@ -14,12 +14,16 @@
 #                                                                                #
 ##################################################################################
 
+import autowig
+
 import unittest
+from nose.plugins.attrib import attr
+
 import subprocess
 from path import path
 
-import autowig
-
+@attr(system=["linux", "osx", "win"], 
+      level=1)
 class TestFeedback(unittest.TestCase):
     """Test the feedback of a SCons results"""
 
@@ -143,14 +147,17 @@ Default("build")
             if code:
                 exec(code, locals())
 
+    @attr(level=2)
     def test_with_all_overload_export(self):
         """Test `feedback` with 'all' overload"""
         self.test_with_none_overload_export(overload="all")
 
+    @attr(level=2)
     def test_with_class_overload_export(self):
         """Test `feedback` with 'class' overload"""
         self.test_with_none_overload_export(overload="class")
 
+    @attr(level=2)
     def test_with_namespace_overload_export(self):
         """Test `feedback` with 'namespace' overload"""
         self.test_with_none_overload_export(overload="namespace")
