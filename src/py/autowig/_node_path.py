@@ -21,7 +21,7 @@ from .asg import DeclarationProxy, EnumeratorProxy, TypedefProxy, VariableProxy
 
 __all__ = []
 
-from pkg.plugin import PluginManager
+from .plugin import PluginManager
 
 node_path = PluginManager('autowig.node_path', brief="",
         details="")

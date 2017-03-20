@@ -14,7 +14,7 @@
 #                                                                                #
 ##################################################################################
 
-from pkg.plugin import PluginManager
+from .plugin import PluginManager
 
 from .asg import (HeaderProxy,
                   TypedefProxy,

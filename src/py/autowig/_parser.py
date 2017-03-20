@@ -22,7 +22,7 @@ from path import path
 from tempfile import NamedTemporaryFile
 import os
 import warnings
-from pkg.plugin import PluginManager
+from .plugin import PluginManager
 import sys
 import platform
 

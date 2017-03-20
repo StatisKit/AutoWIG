@@ -20,9 +20,6 @@ package:
 
 source:
   path: ../..
-  # patches:            [not linux]
-  #   - windows.patch   [win]
-  #   - osx.patch       [osx]
 
 build:
   number: 0
@@ -35,18 +32,17 @@ requirements:
   build:
     - python
     - python-dev
-    - python-pkg
   run:
     - python
     - mako
     - python-dateutil
     - python-parse
     - pygments
+    # - pandoc
     - pypandoc
     - path.py
     - python-clang
     - numpy
-    - python-pkg
 
 test:
   source_files:

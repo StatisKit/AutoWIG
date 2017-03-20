@@ -18,7 +18,7 @@ import os
 import parse
 from path import path
 
-from pkg.plugin import PluginManager
+from .plugin import PluginManager
 
 feedback = PluginManager('autowig.feedback', brief="",
         details="""""")
