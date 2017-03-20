@@ -18,7 +18,7 @@
 """
 
 import subprocess
-from path import path
+from path import Path
 from tempfile import NamedTemporaryFile
 import os
 import warnings
@@ -128,7 +128,7 @@ def pre_processing(asg, headers, flags, **kwargs):
                 warnings.warn('System includes not computed: parsing clang command output failed', Warning)
             else:
                 sysincludes = sysincludes[sysincludes.index('#include <...> search starts here:')+1:sysincludes.index('End of search list.')]
-                sysincludes = [str(path(sysinclude.strip()).abspath()) for sysinclude in sysincludes]
+                sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in sysincludes]
                 flags.extend(['-I' + sysinclude for sysinclude in sysincludes if not '-I' + sysinclude in flags])
                 for sysinclude in sysincludes:
                     asg.add_directory(sysinclude).is_searchpath = True
@@ -151,7 +151,7 @@ def pre_processing(asg, headers, flags, **kwargs):
             if fundamental._node not in asg._syntax_edges['::']:
                 asg._syntax_edges['::'].append(fundamental._node)
 
-    headers = [path(header) if not isinstance(header, path) else header for header in headers]
+    headers = [Path(header) if not isinstance(header, path) else header for header in headers]
 
     if not bootstrapping:
         for header in headers:

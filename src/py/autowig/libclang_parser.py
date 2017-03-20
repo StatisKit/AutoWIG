@@ -17,7 +17,7 @@
 """
 """
 
-from path import path
+from path import Path
 from clang.cindex import Config, conf, Cursor, Index, TranslationUnit, CursorKind, TypeKind, AccessSpecifier
 import pickle
 from tempfile import NamedTemporaryFile
@@ -102,25 +102,6 @@ def libclang_parser(asg, filepaths, flags, silent=False, **kwargs):
     warnings.warn('The libclang parser is no more maintened', DeprecationWarning)
     content = pre_processing(asg, filepaths, flags, **kwargs)
     if content:
-        #         if libpath is not None:
-        #             if Config.loaded:
-        #                 warnings.warn('\'libpath\' parameter not used since libclang config is already loaded', SyntaxWarning)
-        #             else:
-        #                 libpath = path(libpath)
-        #                 libpath = libpath.abspath()
-        #                 if not libpath.exists():
-        #                     raise ValueError('\'libpath\' parameter: \'' + str(libpath) + '\' doesn\'t exists')
-        #                 if libpath.isdir():
-        #                     Config.set_library_path(str(libpath))
-        #                 elif libpath.isfile():
-        #                     Config.set_library_file(str(libpath))
-        #                 else:
-        #                     raise ValueError('\'libpath\' parameter: should be a path to a directory or a file')
-        #         else:
-        #             if not Config.loaded:
-        #                 import sys
-        #                 Config.set_library_path(os.path.join(sys.prefix, 'lib'))
-        #                 #raise ValueError('\'libpath\' parameter: should not be set to \'None\'')
         index = Index.create()
         tempfilehandler = NamedTemporaryFile(delete=False)
         tempfilehandler.write(content)
@@ -285,7 +266,7 @@ def read_enum(asg, cursor, scope):
             if child.kind is CursorKind.ENUM_CONSTANT_DECL:
                 children.extend(read_enum_constant(asg, child, spelling))
                 decls.append(child)
-        filename = str(path(str(cursor.location.file)).abspath())
+        filename = str(Path(str(cursor.location.file)).abspath())
         asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
         for childspelling, child in zip(children, decls):
             asg._nodes[childspelling]['_header'] = filename
@@ -308,7 +289,7 @@ def read_enum(asg, cursor, scope):
             for child in cursor.get_children():
                 read_enum_constant(asg, child, spelling)
         if asg[spelling].is_complete:
-            filename = str(path(str(cursor.location.file)).abspath())
+            filename = str(Path(str(cursor.location.file)).abspath())
             asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
             asg._nodes[spelling]['_header'] = filename
         return [spelling]
@@ -353,7 +334,7 @@ def read_typedef(asg, typedef, scope):
             asg._nodes[spelling] = dict(_proxy=TypedefProxy)
             asg._type_edges[spelling] = dict(target=target, qualifiers=specifiers)
             asg._syntax_edges[scope].append(spelling)
-            filename = str(path(str(typedef.location.file)).abspath())
+            filename = str(Path(str(typedef.location.file)).abspath())
             asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
             asg._nodes[spelling]['_header'] = filename
             return [spelling]
@@ -391,7 +372,7 @@ def read_variable(asg, cursor, scope):
                                             _is_bit_field=False)
             else:
                 asg._nodes[spelling] = dict(_proxy=VariableProxy)
-            filename = str(path(str(cursor.location.file)).abspath())
+            filename = str(Path(str(cursor.location.file)).abspath())
             asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
             read_access(asg, cursor.access_specifier, spelling)
             asg._nodes[spelling]['_header'] = filename
@@ -419,7 +400,7 @@ def read_function(asg, cursor, scope):
             asg._nodes[spelling] = dict(_proxy=FunctionProxy,
                                         _comment="")
             if cursor.location is not None:
-                filename = str(path(str(cursor.location.file)).abspath())
+                filename = str(Path(str(cursor.location.file)).abspath())
                 asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
                 asg._nodes[spelling]['_header'] = filename
         elif cursor.kind is CursorKind.CXX_METHOD:
@@ -571,7 +552,7 @@ def read_tag(asg, cursor, scope):
                         dict.pop(asg._nodes[childspelling], "_header", None)
             asg._nodes[spelling]['_is_complete'] = len(asg._base_edges[spelling]) + len(asg._syntax_edges[spelling]) > 0
             if asg[spelling].is_complete:
-                filename = str(path(str(cursor.location.file)).abspath())
+                filename = str(Path(str(cursor.location.file)).abspath())
                 asg.add_file(filename, proxy=HeaderProxy, _language=asg._language)
                 asg._nodes[spelling]['_header'] = filename
         read_access(asg, cursor.access_specifier, spelling)

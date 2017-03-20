@@ -21,7 +21,7 @@ import uuid
 import itertools
 import os
 import re
-from path import path
+from path import Path
 from .plugin import PluginManager
 
 from .tools import subclasses
@@ -1524,7 +1524,7 @@ class AbstractSemanticGraph(object):
         return len(self._nodes)
 
     def add_directory(self, dirname):
-        dirname = path(dirname).abspath()
+        dirname = Path(dirname).abspath()
         initname = str(dirname)
         if not initname.endswith(os.sep):
             initname += os.sep
@@ -1552,7 +1552,7 @@ class AbstractSemanticGraph(object):
         return self[initname]
 
     def add_file(self, filename, **kwargs):
-        filename = path(filename).abspath()
+        filename = Path(filename).abspath()
         initname = str(filename)
         proxy = kwargs.pop('proxy', FileProxy)
         if initname not in self._nodes:
@@ -1750,7 +1750,7 @@ class AbstractSemanticGraph(object):
                     parent = directory.parent
                 return directory
             else:
-                node = path(node)
+                node = Path(node)
                 if node.exists():
                     if node.isfile():
                         return self.add_file(str(node))

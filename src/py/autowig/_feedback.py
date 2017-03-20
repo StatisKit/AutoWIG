@@ -16,7 +16,7 @@
 
 import os
 import parse
-from path import path
+from path import Path
 
 from .plugin import PluginManager
 
@@ -27,7 +27,7 @@ def parse_errors(err, directory, asg, **kwargs):
     if not isinstance(err, basestring):
         raise TypeError('\'err\' parameter')
     if not isinstance(directory, path):
-        directory = path(directory)
+        directory = Path(directory)
     variant_dir = kwargs.pop('variant_dir', None)
     if variant_dir:
         variant_dir = directory/variant_dir
