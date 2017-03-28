@@ -151,7 +151,7 @@ def pre_processing(asg, headers, flags, **kwargs):
             if fundamental._node not in asg._syntax_edges['::']:
                 asg._syntax_edges['::'].append(fundamental._node)
 
-    headers = [Path(header) if not isinstance(header, path) else header for header in headers]
+    headers = [Path(header) if not isinstance(header, Path) else header for header in headers]
 
     if not bootstrapping:
         for header in headers:

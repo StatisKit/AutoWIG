@@ -1212,7 +1212,7 @@ BOOST_PYTHON_MODULE(_${module.prefix})
 
     @property
     def header(self):
-        return self._asg[self.globalname.rstrip(self.suffix) + '.' + 'h']
+        return self._asg[self.globalname[:-len(self.suffix)] + '.' + 'h']
 
     @property
     def exports(self):
@@ -1483,7 +1483,7 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         module = asg[module]
     else:
         module = asg.add_file(module, proxy=boost_python_module())
-        asg.add_file(module.globalname.rstrip(module.suffix) + '.' + 'h',
+        asg.add_file(module.globalname[:-len(module.suffix)] + '.' + 'h',
                      _module = module.suffix,
                      proxy= BoostPythonHeaderFileProxy)
 
