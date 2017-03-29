@@ -20,7 +20,7 @@ import unittest
 from nose.plugins.attrib import attr
 
 import subprocess
-from path import path
+from path import Path
 
 @attr(linux=True,
       osx=True,
@@ -103,7 +103,7 @@ Default("build")
         autowig.parser.plugin = 'pyclanglite'
         autowig.generator.plugin = 'boost_python_internal'
         autowig.feedback.plugin = 'edit'
-        cls.srcdir = path('.').abspath()
+        cls.srcdir = Path('.').abspath()
 
     def test_with_none_overload_export(self, overload="none"):
         """Test `feedback` with 'none' overload"""

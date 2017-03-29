@@ -23,7 +23,7 @@ import os
 import sys
 import subprocess
 import shutil
-from path import path
+from path import Path
 import __builtin__ as builtins
 import platform
 
@@ -62,8 +62,8 @@ class TestBasic(unittest.TestCase):
     def setUpClass(cls):
         autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
-        cls.tgt = path('.').abspath()/'doc'/'examples'/'basic'/'src'/'py'
-        cls.src = path(sys.prefix).abspath()/'include'/'basic'
+        cls.tgt = Path('.').abspath()/'doc'/'examples'/'basic'/'src'/'py'
+        cls.src = Path(sys.prefix).abspath()/'include'/'basic'
 
     def test_mapping_export(self):
         """Test `mapping` export"""

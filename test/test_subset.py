@@ -21,7 +21,7 @@ import unittest
 from nose.plugins.attrib import attr
 
 import os
-from path import path
+from path import Path
 from git import Repo
 import subprocess
 import sys
@@ -88,12 +88,11 @@ class TestSubset(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         autowig.parser.plugin = 'libclang'
-        srcdir = path('PyClangLite')
+        srcdir = Path('PyClangLite')
         Repo.clone_from('https://github.com/StatisKit/PyClangLite.git', srcdir.relpath('.'))
         cls.srcdir = srcdir/'src'/'py'
         subprocess.check_output(['scons', 'cpp', '--prefix=' + sys.prefix],
-                                cwd=cls.srcdir.parent.parent,
-                                shell=True)
+                                cwd=cls.srcdir.parent.parent)
 
     def test_libclang_parser(self):
         """Test `libclang` parser"""
@@ -101,7 +100,7 @@ class TestSubset(unittest.TestCase):
         for wrapper in self.srcdir.walkfiles('*.cpp'):
             wrapper.unlink()
 
-        prefix = path(sys.prefix)
+        prefix = Path(sys.prefix)
 
         headers = [prefix/'include'/'clanglite'/'tool.h']
 
@@ -179,7 +178,7 @@ class TestSubset(unittest.TestCase):
                              + asg.nodes('::clang::ASTContext::getAllocator')):
                     node.boost_python_export = False
 
-            for header in (path(sys.prefix)/'include'/'clang').walkfiles('*.h'):
+            for header in (Path(sys.prefix)/'include'/'clang').walkfiles('*.h'):
                 asg[header.abspath()].is_external_dependency = False
             
             return asg
