@@ -26,7 +26,10 @@ def generate(env):
 
         def boost_python_builder(target, source, env):
             SITE_AUTOWIG = env['SITE_AUTOWIG']
-            asg = autowig.AbstractSemanticGraph()
+            if 'AUTOWIG_ASG' in env:
+                env['AUTOWIG_ASG'][env['AUTOWIG_generator_module'].abspath].remove()
+            env['AUTOWIG_ASG'] = autowig.AbstractSemanticGraph()
+            asg = env['AUTOWIG_ASG']
             for dependency in env['AUTOWIG_DEPENDS']:
                 with open(os.path.join(SITE_AUTOWIG, 'ASG', dependency + '.pkl'), 'r') as filehandler:
                     asg.merge(pickle.load(filehandler))
@@ -87,6 +90,11 @@ def generate(env):
             targets.append(autowig_env.File(os.path.join(SITE_AUTOWIG, 'ASG', target + '.pkl')))
             for target in targets[:-1]:
                 autowig_env.Depends(targets[-1], target)
+
+            if os.path.exists(targets[-1].abspath):
+                with open(targets[-1].abspath, 'r') as filehandler:
+                    autowig_env['AUTOWIG_ASG'] = pickle.load(filehandler)
+
             autowig_env._BoostPythonWIG(targets[-1], sources)
 
             return targets

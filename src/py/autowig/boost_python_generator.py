@@ -1308,6 +1308,16 @@ BOOST_PYTHON_MODULE(_${module.prefix})
         if decorator:
             decorator.write()
 
+    def remove(self, header=True, exports=True, decorator=True):
+        super(BoostPythonModuleFileProxy, self).remove()
+        if header:
+            self.header.remove()
+        if exports:
+            for export in self.exports:
+                export.remove()
+        if decorator:
+            self.decorator.remove()
+
 BoostPythonModuleFileProxy.dependencies = property(BoostPythonModuleFileProxy.get_dependencies)
 
 BoostPythonModuleFileProxy._content = property(BoostPythonModuleFileProxy.get_content)
