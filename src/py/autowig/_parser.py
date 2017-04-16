@@ -109,11 +109,11 @@ def pre_processing(asg, headers, flags, **kwargs):
       devnull = '/dev/null'
     if '-x c++' in cmd:
         asg._language = 'c++'
-        s = subprocess.Popen(['clang++', '-x', 'c++', '-v', '-E', devnull],
+        s = subprocess.Popen(['gcc', '-x', 'c++', '-v', '-E', devnull],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     elif '-x c' in cmd:
         asg._language = 'c'
-        s = subprocess.Popen(['clang', '-x', 'c', '-v', '-E', devnull],
+        s = subprocess.Popen(['gcc', '-x', 'c', '-v', '-E', devnull],
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
