@@ -29,9 +29,6 @@ import __builtin__
 
 import autowig
 
-import time
-prev = time.time()
-
 class TemplateRender(object):
 
     def __get__(self, obj, objtype, **kwargs):
