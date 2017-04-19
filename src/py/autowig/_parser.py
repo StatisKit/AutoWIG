@@ -103,17 +103,34 @@ def pre_processing(asg, headers, flags, **kwargs):
                 includedir = asg.add_directory(flag.strip('-I'))
                 includedir.is_searchpath = True
                 
-    if any(platform.win32_ver()):
-      devnull = 'nul'
+    SYSTEMS = dict(Linux   = "linux",
+                   Darwin  = "osx",
+                   Windows = "win")
+    system = str(platform.system())
+    if not system in SYSTEMS:
+      system = "unknown"
     else:
-      devnull = '/dev/null'
+      system = SYSTEMS[system]
+
+    if system == 'win':
+        devnull = 'nul'
+        compiler = 'clang'
+    elif system == 'linux':
+        devnull = '/dev/null'
+        compiler = 'clang'
+    elif system == 'osx':
+        devnull = '/dev/null'
+        compiler = 'gcc'
+    else:
+        raise Exception("unknown system")
+
     if '-x c++' in cmd:
         asg._language = 'c++'
-        s = subprocess.Popen(['gcc', '-x', 'c++', '-v', '-E', devnull],
+        s = subprocess.Popen([compiler, '-x', 'c++', '-v', '-E', devnull],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     elif '-x c' in cmd:
         asg._language = 'c'
-        s = subprocess.Popen(['gcc', '-x', 'c', '-v', '-E', devnull],
+        s = subprocess.Popen([compiler, '-x', 'c', '-v', '-E', devnull],
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
