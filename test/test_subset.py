@@ -77,8 +77,8 @@ for func in dir(autowig_parser):
 
 @attr(linux=True,
       osx=True,
-      win=False,
-      level=2)
+      win=True,
+      level=1)
 class TestSubset(unittest.TestCase):
     """Test the wrapping of a library subset"""
 
