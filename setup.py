@@ -22,11 +22,11 @@ for package in find_packages("src" + os.sep + "py"):
     packages[package] = "src" + os.sep + "py"
 
 # from pkg.metadata import load_metadata
-# metadata = load_metadata('.')
+# metadata = load_metadata('.')	
 
 setup(packages = packages.keys(),
       package_dir = {"" : "src" + os.sep + "py"},
-      name = 'AutoWIG',
+      name = 'autowig',
       version = '1.0.0',
       author = 'Pierre Fernique',
       author_email = 'pfernique@gmail',
