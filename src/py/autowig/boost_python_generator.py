@@ -1456,7 +1456,7 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
             for declaration in export.declarations:
                 if isinstance(declaration.parent, ClassProxy) and not ignore(declaration):
                     scopes.append(declaration)
-        content.append(self.SCOPES.render(scopes = scopes, decorator = self, module = self.module,
+        content.append(self.SCOPES.render(scopes = sorted(scopes, key = lambda scope: len(scope.ancestors)), decorator = self, module = self.module,
                 node_rename = node_rename))
         templates = dict()
         for export in self.module.exports:
