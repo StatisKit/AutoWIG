@@ -1052,6 +1052,17 @@ class MethodProxy(FunctionProxy):
         return self._is_pure
 
     @property
+    def overrides(self):
+        if self.is_virtual:
+            methods = []
+            for base in self.parent.bases(inherited = True):
+                for method in base.methods():
+                    if method.prototype == self.prototype:
+                        methods.append(method)
+            if len(methods) > 0:
+                return methods
+
+    @property
     def prototype(self):
         return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + \
         ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ' volatile' * self.is_volatile

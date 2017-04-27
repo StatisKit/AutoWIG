@@ -270,7 +270,19 @@ def _valid_boost_python_export(self):
     return self.access == 'public' and all(parameter.boost_python_export for parameter in self.parameters)
 
 ConstructorProxy._valid_boost_python_export = property(_valid_boost_python_export)
-del _valid_boost_python_export
+del _default_boost_python_export, _valid_boost_python_export
+
+def _default_boost_python_export(self):
+    if self.is_virtual:
+        try:
+            return self.overrides is None
+        except:
+            return self.is_pure
+    else:
+        return bool(self.parent.boost_python_export)
+
+MethodProxy._default_boost_python_export = property(_default_boost_python_export)
+del _default_boost_python_export
 
 def _valid_boost_python_export(self):
     if self.boost_python_call_policy in ['boost::python::return_internal_reference<>()',
@@ -284,9 +296,6 @@ def _valid_boost_python_export(self):
 
 MethodProxy._valid_boost_python_export = property(_valid_boost_python_export)
 del _valid_boost_python_export
-
-MethodProxy._default_boost_python_export = property(_default_boost_python_export)
-del _default_boost_python_export
 
 class BoostPythonExportFileProxy(FileProxy):
 
