@@ -686,7 +686,7 @@ ${field.globalname}, "${documenter(field)}");
                 if(!py_elem_hdl.get())
                 { break; }
                 boost::python::object py_elem_obj(py_elem_hdl);
-                result.push_back((${cls.templates[0].globalname})(boost::python::extract< ${cls.templates[0].globalname} >(py_elem_obj)));
+                result.push_back(boost::python::extract< ${cls.templates[0].globalname} >(py_elem_obj));
             }
         }
     };
