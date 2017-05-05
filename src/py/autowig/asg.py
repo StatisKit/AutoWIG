@@ -494,18 +494,21 @@ class DeclarationProxy(NodeProxy):
                 if parentname == '':
                     return self._asg['::']
                 else:
-                    try:
-                        for keyword in self._pakwargs:
-                            if keyword + parentname in self._asg:
-                                parent = self._asg[keyword + parentname]
+                    parent = None
+                    for keyword in self._pakwargs:
+                        if keyword + parentname in self._asg:
+                            parent =  self._asg[keyword + parentname]
+                            if isinstance(parent, ClassProxy):
+                                if not parent.is_complete:
+                                    parent = None
+                                else:
+                                    break
+                            else:
                                 break
-                        if isinstance(parent, TypedefProxy):
-                            return parent.qualified_type.desugared_type.unqualified_type
-                        else:
-                            return parent
-                    except:
-                        import pdb
-                        pdb.set_trace()
+                    if isinstance(parent, TypedefProxy):
+                        return parent.qualified_type.desugared_type.unqualified_type
+                    else:
+                        return parent
         else:
             return self._asg[self._parent]
 
@@ -524,6 +527,13 @@ class DeclarationProxy(NodeProxy):
         self._asg._syntax_edges[self.parent._node].remove(self._node)
         self._asg._nodes[self._node].pop('_parent', None)
         self._asg._syntax_edges[self.parent._node].append(self._node)
+
+    @property
+    def comment(self):
+        if hasattr(self, '_comment'):
+            return self._comment
+        else:
+            return ""
 
 class FundamentalTypeProxy(DeclarationProxy):
     """Abstract semantic graph node proxy for a fundamental type
@@ -879,13 +889,6 @@ class EnumerationProxy(DeclarationProxy):
     def enumerators(self):
         return [self._asg[node] for node in self._asg._syntax_edges[self._node]]
 
-    @property
-    def comment(self):
-        if hasattr(self, '_comment'):
-            return self._comment
-        else:
-            return ""
-
 class TypedefProxy(DeclarationProxy):
     """
 
@@ -907,13 +910,6 @@ class VariableProxy(DeclarationProxy):
     @property
     def qualified_type(self):
         return QualifiedTypeProxy(self._asg, self._node, **self._asg._type_edges[self._node])
-
-    @property
-    def comment(self):
-        if hasattr(self, '_comment'):
-            return self._comment
-        else:
-            return ""
 
 class FieldProxy(VariableProxy):
     """
@@ -971,13 +967,6 @@ class FunctionProxy(DeclarationProxy):
     """
 
     _pakwargs = ['', 'class ', 'struct ', 'union ']
-
-    @property
-    def comment(self):
-        if hasattr(self, '_comment'):
-            return self._comment
-        else:
-            return ""
 
     @property
     def is_operator(self):
@@ -1071,13 +1060,6 @@ class ConstructorProxy(DeclarationProxy):
     """
     """
 
-    @property
-    def comment(self):
-        if hasattr(self, '_comment'):
-            return self._comment
-        else:
-            return ""
-
     _pakwargs = ['class ', 'struct ', 'union ', '']
 
     @property
@@ -1103,14 +1085,6 @@ class DestructorProxy(DeclarationProxy):
     _pakwargs = ['class ', 'struct ', 'union ', '']
 
     @property
-    def comment(self):
-        if hasattr(self, '_comment'):
-            return self._comment
-        else:
-            return ""
-
-
-    @property
     def is_virtual(self):
         return self._is_virtual
 
@@ -1121,13 +1095,6 @@ class ClassProxy(DeclarationProxy):
     """
 
     _pakwargs = ['class ', 'struct ', 'union ', '']
-
-    @property
-    def comment(self):
-        if hasattr(self, '_comment'):
-            return self._comment
-        else:
-            return ""
 
     @property
     def is_complete(self):
@@ -1443,13 +1410,6 @@ class NamespaceProxy(DeclarationProxy):
     .. see:: `<http://en.cppreference.com/w/cpp/language/namespace>_`
     """
 
-    @property
-    def comment(self):
-        if hasattr(self, '_comment'):
-            return self._comment
-        else:
-            return ""
-
     _pakwargs = ['']
 
     @property
@@ -1627,6 +1587,12 @@ class AbstractSemanticGraph(object):
 
     def functions(self, **kwargs):
         return [node for node in self.declarations(**kwargs) if isinstance(node, FunctionProxy)]
+
+    def constructors(self, **kwargs):
+        return [node for node in self.declarations(**kwargs) if isinstance(node, ConstructorProxy)]
+
+    def destructors(self, **kwargs):
+        return [node for node in self.declarations(**kwargs) if isinstance(node, DestructorProxy)]
 
     def classes(self, specialized=None, templated=False, **kwargs):
         if specialized is None:

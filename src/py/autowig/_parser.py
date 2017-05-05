@@ -447,19 +447,42 @@ def suppress_forward_declaration(asg, **kwargs):
         for tdf in asg.typedefs():
             if blacklisted(tdf.qualified_type, black):
                 black.add(tdf._node)
+    def to_blacklist(obj, black, asg):
+        if obj._node in black:
+            return True
+        else:
+            parent = obj.parent
+            if parent is None:
+                return True
+            else:
+                return parent._node in black or obj._node not in asg._syntax_edges[parent._node]
     gray = set(black)
     _type_edges = set()
     _nodes = set()
     _parameter_edges = set()
+    for enm in asg.enumerations():
+        if to_blacklist(enm, black, asg):
+            gray.add(enm._node)
+            _nodes.add(enm._node)
+            enumerators = enm.enumerators
+            for enm in enumerators:
+                gray.add(enm._node)
+                #asg._nodes.pop(enm._node)
+                _nodes.add(enm._node)
+    for enm in asg.enumerators():
+        if to_blacklist(enm, black, asg):
+            gray.add(enm._node)
+            #asg._nodes.pop(enm._node)
+            _nodes.add(enm._node)
     for var in asg.variables():
-        if blacklisted(var.qualified_type, black):
+        if blacklisted(var.qualified_type, black) or to_blacklist(var, black, asg):
             gray.add(var._node)
             #asg._type_edges.pop(var._node)
             _type_edges.add(var._node)
             #asg._nodes.pop(var._node)
             _nodes.add(var._node)
     for fct in asg.functions():
-        if blacklisted(fct.return_type, black) or any(blacklisted(prm.qualified_type, black) for prm in fct.parameters):
+        if blacklisted(fct.return_type, black) or any(blacklisted(prm.qualified_type, black) for prm in fct.parameters) or to_blacklist(fct, black, asg):
             gray.add(fct._node)
             #asg._parameter_edges.pop(fct._node)
             _parameter_edges.add(fct._node)
@@ -467,74 +490,88 @@ def suppress_forward_declaration(asg, **kwargs):
             _type_edges.add(fct._node)
             #asg._nodes.pop(fct._node)
             _nodes.add(fct._node)
+    for ctr in asg.constructors():
+        if any(blacklisted(prm.qualified_type, black) for prm in ctr.parameters) or to_blacklist(ctr, black, asg):
+            gray.add(ctr._node)
+            #asg._parameter_edges.pop(fct._node)
+            _parameter_edges.add(ctr._node)
+            #asg._type_edges.pop(fct._node)
+            # _type_edges.add(ctr._node)
+            #asg._nodes.pop(fct._node)
+            _nodes.add(ctr._node)
+    for dtr in asg.destructors():
+        if to_blacklist(dtr, black, asg):
+            gray.add(dtr._node)
+            #asg._parameter_edges.pop(fct._node)
+            # _parameter_edges.add(ctr._node)
+            #asg._type_edges.pop(fct._node)
+            # _type_edges.add(ctr._node)
+            #asg._nodes.pop(fct._node)
+            _nodes.add(dtr._node)
     for parent, children in asg._syntax_edges.items():
         asg._syntax_edges[parent] = [child for child in children if child not in gray]
-    gray = set()
+    # gray = set()
+    # for cls in asg.classes(templated=False):
+    #     if cls._node not in black:
+    #         for ctr in cls.constructors():
+    #             if any(blacklisted(prm.qualified_type, black) for prm in ctr.parameters):
+    #                 gray.add(ctr._node)
+    #                 #asg._parameter_edges.pop(ctr._node)
+    #                 _parameter_edges.add(ctr._node)
+    #                 #asg._nodes.pop(ctr._node)
+    #                 _nodes.add(ctr._node)
+    #         asg._base_edges[cls._node] = [dict(base = base['base'],
+    #                                            _access = base['_access'],
+    #                                            _is_virtual = base['_is_virtual'])
+    #                                       for base in asg._base_edges[cls._node]
+    #                                       if not base['base'] in black]
+    #     else:
+    #         enumerators = cls.enumerators()
+    #         dtr = cls.destructor
+    #         constructors = cls.constructors()
+    #         typedefs = cls.typedefs()
+    #         fields = cls.fields()
+    #         methods = cls.methods()
+    #         for enm in enumerators:
+    #             gray.add(enm._node)
+    #             #asg._nodes.pop(enm._node)
+    #             _nodes.add(enm._node)
+    #         if dtr is not None:
+    #             #asg._nodes.pop(dtr._node)
+    #             _nodes.add(dtr._node)
+    #         for ctr in constructors:
+    #             gray.add(ctr._node)
+    #             #asg._parameter_edges.pop(ctr._node)
+    #             _parameter_edges.add(ctr._node)
+    #             #asg._nodes.pop(ctr._node)
+    #             _nodes.add(ctr._node)
+    #         # for tdf in typedefs:
+    #         #     gray.add(tdf._node)
+    #         #     #asg._type_edges.pop(tdf._node)
+    #         #     _type_edges.add(tdf._node)
+    #         #     #asg._nodes.pop(tdf._node)
+    #         #     _nodes.add(tdf._node)
+    #         for fld in fields:
+    #             gray.add(fld._node)
+    #             #asg._type_edges.pop(fld._node)
+    #             _type_edges.add(fld._node)
+    #             #asg._nodes.pop(fld._node)
+    #             _nodes.add(fld._node)
+    #         for mtd in methods:
+    #             gray.add(mtd._node)
+    #             #asg._parameter_edges.pop(mtd._node)
+    #             _parameter_edges.add(mtd._node)
+    #             #asg._type_edges.pop(mtd._node)
+    #             _type_edges.add(mtd._node)
+    #             #asg._nodes.pop(mtd._node)
+    #             _nodes.add(mtd._node)
     for cls in asg.classes(templated=False):
-        if cls._node not in black:
-            for ctr in cls.constructors():
-                if any(blacklisted(prm.qualified_type, black) for prm in ctr.parameters):
-                    gray.add(ctr._node)
-                    #asg._parameter_edges.pop(ctr._node)
-                    _parameter_edges.add(ctr._node)
-                    #asg._nodes.pop(ctr._node)
-                    _nodes.add(ctr._node)
-            asg._base_edges[cls._node] = [dict(base = base['base'],
-                                               _access = base['_access'],
-                                               _is_virtual = base['_is_virtual'])
-                                          for base in asg._base_edges[cls._node]
-                                          if not base['base'] in black]
-        else:
-            enumerators = cls.enumerators()
-            dtr = cls.destructor
-            constructors = cls.constructors()
-            typedefs = cls.typedefs()
-            fields = cls.fields()
-            methods = cls.methods()
-            for enm in enumerators:
-                gray.add(enm._node)
-                #asg._nodes.pop(enm._node)
-                _nodes.add(enm._node)
-            if dtr is not None:
-                #asg._nodes.pop(dtr._node)
-                _nodes.add(dtr._node)
-            for ctr in constructors:
-                gray.add(ctr._node)
-                #asg._parameter_edges.pop(ctr._node)
-                _parameter_edges.add(ctr._node)
-                #asg._nodes.pop(ctr._node)
-                _nodes.add(ctr._node)
-            # for tdf in typedefs:
-            #     gray.add(tdf._node)
-            #     #asg._type_edges.pop(tdf._node)
-            #     _type_edges.add(tdf._node)
-            #     #asg._nodes.pop(tdf._node)
-            #     _nodes.add(tdf._node)
-            for fld in fields:
-                gray.add(fld._node)
-                #asg._type_edges.pop(fld._node)
-                _type_edges.add(fld._node)
-                #asg._nodes.pop(fld._node)
-                _nodes.add(fld._node)
-            for mtd in methods:
-                gray.add(mtd._node)
-                #asg._parameter_edges.pop(mtd._node)
-                _parameter_edges.add(mtd._node)
-                #asg._type_edges.pop(mtd._node)
-                _type_edges.add(mtd._node)
-                #asg._nodes.pop(mtd._node)
-                _nodes.add(mtd._node)
-    for enm in asg.enumerations():
-        if enm._node in black:
-            enumerators = enm.enumerators
-            for enm in enumerators:
-                gray.add(enm._node)
-                #asg._nodes.pop(enm._node)
-                _nodes.add(enm._node)
+        asg._base_edges[cls._node] = [base for base in asg._base_edges[cls._node] if base['base'] not in black]
     for cls in asg.classes(templated=True, specialized=False):
         asg._specialization_edges[cls._node] = {spec for spec in asg._specialization_edges[cls._node] if spec not in black}
     for type_edge in _type_edges:
         asg._type_edges.pop(type_edge)
+    _nodes = [node for node in _nodes if node not in black]
     for node in _nodes:
         asg._nodes.pop(node)
     for parameter_edge in _parameter_edges:

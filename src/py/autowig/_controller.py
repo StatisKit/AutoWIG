@@ -138,8 +138,7 @@ def cleaning(asg):
                         target.clean = False
         elif isinstance(node, ClassTemplateProxy):
             pass
-
-    nodes = [node for node in asg.nodes() if node.clean]
+    nodes = sorted([node for node in asg.nodes() if node.clean], key=lambda node: -len(node.ancestors))
     for node in nodes:
         if node._node not in ['::', '/']:
             asg._syntax_edges[node.parent._node].remove(node._node)

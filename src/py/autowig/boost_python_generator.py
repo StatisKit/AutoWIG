@@ -198,9 +198,14 @@ def _default_boost_python_export(self):
 EnumerationProxy._default_boost_python_export = property(_default_boost_python_export)
 
 def _default_boost_python_export(self):
-    return not self.localname.startswith('_') and len(self.declarations()) > 0 and bool(self.parent.boost_python_export)
+    return not self.localname.startswith('_') and bool(self.parent.boost_python_export)
 
 NamespaceProxy._default_boost_python_export = property(_default_boost_python_export)
+del _default_boost_python_export
+
+def _default_boost_python_export(self):
+    return not self.localname.startswith('_') and self.is_complete and bool(self.parent.boost_python_export)
+
 ClassProxy._default_boost_python_export = property(_default_boost_python_export)
 del _default_boost_python_export
 
