@@ -864,9 +864,6 @@ ${field.globalname}, "${documenter(field)}");
     def _content(self):
         content = '#include "' + self.header.localname + '"\n'
         for arg in self.declarations:
-            # if arg.globalname == 'struct ::statiskit::DiscreteUnivariateDistribution':
-            #     import pdb
-            #     pdb.set_trace()
             if isinstance(arg, ClassProxy) and arg.is_error:
                 content += '\n\n' + self.ERROR.render(error = arg)
             # if arg.is_abstract:
@@ -1067,48 +1064,6 @@ false;
                   'std::unique_ptr'   : 'memory',
                   'boost::shared_ptr' : 'boost/shared_ptr'}
 
-    ABSTRACTS = Template(text=r"""\
-/*namespace autowig
-{\
-    % for cls in abstracts:
-
-    class Wrap_${cls.hash} : public ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)}, public boost::python::wrapper< ${cls.globalname} >
-    {
-        % for access in ['public', 'protected', 'private']:
-        ${access}:
-            <% prototypes = set() %>
-            % for mtd in cls.methods(access=access, inherited=True):
-                % if mtd.access == access:
-                    %if mtd.prototype not in prototypes and mtd.is_virtual and mtd.is_pure:
-            virtual ${mtd.return_type.globalname} ${mtd.localname}(${', '.join(parameter.qualified_type.globalname + ' param_' + str(parameter.index) for parameter in mtd.parameters)}) \
-                        % if mtd.is_const:
-const
-                        % else:
-
-                        % endif
-                        % if mtd.return_type.desugared_type.globalname.startswith('class ::std::unique_ptr'):
-            {
-                 ${mtd.return_type.globalname.replace("class ", "", 1)}::element_type* result = this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.index) for parameter in mtd.parameters)});
-                 return ${mtd.return_type.globalname.replace('class ', '', 1)}(result);
-            }
-                        % else:
-            { \
-                            % if not mtd.return_type.desugared_type.globalname.strip() == 'void':
-return \
-                            % endif
-this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.index) for parameter in mtd.parameters)}); }
-                        % endif
-                    % endif
-<% prototypes.add(mtd.prototype) %>\
-                % endif
-            % endfor
-
-        % endfor
-    };
-    % endfor
-}*/
-""")
-
     @property
     def module(self):
         return self._asg[self.globalname.rstrip(self.suffix) + self._module]
@@ -1118,12 +1073,12 @@ this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.inde
                                       held_type = self.HELDTYPE[self.helder],
                                       held_header = self.HELDHEADER[self.helder],
                                       header_guard = self.guard)
-        abstracts = []
-        for export in self.module.exports:
-            for cls in export.declarations:
-                if isinstance(cls, ClassProxy) and cls.is_abstract:
-                    abstracts.append(cls)
-        content += self.ABSTRACTS.render(abstracts=sorted(abstracts, key=lambda abstract: abstract.depth))
+        # abstracts = []
+        # for export in self.module.exports:
+        #     for cls in export.declarations:   
+        #         if isinstance(cls, ClassProxy) and cls.is_abstract:
+        #             abstracts.append(cls)
+        # content += self.ABSTRACTS.render(abstracts=sorted(abstracts, key=lambda abstract: abstract.depth))
         return content + "#endif"
 
     @property

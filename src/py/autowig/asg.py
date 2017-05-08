@@ -1643,12 +1643,14 @@ class AbstractSemanticGraph(object):
                         white.append(unqualified_type)
                 elif isinstance(node, FunctionProxy):
                     unqualified_types = [node.return_type.desugared_type.unqualified_type] + [prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters]
-                    if all(visitor(unqualified_type) for unqualified_type in unqualified_types):
-                        white.extend(unqualified_types)
+                    for unqualified_type in unqualified_types:
+                        if visitor(unqualified_type):
+                            white.append(unqualified_type)
                 elif isinstance(node, ConstructorProxy):
                     unqualified_types = [prm.qualified_type.desugared_type.unqualified_type for prm in node.parameters]
-                    if all(visitor(unqualified_type) for unqualified_type in unqualified_types):
-                        white.extend(unqualified_types)
+                    for unqualified_type in unqualified_types:
+                        if visitor(unqualified_type):
+                            white.append(unqualified_type)
                 elif isinstance(node, DestructorProxy):
                     continue
                 elif isinstance(node, ClassProxy):
