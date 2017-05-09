@@ -13,7 +13,9 @@ sources = [source for source in pyenv.Glob('*.*') if source.name not in exclude]
 targets = pyenv.BoostPythonExtension("basic/__basic", sources)
 Alias("py", targets)
 Alias("install", targets)
+pyenv.Depends(targets, "cpp")
 
 targets = pyenv.PythonPackage("basic")
 Alias("py", targets)
 Alias("install", targets)
+pyenv.Depends(targets, "cpp")

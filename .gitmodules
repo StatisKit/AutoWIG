@@ -1,0 +1,9 @@
+[submodule "doc/examples/structure_analysis"]
+	path = doc/examples/structure_analysis
+	url = https://github.com/virtualplants/StructureAnalysis
+[submodule "doc/examples/stl"]
+	path = doc/examples/stl
+	url = https://github.com/Statiskit/STL
+[submodule "doc/examples/clanglite"]
+	path = doc/examples/clanglite
+	url = https://github.com/Statiskit/ClangLite
