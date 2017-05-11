@@ -82,7 +82,7 @@ class TestBasic(unittest.TestCase):
             shutil.rmtree(build)
         for wrapper in self.tgt.walkfiles('wrapper_*.cpp'):
             wrapper.unlink()
-        wrapper = self.tgt/'_basi.h'
+        wrapper = self.tgt/'_basic.h'
         if wrapper.exists():
             wrapper.unlink()
         wrapper = self.tgt/'basic'/'_basic.py'
@@ -92,6 +92,7 @@ class TestBasic(unittest.TestCase):
         if wrapper.exists():
             wrapper.unlink()
 
+        print ' '.join([scons, 'cpp', '--prefix=' + prefix])
         subprocess.check_call([scons, 'cpp', '--prefix=' + prefix],
                               cwd=self.tgt.parent.parent)
 

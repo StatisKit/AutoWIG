@@ -477,8 +477,13 @@ this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.inde
         % if method.boost_python_export and method.return_type.desugared_type.is_reference and not method.return_type.desugared_type.is_const and method.return_type.desugared_type.unqualified_type.is_assignable:
     void method_decorator_${method.hash}\
 (${cls.globalname + " const" * bool(method.is_const) + " & instance, " + \
-   ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0) + 'const ' * method.return_type.desugared_type.is_fundamental_type + method.return_type.globalname + ' param_out'}) \
-    { instance.${method.localname}\
+   ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0)}\
+            % if method.return_type.desugared_type.is_fundamental_type:
+${method.return_type.desugared_type.unqualified_type.globalname}\
+            % else:
+const ${method.return_type.globalname}\
+            % endif
+ param_out) { instance.${method.localname}\
 (${", ".join('param_in_' + str(parameter.index) for parameter in method.parameters)}) = param_out; }
         % endif
     % endfor
@@ -1073,12 +1078,6 @@ false;
                                       held_type = self.HELDTYPE[self.helder],
                                       held_header = self.HELDHEADER[self.helder],
                                       header_guard = self.guard)
-        # abstracts = []
-        # for export in self.module.exports:
-        #     for cls in export.declarations:   
-        #         if isinstance(cls, ClassProxy) and cls.is_abstract:
-        #             abstracts.append(cls)
-        # content += self.ABSTRACTS.render(abstracts=sorted(abstracts, key=lambda abstract: abstract.depth))
         return content + "#endif"
 
     @property
