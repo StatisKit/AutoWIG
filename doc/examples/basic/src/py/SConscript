@@ -15,7 +15,7 @@ Alias("py", targets)
 Alias("install", targets)
 pyenv.Depends(targets, "cpp")
 
-targets = pyenv.PythonPackage("basic")
+targets = pyenv.PythonPackage(basic = "basic")
 Alias("py", targets)
 Alias("install", targets)
 pyenv.Depends(targets, "cpp")
