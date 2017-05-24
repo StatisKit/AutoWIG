@@ -15,6 +15,11 @@ env:
   # - RECIPE=python-autowig
   - DOCKERFILE=autowig
 
+matrix:
+  exclude:
+  - os: osx
+    env: DOCKERFILE=autowig
+    
 install:
   - git clone https://github.com/StatisKit/travis-ci.git travis-ci
   - cd travis-ci
