@@ -10,9 +10,9 @@ services:
   - docker
   
 env:
-  - RECIPE=../doc/examples/basic/conda/libbasic
-  - RECIPE=../doc/examples/basic/conda/python-basic
-  - RECIPE=python-autowig
+  # - RECIPE=../doc/examples/basic/conda/libbasic
+  # - RECIPE=../doc/examples/basic/conda/python-basic
+  # - RECIPE=python-autowig
   - DOCKERFILE=autowig
 
 install:
