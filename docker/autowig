@@ -1,6 +1,6 @@
 FROM statiskit/ubuntu
 
-RUN conda install python-autowig python-clanglite
+RUN conda install python-autowig python-clanglite ipython jupyter -c statiskit -c conda-forge
 
 echo "echo \"##############################################################################\"" >> $HOME/.bashrc
 echo "echo \"# Welcome to the Docker container that enables you to run examples presented #\"" >> $HOME/.bashrc
