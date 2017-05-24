@@ -13,6 +13,7 @@ env:
   - RECIPE=../doc/examples/basic/conda/libbasic
   - RECIPE=../doc/examples/basic/conda/python-basic
   - RECIPE=python-autowig
+  - DOCKERFILE=autowig
 
 install:
   - git clone https://github.com/StatisKit/travis-ci.git travis-ci
