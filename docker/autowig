@@ -17,14 +17,9 @@ RUN echo "echo \"# 1. Launch the Jupyter notebook with the following command    
 RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
 RUN echo "echo \"#        jupyter notebook --ip='*' --port=8888 --no-browser                  #\"" >> $HOME/.bashrc
 RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-RUN echo "echo \"# 2. Open the the following address in your browser                          #\"" >> $HOME/.bashrc
+RUN echo "echo \"# 2. Copy the URL given in the terminal and paste it in your browser.        #\"" >> $HOME/.bashrc
 RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-RUN echo "echo \"#        http://localhost:8888                                               #\"" >> $HOME/.bashrc
-RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-RUN echo "echo \"#    or http://<DOCKER-MACHINE-IP>:8888 if you are using a Docker Machine    #\"" >> $HOME/.bashrc
-RUN echo "echo \"#    VM.                                                                     #\"" >> $HOME/.bashrc
-RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-RUN echo "echo \"# 3. Click on the notebooks (denoted by *.ipynb) you want to run and then    #\"" >> $HOME/.bashrc
+RUN echo "echo \"# 3. Click on the notebooks you want to run (denoted by *.ipynb) and then    #\"" >> $HOME/.bashrc
 RUN echo "echo \"#    click on Restart & Run item of the Kernel top menu bar.                 #\"" >> $HOME/.bashrc
 RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
 RUN echo "echo \"##############################################################################\"" >> $HOME/.bashrc
