@@ -2,21 +2,28 @@ FROM statiskit/ubuntu
 
 RUN conda install python-autowig python-clanglite ipython jupyter -c statiskit -c conda-forge
 
-echo "echo \"##############################################################################\"" >> $HOME/.bashrc
-echo "echo \"# Welcome to the Docker container that enables you to run examples presented #\"" >> $HOME/.bashrc
-echo "echo \"# in the AutoWIG paper. To run examples,                                     #\"" >> $HOME/.bashrc
-echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-echo "echo \"# 1. Launch the Jupyter notebook with the following command                  #\"" >> $HOME/.bashrc
-echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-echo "echo \"#    jupyter notebook --ip='*' --port=8888 --no-browser                      #\"" >> $HOME/.bashrc
-echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-echo "echo \"# 2. Open the the following address in your browser                          #\"" >> $HOME/.bashrc
-echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-echo "echo \"#    http://localhost:8888                                                   #\"" >> $HOME/.bashrc
-echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-echo "echo \"#    or http://<DOCKER-MACHINE-IP>:8888 if you are using a Docker Machine    #\"" >> $HOME/.bashrc
-echo "echo \"#    VM.                                                                     #\"" >> $HOME/.bashrc
-echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-echo "echo \"# 3. Click on the notebooks (denoted by *.ipynb) you want to run and then    #\"" >> $HOME/.bashrc
-echo "echo \"#    click on Restart & Run all situated in the Kernel top menu bar.         #\"" >> $HOME/.bashrc
-echo "echo \"##############################################################################\"" >> $HOME/.bashrc
+RUN echo "echo \"##############################################################################\"" >> $HOME/.bashrc
+RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
+RUN echo "echo \"# Welcome to the Docker container that enables you to run examples presented #\"" >> $HOME/.bashrc
+RUN echo "echo \"# in the AutoWIG paper. After launching this container using the following   #\"" >> $HOME/.bashrc
+RUN echo "echo \"# commmand line,                                                             #\"" >> $HOME/.bashrc
+RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
+RUN echo "echo \"#  sudo docker run -i -t -p 8888:8888 statiskit/autowig                      #\"" >> $HOME/.bashrc
+RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
+RUN echo "echo \"# you can run examples as follows,                                           #\"" >> $HOME/.bashrc
+RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
+RUN echo "echo \"# 1. Launch the Jupyter notebook with the following command                  #\"" >> $HOME/.bashrc
+RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
+RUN echo "echo \"#    jupyter notebook --ip='*' --port=8888 --no-browser                      #\"" >> $HOME/.bashrc
+RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
+RUN echo "echo \"# 2. Open the the following address in your browser                          #\"" >> $HOME/.bashrc
+RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
+RUN echo "echo \"#    http://localhost:8888                                                   #\"" >> $HOME/.bashrc
+RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
+RUN echo "echo \"#    or http://<DOCKER-MACHINE-IP>:8888 if you are using a Docker Machine    #\"" >> $HOME/.bashrc
+RUN echo "echo \"#    VM.                                                                     #\"" >> $HOME/.bashrc
+RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
+RUN echo "echo \"# 3. Click on the notebooks (denoted by *.ipynb) you want to run and then    #\"" >> $HOME/.bashrc
+RUN echo "echo \"#    click on Restart & Run item of the Kernel top menu bar.                 #\"" >> $HOME/.bashrc
+RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
+RUN echo "echo \"##############################################################################\"" >> $HOME/.bashrc
