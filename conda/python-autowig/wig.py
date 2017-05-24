@@ -61,7 +61,7 @@ def generate(env):
                 pickle.dump(asg, filehandler)
             return None
 
-        def BoostPythonWIG(env, target, sources, module, decorator=None, parser='pyclanglite', controller='default', generator='boost_python_internal', depends=[], helder='std::shared_ptr', **kwargs):
+        def BoostPythonWIG(env, target, sources, module, decorator=None, parser='clanglite', controller='default', generator='boost_python_internal', depends=[], helder='std::shared_ptr', **kwargs):
             #
             SITE_AUTOWIG = env['SITE_AUTOWIG']
             autowig_env = env.Clone()

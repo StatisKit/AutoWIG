@@ -21,8 +21,8 @@ from .asg import AbstractSemanticGraph, visitor
 visitor.plugin = 'all'
 
 from ._parser import parser
-if 'pyclanglite' in parser:
-    parser.plugin = 'pyclanglite'
+if 'clanglite' in parser:
+    parser.plugin = 'clanglite'
 else:
     parser.plugin = 'libclang'
     

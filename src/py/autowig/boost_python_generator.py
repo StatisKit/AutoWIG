@@ -629,7 +629,6 @@ ${field.globalname}, "${documenter(field)}");
         boost::python::implicitly_convertible< autowig::Held< ${cls.globalname} >::Type, autowig::Held< ${bse.globalname} >::Type >();
             % endif
         % endfor
-        //boost::python::objects::class_value_wrapper< autowig::Held< ${cls.globalname} >::Type, boost::python::objects::make_ptr_instance< ${cls.globalname}, boost::python::objects::pointer_holder< autowig::Held< ${cls.globalname} >::Type, ${cls.globalname} > > >();
     }
     % elif cls.is_abstract:
     if(autowig::Held< ${cls.globalname} >::is_class)
@@ -638,8 +637,6 @@ ${field.globalname}, "${documenter(field)}");
         boost::python::implicitly_convertible< autowig::Held< ${wrapper_name(cls)} >::Type, autowig::Held< ${cls.globalname} >::Type >();
         boost::python::register_ptr_to_python< autowig::Held< ${cls.globalname} >::Type >();
         % endif
-        //boost::python::objects::class_value_wrapper< autowig::Held< ${cls.globalname} >::Type, boost::python::objects::make_ptr_instance< ${cls.globalname}, boost::python::objects::pointer_holder< autowig::Held< ${cls.globalname} >::Type, ${cls.globalname} > > >();
-        //boost::python::implicitly_convertible< autowig::Held< ${wrapper_name(cls)} >::Type, autowig::Held< ${cls.globalname} >::Type >();
     }    
     % endif
 % else:

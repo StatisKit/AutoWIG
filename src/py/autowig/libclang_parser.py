@@ -527,9 +527,6 @@ def read_tag(asg, cursor, scope):
         if not asg[spelling].is_complete:
             for child in cursor.get_children():
                 if child.kind is CursorKind.CXX_BASE_SPECIFIER:
-                    #if spelling == 'class ::clang::FriendDecl':
-                    #    import pdb
-                    #    pdb.set_trace()
                     childspelling = '::' + child.type.spelling
                     childcursor = child.type.get_declaration()
                     if childcursor.kind is CursorKind.STRUCT_DECL:

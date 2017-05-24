@@ -1078,6 +1078,10 @@ class ConstructorProxy(DeclarationProxy):
     def prototype(self):
         return self.parent.localname + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
 
+    @property
+    def is_copy_constructor(self):
+        return self.nb_parameters == 1 and self.parameters[0].qualified_type.desugared_type.unqualified_type.globalname == self.parent.globalname
+        
 class DestructorProxy(DeclarationProxy):
     """
     """
@@ -1117,10 +1121,10 @@ class ClassProxy(DeclarationProxy):
 
     @property
     def is_assignable(self):
-        for method in self.methods():
-            if method.localname == 'operator=':
-                return method.access == 'public'
-        return any(base.is_assignable for base in self.bases(access='public'))
+        if hasattr(self, '_is_assignable'):
+            return self._is_assignable
+        else:
+            return all(method.access == 'public' for method in self.methods(pattern='.*operator=', access='deleted'))
 
     @property
     def is_derived(self):
@@ -1205,7 +1209,8 @@ class ClassProxy(DeclarationProxy):
                             basedeclaration.access = 'protected'
                 elif base.access == 'private':
                     for basedeclaration in basedeclarations:
-                        basedeclaration.access = 'private'
+                        if not basedeclaration.access == 'deleted':
+                            basedeclaration.access = 'private'
                 declarations += basedeclarations
             declarations = reversed(sorted(declarations, key= lambda declaration: declaration.parent.depth))
         else:
@@ -1218,6 +1223,8 @@ class ClassProxy(DeclarationProxy):
         elif access == 'protected':
             return [declaration for declaration in declarations if declaration.access in ['public', 'protected']]
         elif access == 'private':
+            return [declaration for declaration in declarations if not declaration.access == 'deleted']
+        elif access == 'deleted':
             return declarations
         else:
             raise ValueError('\'access\' parameter')
@@ -1299,7 +1306,15 @@ class ClassProxy(DeclarationProxy):
 
     @property
     def is_copyable(self):
-        return self._is_copyable
+        if not hasattr(self, '_is_copyable'):
+            is_copyable = True
+            for ctr in self.constructors(access='deleted'):
+                if ctr.is_copy_constructor:
+                    is_copyable = ctr.access == 'public'
+                    break
+            return is_copyable
+        else:
+            return self._is_copyable
 
     @is_copyable.setter
     def is_copyable(self, copyable):
