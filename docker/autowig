@@ -1,6 +1,6 @@
 FROM statiskit/ubuntu
 
-RUN conda install python-autowig python-clanglite ipython jupyter -c statiskit -c conda-forge
+RUN conda install vcs python-autowig python-clanglite ipython jupyter -c statiskit -c conda-forge
 RUN git clone https://github.com/StatisKit/AutoWIG.git
 
 RUN echo "echo \"##############################################################################\"" >> $HOME/.bashrc
