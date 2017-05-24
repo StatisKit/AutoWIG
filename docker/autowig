@@ -20,7 +20,7 @@ RUN echo "echo \"#                                                              
 RUN echo "echo \"# 2. Copy the URL given in the terminal and paste it in your browser.        #\"" >> $HOME/.bashrc
 RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
 RUN echo "echo \"# 3. Click on the notebooks you want to run (denoted by *.ipynb) and then    #\"" >> $HOME/.bashrc
-RUN echo "echo \"#    click on Restart & Run item of the Kernel top menu bar.                 #\"" >> $HOME/.bashrc
+RUN echo "echo \"#    click on Run All item of the Cell top menu bar.                         #\"" >> $HOME/.bashrc
 RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
 RUN echo "echo \"##############################################################################\"" >> $HOME/.bashrc
 

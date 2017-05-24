@@ -12,7 +12,7 @@ services:
 env:
   # - RECIPE=../doc/examples/basic/conda/libbasic
   # - RECIPE=../doc/examples/basic/conda/python-basic
-  # - RECIPE=python-autowig
+  - RECIPE=python-autowig
   - DOCKERFILE=autowig
 
 matrix:
