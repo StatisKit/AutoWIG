@@ -85,8 +85,8 @@ class TestSubset(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         autowig.parser.plugin = 'libclang'
-        srcdir = Path('PyClangLite')
-        Repo.clone_from('https://github.com/StatisKit/PyClangLite.git', srcdir.relpath('.'))
+        srcdir = Path('ClangLite')
+        Repo.clone_from('https://github.com/StatisKit/ClangLite.git', srcdir.relpath('.'))
         cls.srcdir = srcdir/'src'/'py'
         subprocess.check_output(['scons', 'cpp', '--prefix=' + sys.prefix],
                                 cwd=cls.srcdir.parent.parent)
