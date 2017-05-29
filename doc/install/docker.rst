@@ -37,7 +37,7 @@ The image tagged :code:`latest` is unstable, it could be preferable to use the o
 
 .. code-block:: console
 
-  $ docker run -i -t -p 8888:8888 statiskit/autowig:jcs17
+    $ docker run -i -t -p 8888:8888 statiskit/autowig:jcs17
   
 For convenience, examples are presented in  **Jupyter** notebooks.
 You can therefore proceed as follows to run examples:
@@ -46,9 +46,14 @@ You can therefore proceed as follows to run examples:
 
    .. code-block:: console
    
-    $ jupyter notebook --ip='*' --port=8888 --no-browser
+       $ jupyter notebook --ip='*' --port=8888 --no-browser
     
 2. Copy the URL given in your terminal and paste it in your browser.
+   This URL should looks like:
+   
+   .. code-block:: console
+   
+       http://localhost:8888/?token=/[0-9a-fA-F]+/
 
 3. Click on the notebooks you want to run (denoted by *.ipynb) and then
 click on Run All item of the Cell top menu bar.       
