@@ -100,7 +100,7 @@ Alias("build", wrap)
 
 Default("build")
 """)
-        autowig.parser.plugin = 'pyclanglite'
+        autowig.parser.plugin = 'clanglite'
         autowig.generator.plugin = 'boost_python_internal'
         autowig.feedback.plugin = 'edit'
         cls.srcdir = Path('.').abspath()
