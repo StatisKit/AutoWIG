@@ -33,11 +33,11 @@ Then, you can use the :code:`statiskit/autowig` **Docker** image to run **AutoWI
   $ docker run -i -t -p 8888:8888 statiskit/autowig
   
 A list of all available images can be found `here <https://hub.docker.com/r/statiskit/autowig/tags/>`_.
-The image tagged :code:`latest` is unstable, it could be preferable to use the one attached with the AutoWIG paper submitted in Journal of Computational Science (tagger :code:`jcs`) as follows:
+The image tagged :code:`latest` is unstable, it could be preferable to use the one attached with the AutoWIG paper submitted in Journal of Computational Science (tagger :code:`jcs17`) as follows:
 
 .. code-block:: console
 
-  $ docker run -i -t -p 8888:8888 statiskit/autowig:jcs
+  $ docker run -i -t -p 8888:8888 statiskit/autowig:jcs17
   
 For convenience, examples are presented in  **Jupyter** notebooks.
 You can therefore proceed as follows to run examples:
