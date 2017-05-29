@@ -117,7 +117,7 @@ class TestBasic(unittest.TestCase):
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
         plugin = autowig.parser.plugin
-        autowig.parser.plugin = 'pyclanglite'
+        autowig.parser.plugin = 'clanglite'
         self.test_mapping_export()
         autowig.parser.plugin = plugin
 
