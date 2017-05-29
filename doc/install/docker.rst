@@ -52,3 +52,7 @@ You can therefore proceed as follows to run examples:
 
 3. Click on the notebooks you want to run (denoted by *.ipynb) and then
 click on Run All item of the Cell top menu bar.       
+
+.. warning::
+
+  For some systems as Ubuntu, **Docker** requires root permissions (see this `page <https://docs.docker.com/engine/installation/linux/linux-postinstall/>`_ for more information).
