@@ -32,7 +32,7 @@ Then, you can use the :code:`statiskit/autowig` **Docker** image to run **AutoWI
 
   $ docker run -i -t -p 8888:8888 statiskit/autowig
   
-A list of all available images can be found _`here <https://hub.docker.com/r/statiskit/autowig/tags/>`.
+A list of all available images can be found `here <https://hub.docker.com/r/statiskit/autowig/tags/>`_.
 The image tagged :code:`latest` is unstable, it could be preferable to use the one attached with the AutoWIG paper submitted in Journal of Computational Science.
 
 For convenience, examples are presented in  **Jupyter** notebooks.
