@@ -16,8 +16,8 @@
 
 .. _using-docker:
 
-Using Docker
-============
+Test it with **Docker**
+=======================
 
 .. note::
 
@@ -30,41 +30,21 @@ Then, you can use the :code:`statiskit/autowig` **Docker** image to run **AutoWI
 
 .. code-block:: console
 
-  $ docker run -it statiskit/autowig
+  $ docker run -i -t -p 8888:8888 statiskit/autowig
   
-For convenience **IPython** and **Jupyter** packages are aleary installed.
-You can therefore use:
+A list of all available images can be found _`here <https://hub.docker.com/r/statiskit/autowig/tags/>`.
+The image tagged :code:`latest` is unstable, it could be preferable to use the one attached with the AutoWIG paper submitted in Journal of Computational Science.
 
-* The **IPython** console.
+For convenience, examples are presented in  **Jupyter** notebooks.
+You can therefore proceed as follows to run examples:
 
-  .. code-block:: console
-  
-    $ ipython
+1. Launch the Jupyter notebook with the following command
 
-* The **Jupyter** notebook within the **Firefox** web-browser.
-
-  .. code-block:: console
-  
-    $ jupyter notebook
+   .. code-block:: console
+   
+    $ jupyter notebook --ip='*' --port=8888 --no-browser
     
-  This requires to able to run Linux GUI Apps:
-  
-  * On Linux, this is done using the following command in place of the previous command:
-  
-    .. code-block:: console
-  
-      $ docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix statiskit/autowig
-    
-  * On Windows refers to this `post <http://manomarks.github.io/2015/12/03/docker-gui-windows.html>`_.
-  
-  * On MacOs refers to this `post <https://github.com/docker/docker/issues/8710>`_.
+2. Copy the URL given in your terminal and paste it in your browser.
 
-.. note::
-
-  This **Docker** image is generated using the following :download:`../../Dockerfile`.
-  
-  .. literalinclude:: ../../Dockerfile
-     :language: docker
-     
-  This file is also used with Binder in order to ensure reproducability of presented examples (see :ref:`Examples`).
-  More information can be found on the `Binder documentation <http://docs.mybinder.org/>`_.
+3. Click on the notebooks you want to run (denoted by *.ipynb) and then
+click on Run All item of the Cell top menu bar.       
