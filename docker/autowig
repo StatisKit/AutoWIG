@@ -24,4 +24,6 @@ RUN echo "echo \"#    click on Run All item of the Cell top menu bar.           
 RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
 RUN echo "echo \"##############################################################################\"" >> $HOME/.bashrc
 
+RUN echo "source activate root" >> $HOME/.bashrc
+
 WORKDIR /home/main/AutoWIG/doc/examples
