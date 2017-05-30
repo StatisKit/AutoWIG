@@ -23,7 +23,7 @@ Once **Conda** installed, you can install **AutoWIG** binaries into a special en
 
 .. code-block:: console
 
-    conda create -n autowig python-autowig python-clanglite python-scons -c statiskit -c conda-forge
+    conda create -n autowig python-autowig python-clanglite python-scons python-dev libdev -c statiskit -c conda-forge
 
 .. warning::
 
