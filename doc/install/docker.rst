@@ -40,7 +40,7 @@ The image tagged :code:`latest` is unstable, it could be preferable to use the o
     $ docker run -i -t -p 8888:8888 statiskit/autowig:v1.0.0
   
 For convenience, examples are presented in  **Jupyter** notebooks.
-You can therefore proceed as follows to run examples:
+You can therefore proceed -- in the container's terminal -- as follows to run examples:
 
 1. Launch the Jupyter notebook with the following command
 
