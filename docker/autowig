@@ -9,7 +9,7 @@ RUN echo "echo \"# Welcome to the Docker container that enables you to run examp
 RUN echo "echo \"# in the AutoWIG paper. After launching this container using the following   #\"" >> $HOME/.bashrc
 RUN echo "echo \"# commmand line,                                                             #\"" >> $HOME/.bashrc
 RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
-RUN echo "echo \"#    sudo docker run -i -t -p 8888:8888 statiskit/autowig                    #\"" >> $HOME/.bashrc
+RUN echo "echo \"#    docker run -i -t -p 8888:8888 statiskit/autowig                         #\"" >> $HOME/.bashrc
 RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
 RUN echo "echo \"# you can run examples as follows,                                           #\"" >> $HOME/.bashrc
 RUN echo "echo \"#                                                                            #\"" >> $HOME/.bashrc
