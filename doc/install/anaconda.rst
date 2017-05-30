@@ -19,11 +19,11 @@ Installation from binaries
     
 In order to ease the installation of the **AutoWIG** software on multiple operating systems, the **Conda** package and environment management system is used.
 To install **Conda**, please refers to its `documentation <http://conda.pydata.org/docs>`_ or follow the installation instructions given on the **StatisKit** `documentation <https://statiskit.rtfd.io>`_.
-Once **Conda** installed, you can install **AutoWIG** binaries into a special environment that will be used for wrapper generation:
+Once **Conda** installed, you can install **AutoWIG** binaries into a special environment that will be used for wrapper generation by typing the following command line in your terminal:
 
 .. code-block:: console
 
-    conda create -n autowig python-autowig python-clanglite python-scons python-dev libdev -c statiskit -c conda-forge
+    $ conda create -n autowig python-autowig python-clanglite python-scons python-dev libdev -c statiskit -c conda-forge
 
 .. warning::
 
