@@ -48,7 +48,7 @@ You can therefore proceed -- in the container's terminal -- as follows to run ex
    
        $ jupyter notebook --ip='*' --port=8888 --no-browser
     
-2. Copy the URL given in your terminal and paste it in your browser.
+2. Copy the URL given in the container's terminal and paste it in your browser.
    This URL should looks like :code:`http://localhost:8888/?token=/[0-9a-fA-F]+/`
 
 3. Click on the notebooks you want to run (denoted by :code:`*.ipynb`) and then
