@@ -49,13 +49,9 @@ You can therefore proceed as follows to run examples:
        $ jupyter notebook --ip='*' --port=8888 --no-browser
     
 2. Copy the URL given in your terminal and paste it in your browser.
-   This URL should looks like:
-   
-   .. code-block:: console
-   
-       http://localhost:8888/?token=/[0-9a-fA-F]+/
+   This URL should looks like :code:`http://localhost:8888/?token=/[0-9a-fA-F]+/`
 
-3. Click on the notebooks you want to run (denoted by *.ipynb) and then
+3. Click on the notebooks you want to run (denoted by :code:`*.ipynb`) and then
 click on Run All item of the Cell top menu bar.       
 
 .. warning::
