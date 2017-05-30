@@ -19,6 +19,6 @@
 How to use **AutoWIG** on Windows or MacOS ?
 ============================================
 
-Currently, **AutoWIG** is not supported on Windows nor MacOS.
+Currently, **AutoWIG** binaries for Windows or MacOs X are proposed and can be installed using **Conda** but are not guaranteed to be working perfectly.
 However, we provide a **Docker** image that can be used on these operating systems.
 Please follow the :ref:`using-docker` procedure.
