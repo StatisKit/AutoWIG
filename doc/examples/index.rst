@@ -20,7 +20,7 @@ Examples
 .. note::
 
    In the following section, we present some examples using **AutoWIG** in order to emphasize particular aspects of the wrapping process.
-   This examples can be executed on-line on a `Binder server <http://mybinder.org/repo/statiskit/autowig>`_.
+   This examples can be executed using the **Docker** image as presented in Section  :ref:`test-docker`.
    They can be found in the `doc/examples` directory and are recognizable by their :code:`*.ipynb` extension.
   
 .. warning::
