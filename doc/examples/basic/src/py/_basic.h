@@ -3,8 +3,8 @@
 
 #include <boost/python.hpp>
 #include <type_traits>
-#include </home/pfernique/.miniconda/envs/statiskit-dev/include/basic/overload.h>
-#include </home/pfernique/.miniconda/envs/statiskit-dev/include/basic/binomial.h>
+#include </home/pfernique/.miniconda/envs/autowig/include/basic/overload.h>
+#include </home/pfernique/.miniconda/envs/autowig/include/basic/binomial.h>
 
 namespace autowig
 {
