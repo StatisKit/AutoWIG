@@ -425,6 +425,7 @@ def suppress_forward_declaration(asg, **kwargs):
                     black.add(duplicate)
     change = True
     nb = 0
+    _nodes = set()
     while change:
         change = False
         for cls in asg.classes(specialized=True, templated=False):
@@ -442,11 +443,7 @@ def suppress_forward_declaration(asg, **kwargs):
                     blacklist(cls, black)
         nb += 1
     prev = -1
-    while not prev == len(black):
-        prev = len(black)
-        for tdf in asg.typedefs():
-            if blacklisted(tdf.qualified_type, black):
-                black.add(tdf._node)
+    gray = set(black)
     def to_blacklist(obj, black, asg):
         if obj._node in black:
             return True
@@ -456,19 +453,23 @@ def suppress_forward_declaration(asg, **kwargs):
                 return True
             else:
                 return parent._node in black or obj._node not in asg._syntax_edges[parent._node]
-    gray = set(black)
-    _type_edges = set()
-    _nodes = set()
-    _parameter_edges = set()
-    for enm in asg.enumerations():
-        if to_blacklist(enm, black, asg):
-            gray.add(enm._node)
-            _nodes.add(enm._node)
-            enumerators = enm.enumerators
-            for enm in enumerators:
-                gray.add(enm._node)
-                #asg._nodes.pop(enm._node)
+    while not prev == len(black):
+        prev = len(black)
+        for tdf in asg.typedefs():
+            if blacklisted(tdf.qualified_type, black):
+                black.add(tdf._node)
+                gray.add(tdf._node)
+        for enm in asg.enumerations():
+            if to_blacklist(enm, black, asg):
+                black.add(enm._node)
                 _nodes.add(enm._node)
+                enumerators = enm.enumerators
+                for enm in enumerators:
+                    gray.add(enm._node)
+                    #asg._nodes.pop(enm._node)
+                    _nodes.add(enm._node)
+    _type_edges = set()
+    _parameter_edges = set()
     for enm in asg.enumerators():
         if to_blacklist(enm, black, asg):
             gray.add(enm._node)
@@ -508,6 +509,9 @@ def suppress_forward_declaration(asg, **kwargs):
             # _type_edges.add(ctr._node)
             #asg._nodes.pop(fct._node)
             _nodes.add(dtr._node)
+    # for tdf in asg.typedefs():
+    #     if blacklisted(tdf.qualified_type, gray) or to_blacklist(tdf, gray, asg):
+    #         gray.add(tdf._node)
     for parent, children in asg._syntax_edges.items():
         asg._syntax_edges[parent] = [child for child in children if child not in gray]
     # gray = set()
