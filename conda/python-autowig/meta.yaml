@@ -30,10 +30,10 @@ about:
 
 requirements:
   build:
-    - python
+    - python=2.7
     - python-dev
   run:
-    - python
+    - python=2.7
     - mako
     - python-dateutil
     - python-parse
@@ -50,6 +50,7 @@ test:
     - doc
     - src
   requires:
+    - python=2.7
     - libdev
     - python-dev
     - clang
