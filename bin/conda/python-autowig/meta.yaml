@@ -19,7 +19,7 @@ package:
   version: "1.0.0"
 
 source:
-  path: ../..
+  path: ../../..
 
 build:
   number: 0
