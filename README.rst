@@ -14,8 +14,8 @@
 ..                                                                                  ..
 .. ................................................................................ ..
 
-AutoWIG: Automatic Wrapper and Interface Generator
-##################################################
+**AutoWIG**: Automatic Wrapper and Interface Generator
+######################################################
 
 High-level programming languages, such as *Python* and *R*, are popular among scientists.
 They are concise, readable, lead to rapid development cycles, but suffer from performance drawback compared to compiled language. 
