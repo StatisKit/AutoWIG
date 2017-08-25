@@ -1,5 +1,10 @@
 set -ev
 
+if [[ "$PY3K" = 1 ]]; then
+  2to3 -n -w $SRC_DIR/src/py/autowig
+  2to3 -n -w $SRC_DIR/test
+fi
+
 python setup.py install --prefix=$PREFIX
 mkdir -p $SP_DIR/autowig/site
 touch $SP_DIR/autowig/site/__init__.py
