@@ -25,55 +25,8 @@ from path import Path
 from git import Repo
 import subprocess
 import sys
-import __builtin__
 
 import autowig
-
-class TemplateRender(object):
-
-    def __get__(self, obj, objtype, **kwargs):
-        code = obj.code
-        code = code.replace('\n    __M_caller = context.caller_stack._push_frame()', '', 1)
-        code = code.replace('\n    __M_caller = context.caller_stack._push_frame()', '', 1)
-        code = code.replace("        return ''\n    finally:\n        context.caller_stack._pop_frame()\n", "        return __M_string\n    except:\n        return ''", 1)
-        code = code.replace("context,**pageargs", "**context", 1)
-        code = code.replace("\n        __M_locals = __M_dict_builtin(pageargs=pageargs)", "", 1)
-        code = code.replace("__M_writer = context.writer()", "__M_string = u''")
-        code = code.replace("__M_writer(", "__M_string = operator.add(__M_string, ")
-        code = "import operator\n" + code
-        exec code in globals()
-        def __call__(**context):
-            for builtin in dir(__builtin__):
-                if not builtin in context:
-                    context[builtin] = getattr(__builtin__, builtin)
-            return globals()["render_body"](**context)
-        return __call__
-
-from autowig.boost_python_generator import Template
-
-Template.render = TemplateRender()
-
-from functools import wraps
-def wrapper(f):
-    @wraps(f)
-    def execfunc(self, *args, **kwargs):
-        #global prev
-        #if time.time() - prev >= 300:
-        #    sys.stdout.write('.')
-        #    sys.stdout.flush()
-        #    prev = time.time()
-        return f(self, *args, **kwargs)
-    return execfunc
-
-from autowig import libclang_parser
-for func in dir(libclang_parser):
-    if func.startswith('read_'):
-        setattr(libclang_parser, func, wrapper(getattr(libclang_parser, func)))
-
-from clanglite import autowig_parser
-for func in dir(autowig_parser):
-    if func.startswith('read_'):
-        setattr(autowig_parser, func, wrapper(getattr(autowig_parser, func)))
 
 @attr(linux=True,
       osx=True,
