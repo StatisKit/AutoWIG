@@ -103,7 +103,7 @@ def libclang_parser(asg, filepaths, flags, silent=False, **kwargs):
     warnings.warn('The libclang parser is no more maintened', DeprecationWarning)
     content = pre_processing(asg, filepaths, flags, **kwargs)
     if six.PY3:
-        content.encode()
+        content = content.encode()
     if content:
         index = Index.create()
         tempfilehandler = NamedTemporaryFile(delete=False)
