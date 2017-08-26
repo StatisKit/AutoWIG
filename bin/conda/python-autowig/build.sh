@@ -5,7 +5,7 @@ if [[ "$PY3K" = 1 ]]; then
   2to3 -n -w $SRC_DIR/test
 fi
 
-python setup.py install --prefix=$PREFIX
+$PYTHON setup.py install --prefix=$PREFIX
 mkdir -p $SP_DIR/autowig/site
 touch $SP_DIR/autowig/site/__init__.py
 mkdir -p $SP_DIR/autowig/site/ASG
