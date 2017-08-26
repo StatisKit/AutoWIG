@@ -25,7 +25,7 @@ import subprocess
 import shutil
 from path import Path
 import platform
-
+import six
 
 @attr(win=True,
       linux=True,
@@ -51,7 +51,9 @@ class TestBasic(unittest.TestCase):
             scons = subprocess.check_output(['where', 'scons']).strip()
         else:
             scons = subprocess.check_output(['which', 'scons']).strip()
-
+        if six.PY3:
+            scons = scons.decode('ascii', 'ignore')
+            
         build = self.tgt.parent.parent/'build'
         print build
         if build.exists():
