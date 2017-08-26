@@ -25,6 +25,7 @@ import numpy
 import os
 import warnings
 import uuid
+import six
 
 from .asg import (CharTypeProxy, 
                  UnsignedCharTypeProxy,
