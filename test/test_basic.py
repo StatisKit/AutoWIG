@@ -36,7 +36,8 @@ class TestBasic(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        autowig.parser.plugin = 'libclang'
+        if six.PY2:
+            autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
         cls.tgt = Path('.').abspath()/'doc'/'examples'/'basic'/'src'/'py'
         cls.src = Path(sys.prefix).abspath()/'include'/'basic'
