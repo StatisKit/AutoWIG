@@ -88,6 +88,9 @@ class NodeProxy(object):
         """
         return str(uuid.uuid5(uuid.NAMESPACE_X500, self._node)).replace('-', '')
 
+    def __hash__(self):
+        return self.hash
+        
     def __dir__(self):
         return sorted([key for key in self._asg._nodes[self._node].keys()] + [key for key in dir(self.__class__)])
 
