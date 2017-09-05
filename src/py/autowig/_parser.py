@@ -270,7 +270,10 @@ def bootstrap(asg, flags, **kwargs):
                 headers.append("}")
                 forbidden.update(set(gray))
                 header = NamedTemporaryFile(delete=False)
-                header.write('\n'.join(headers))
+                if six.PY2:
+                    header.write('\n'.join(headers))
+                else:
+                    header.write(('\n'.join(headers)).encode())
                 header.close()
                 asg = parser(asg, [header.name], flags +["-Wno-unused-value",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
                 os.unlink(header.name)
