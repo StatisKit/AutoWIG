@@ -15,6 +15,7 @@
 ##################################################################################
 
 import autowig
+import six
 
 import unittest
 from nose.plugins.attrib import attr
@@ -143,9 +144,10 @@ Default("build")
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         prev, curr = s.communicate()
 
-        while not prev == curr:
+        while curr and not prev == curr:
             prev = curr
-            curr = curr.decode('ascii', 'ignore')
+            if six.PY3:
+                curr = curr.decode('ascii', 'ignore')
             code = autowig.feedback(curr, '.', asg)
             if code:
                 exec(code, locals())
