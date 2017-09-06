@@ -149,6 +149,9 @@ Default("build")
             code = autowig.feedback(curr, '.', asg)
             if code:
                 exec(code, locals())
+            s = subprocess.Popen(['scons', 'py'],
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            _, curr = s.communicate()
 
     @attr(level=2)
     def test_with_all_overload_export(self):
