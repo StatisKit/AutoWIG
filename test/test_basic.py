@@ -49,7 +49,7 @@ class TestBasic(unittest.TestCase):
         prefix = sys.prefix
         if any(platform.win32_ver()):
             prefix = os.path.join(prefix, 'Library')
-            scons = subprocess.check_output(['where', 'scons']).strip()
+            scons = subprocess.check_output(['where', 'scons.bat']).strip()
         else:
             scons = subprocess.check_output(['which', 'scons']).strip()
         if six.PY3:
