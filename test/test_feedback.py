@@ -145,6 +145,7 @@ Default("build")
 
         while not prev == curr:
             prev = curr
+            curr = curr.decode('ascii', 'ignore')
             code = autowig.feedback(curr, '.', asg)
             if code:
                 exec(code, locals())
