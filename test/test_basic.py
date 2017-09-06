@@ -41,9 +41,9 @@ class TestBasic(unittest.TestCase):
         autowig.generator.plugin = 'boost_python_internal'
         cls.tgt = Path('.').abspath()/'doc'/'examples'/'basic'/'src'/'py'
         if any(platform.win32_ver()):
-            cls.src = Path(sys.prefix).abspath()/'include'/'basic'
-        else:
             cls.src = Path(sys.prefix).abspath()/'Library'/'include'/'basic'
+        else:
+            cls.src = Path(sys.prefix).abspath()/'include'/'basic'
 
     def test_mapping_export(self):
         """Test `mapping` export"""
