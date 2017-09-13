@@ -1348,7 +1348,7 @@ import ${dependency.package}.${dependency.prefix}
 % endif
 
 # Import Boost.Python module
-import _${module.prefix}
+from . import _${module.prefix}
 """)
 
     SCOPES = Template(text=r"""\
