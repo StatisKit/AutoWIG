@@ -11,9 +11,9 @@ services:
   
 env:
   - CONDA_RECIPE=python-autowig
-    PYTHON_VERSION=2
+    CONDA_VERSION=2
   - CONDA_RECIPE=python-autowig
-    PYTHON_VERSION=3
+    CONDA_VERSION=3
 
 matrix:
   exclude:

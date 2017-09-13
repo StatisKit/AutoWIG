@@ -5,9 +5,9 @@ platform:
 environment:
   matrix:
     - CONDA_RECIPE: python-autowig
-      PYTHON_VERSION: 2
+      CONDA_VERSION: 2
     - CONDA_RECIPE: python-autowig
-      PYTHON_VERSION: 3
+      CONDA_VERSION: 3
             
 install:
   - git clone https://github.com/StatisKit/appveyor-ci.git appveyor-ci
