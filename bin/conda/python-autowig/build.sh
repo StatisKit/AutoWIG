@@ -3,6 +3,7 @@ set -ev
 if [[ "$PY3K" = 1 ]]; then
   2to3 -n -w $SRC_DIR/src/py/autowig
   2to3 -n -w $SRC_DIR/test
+  2to3 -n -w $RECIPE_DIR/wig.py
 fi
 
 $PYTHON setup.py install --prefix=$PREFIX

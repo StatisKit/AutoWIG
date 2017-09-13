@@ -1,5 +1,11 @@
 echo ON
 
+if "%PY3K%" == "1" (
+  2to3 -n -w %SRC_DIR%\src\py\autowig
+  2to3 -n -w %SRC_DIR%\test
+  2to3 -n -w %RECIPE_DIR%\wig.py
+)
+
 python setup.py install --prefix=%PREFIX%
 if errorlevel 1 exit 1
 rem if exist %SP_DIR%\AutoWIG move %SP_DIR%\AutoWIG %SP_DIR%\autowig /s /q
