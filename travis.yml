@@ -14,7 +14,6 @@ env:
     PYTHON_VERSION=2
   - CONDA_RECIPE=python-autowig
     PYTHON_VERSION=3
-  - DOCKERFILE=autowig
 
 matrix:
   exclude:
