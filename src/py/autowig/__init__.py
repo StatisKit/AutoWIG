@@ -17,6 +17,8 @@
 """
 """
 
+import warnings
+
 from .asg import AbstractSemanticGraph, visitor
 visitor.plugin = 'all'
 
@@ -26,7 +28,7 @@ if 'clanglite' in parser:
 elif 'libclang' in parser:
     parser.plugin = 'libclang'
 else:
-    raise NotImplementedError("no parser implemented")
+    warnings.warn("no parser implemented", RuntimeWarning)
     
 from ._documenter import documenter
 documenter.plugin = 'doxygen2sphinx'
