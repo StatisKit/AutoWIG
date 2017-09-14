@@ -31,7 +31,7 @@ def generate(env):
             env['AUTOWIG_ASG'] = autowig.AbstractSemanticGraph()
             asg = env['AUTOWIG_ASG']
             for dependency in env['AUTOWIG_DEPENDS']:
-                with open(os.path.join(SITE_AUTOWIG, 'ASG', dependency + '.pkl'), 'r') as filehandler:
+                with open(os.path.join(SITE_AUTOWIG, 'ASG', dependency + '.pkl'), 'rb') as filehandler:
                     asg.merge(pickle.load(filehandler))
             AUTOWIG_PARSER = env['AUTOWIG_PARSER']
             if not AUTOWIG_PARSER in autowig.parser:
@@ -57,7 +57,7 @@ def generate(env):
                                          **{kwarg[len('AUTOWIG_generator_'):] : env[kwarg] for kwarg in env.Dictionary() if isinstance(kwarg, basestring) and kwarg.startswith('AUTOWIG_generator_')})
             wrappers.header.helder = env['AUTOWIG_HELDER']
             wrappers.write()
-            with open(target[-1].abspath, 'w') as filehandler:
+            with open(target[-1].abspath, 'wb') as filehandler:
                 pickle.dump(asg, filehandler)
             return None
 
@@ -92,7 +92,7 @@ def generate(env):
                 autowig_env.Depends(targets[-1], target)
 
             if os.path.exists(targets[-1].abspath):
-                with open(targets[-1].abspath, 'r') as filehandler:
+                with open(targets[-1].abspath, 'rb') as filehandler:
                     autowig_env['AUTOWIG_ASG'] = pickle.load(filehandler)
 
             autowig_env._BoostPythonWIG(targets[-1], sources)
