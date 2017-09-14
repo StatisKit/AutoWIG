@@ -23,8 +23,10 @@ visitor.plugin = 'all'
 from ._parser import parser
 if 'clanglite' in parser:
     parser.plugin = 'clanglite'
-else:
+elif 'libclang' in parser:
     parser.plugin = 'libclang'
+else:
+    raise NotImplementedError("no parser implemented")
     
 from ._documenter import documenter
 documenter.plugin = 'doxygen2sphinx'
