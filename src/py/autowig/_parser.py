@@ -9,6 +9,7 @@ import warnings
 from .plugin import PluginManager
 import sys
 import platform
+import six
 
 from .asg import (DeclarationProxy,
                   NamespaceProxy,
@@ -124,6 +125,8 @@ def pre_processing(asg, headers, flags, **kwargs):
             warnings.warn('System includes not computed: clang command failed', Warning)
         else:
             out, err = s.communicate()
+            if six.PY3:
+                err = err.decode('ascii', 'ignore')
             sysincludes = err.splitlines()
             if '#include <...> search starts here:' not in sysincludes or 'End of search list.' not in sysincludes:
                 warnings.warn('System includes not computed: parsing clang command output failed', Warning)
@@ -251,7 +254,10 @@ def bootstrap(asg, flags, **kwargs):
                 headers.append("}")
                 forbidden.update(set(gray))
                 header = NamedTemporaryFile(delete=False)
-                header.write('\n'.join(headers))
+                if six.PY2:
+                    header.write('\n'.join(headers))
+                else:
+                    header.write(('\n'.join(headers)).encode())
                 header.close()
                 asg = parser(asg, [header.name], flags +["-Wno-unused-value",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
                 os.unlink(header.name)
