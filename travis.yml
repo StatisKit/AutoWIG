@@ -5,20 +5,12 @@ os:
   - osx
 
 sudo: required
-
-services:
-  - docker
   
 env:
   - CONDA_RECIPE=python-autowig
     CONDA_VERSION=2
   - CONDA_RECIPE=python-autowig
     CONDA_VERSION=3
-
-matrix:
-  exclude:
-  - os: osx
-    env: DOCKERFILE=autowig
     
 install:
   - git clone https://github.com/StatisKit/travis-ci.git travis-ci

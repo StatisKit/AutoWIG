@@ -392,7 +392,6 @@ class BoostPythonExportDefaultFileProxy(BoostPythonExportFileProxy):
     % else:
         % for enumerator in enumeration.enumerators:
             % if enumerator.boost_python_export:
-
     enum_${enumeration.hash}.value("${node_rename(enumerator)}", ${enumerator.globalname[::-1].replace((enumeration.localname + '::')[::-1], '', 1)[::-1]});
             % endif
         % endfor
@@ -1502,15 +1501,15 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
 
     return module
 
-def boost_python_pattern_generator(asg, pattern=None, **kwargs):
+def boost_python_pattern_generator(asg, pattern=None, *args, **kwargs):
     """
     """
-    return boost_python_generator(asg, asg.declarations(pattern=pattern), **kwargs)
+    return boost_python_generator(asg, asg.declarations(pattern=pattern), *args, **kwargs)
 
 
-def boost_python_internal_generator(asg, pattern=None, **kwargs):
+def boost_python_internal_generator(asg, pattern=None, *args, **kwargs):
     """
     """
     return boost_python_generator(asg,
                                   [node for node in asg.declarations(pattern=pattern) if not getattr(node.header, 'is_external_dependency', True)],
-                                  **kwargs)
+                                  *args, **kwargs)

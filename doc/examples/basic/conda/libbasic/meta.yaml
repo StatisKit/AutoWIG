@@ -33,6 +33,6 @@ about:
 
 requirements:
     build:
-        - libdev
+        - libtoolchain
     run:
-        - librun
+        - libruntime

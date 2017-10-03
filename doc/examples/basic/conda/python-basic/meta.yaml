@@ -33,13 +33,13 @@ about:
 
 requirements:
     build:
-        - libdev
-        - python-dev
+        - libtoolchain
+        - python-toolchain
         - python
         - libboost
         - libbasic
     run:
-        - librun
+        - libruntime
         - python
         - libboost
         - libbasic
