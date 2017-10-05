@@ -1,18 +1,4 @@
-.. ................................................................................ ..
-..                                                                                  ..
-..  AutoWIG: Automatic Wrapper and Interface Generator                              ..
-..                                                                                  ..
-..  Homepage: http://autowig.readthedocs.io                                         ..
-..                                                                                  ..
-..  Copyright (c) 2016 Pierre Fernique                                              ..
-..                                                                                  ..
-..  This software is distributed under the CeCILL license. You should have        ..
-..  received a copy of the legalcode along with this work. If not, see              ..
-..  <http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.html>.                  ..
-..                                                                                  ..
-..  File authors: Pierre Fernique <pfernique@gmail.com> (31)                        ..
-..                                                                                  ..
-.. ................................................................................ ..
+.. include:: ../README.rst
        
 .. sidebar:: External Ressources
 
@@ -29,9 +15,7 @@
                    
 .. |jdS2016| image:: https://thumb.ccsd.cnrs.fr/8091494/thumb/little
              :target: https://hal.inria.fr/hal-01316276/file/submission_167.pdf
-                   
-.. include:: ../README.rst
-       
+             
 Installation
 ============
 
