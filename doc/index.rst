@@ -4,12 +4,15 @@
 
     :Papers:
     :Preprints: |arXiv2017|
-    :Conference talks: |EuroScipy2017|
-    :Conreference papers: |jdS2016|
+    :Conference talks: |EuroScipy2017b|
+    :Conreference papers: |EuroScipy2017a| |jdS2016|
     
-.. |EuroScipy2017| image:: http://img.youtube.com/vi/N4q_Vud77Hw/1.jpg
+.. |EuroScipy2017b| image:: http://img.youtube.com/vi/N4q_Vud77Hw/1.jpg
                    :target: https://www.youtube.com/watch?v=N4q_Vud77Hw
                    
+.. |EuroScipy2017a| image:: https://thumb.ccsd.cnrs.fr/5304419/thumb/little
+                   :target: https://www.euroscipy.org/2017/descriptions/19828.html
+
 .. |arXiv2017| image:: https://thumb.ccsd.cnrs.fr/8091494/thumb/little
                :target: https://arxiv.org/pdf/1705.11000
                    
