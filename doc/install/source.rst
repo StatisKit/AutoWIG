@@ -17,10 +17,10 @@ For installing **AutoWIG** from source code, please refers to the **StatisKit** 
         cd share
         cd git
         cd ClangLite
-        git pull
+        git pull origin master
         cd ..
         cd AutoWIG
-        git pull
+        git pull origin master
         cd ..
         cd ..
         cd ..
