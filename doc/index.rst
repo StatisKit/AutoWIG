@@ -4,17 +4,14 @@
 
     :Papers: |arXiv2017|
     :Conferences: |EuroScipy2017b| |EuroScipy2017a| |jdS2016|
-   
-.. |EuroScipy2017b| image:: http://img.youtube.com/vi/N4q_Vud77Hw/1.jpg
-                   :target: https://www.youtube.com/watch?v=N4q_Vud77Hw
 
 .. |EuroScipy2017b| image:: http://img.youtube.com/vi/N4q_Vud77Hw/1.jpg
                    :target: https://www.youtube.com/watch?v=N4q_Vud77Hw
                    
-.. |EuroScipy2017a| image:: https://thumb.ccsd.cnrs.fr/5304419/thumb/little
+.. |EuroScipy2017a| image:: thumbnails/EuroSciPy2017a.jpg
                    :target: https://www.euroscipy.org/2017/descriptions/19828.html
 
-.. |arXiv2017| image:: https://thumb.ccsd.cnrs.fr/8091494/thumb/little
+.. |arXiv2017| image:: thumbnails/arXiv2017.jpg
                :target: https://arxiv.org/pdf/1705.11000
                    
 .. |jdS2016| image:: https://thumb.ccsd.cnrs.fr/8091494/thumb/little
@@ -47,7 +44,7 @@ Tutorials
     :maxepth: 2
 
     A <https://raw.githubusercontent.com/StatisKit/FP17/master/README.rst>
-    
+
 Authors
 =======
 
