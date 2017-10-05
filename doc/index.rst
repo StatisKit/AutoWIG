@@ -2,11 +2,12 @@
        
 .. sidebar:: External Ressources
 
-    :Papers:
-    :Preprints: |arXiv2017|
-    :Conference talks: |EuroScipy2017b|
-    :Conreference papers: |EuroScipy2017a| |jdS2016|
-    
+    :Papers: |arXiv2017|
+    :Conferences: |EuroScipy2017b| |EuroScipy2017a| |jdS2016|
+   
+.. |EuroScipy2017b| image:: http://img.youtube.com/vi/N4q_Vud77Hw/1.jpg
+                   :target: https://www.youtube.com/watch?v=N4q_Vud77Hw
+
 .. |EuroScipy2017b| image:: http://img.youtube.com/vi/N4q_Vud77Hw/1.jpg
                    :target: https://www.youtube.com/watch?v=N4q_Vud77Hw
                    
@@ -38,6 +39,14 @@ Documentation
     user_guide
     examples/index
     faq/index
+    
+Tutorials
+=========
+
+.. toctree::
+    :maxepth: 2
+
+    A <https://raw.githubusercontent.com/StatisKit/FP17/master/README.rst>
     
 Authors
 =======
