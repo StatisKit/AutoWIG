@@ -29,7 +29,7 @@ class TestBasic(unittest.TestCase):
         if any(platform.win32_ver()):
             cls.prefix = os.path.join(cls.prefix, 'Library')
         Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'))
-        subprocess.check_output(['scons', 'cpp', '--prefix=' + str(prefix)],
+        subprocess.check_output(['scons', 'cpp', '--prefix=' + str(cls.prefix)],
                                 cwd=cls.srcdir)
         if any(platform.win32_ver()):
             cls.scons = subprocess.check_output(['where', 'scons.bat']).strip()
@@ -59,6 +59,10 @@ class TestBasic(unittest.TestCase):
         
         subprocess.check_call([self.scons, 'py', '--prefix=' + self.prefix],
                               cwd=self.srcdir)
+
+        for filepath in (self.srcdir/'src'/'py').walkfiles():
+            if filepath.exists() and filepath.ext in ['.cpp', '.h']:
+                filepath.remove()
 
     @attr(win=False)
     def test_pyclanglite_parser(self):
