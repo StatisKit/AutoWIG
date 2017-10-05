@@ -14,10 +14,25 @@
 ..                                                                                  ..
 .. ................................................................................ ..
 
-.. sidebar:: Presented at EuroSciPy 2017
+.. sidebar:: External Ressources
 
-    .. image:: http://img.youtube.com/vi/N4q_Vud77Hw/1.jpg
+    .. figure:: http://img.youtube.com/vi/N4q_Vud77Hw/1.jpg
        :target: https://www.youtube.com/watch?v=N4q_Vud77Hw
+       :alt: EuroScipy 2017
+       
+       **EuroScipy 2017** slide show
+       
+    .. figure:: https://thumb.ccsd.cnrs.fr/8091494/thumb/little
+       :target: https://arxiv.org/pdf/1705.11000
+       :alt: arXiv 2017
+
+       **arXiv** preprint
+       
+    .. figure:: https://thumb.ccsd.cnrs.fr/8091494/thumb/little
+       :target: https://hal.inria.fr/hal-01316276/file/submission_167.pdf
+       :alt: JdS 2016
+
+       **48èmes Journées de Statistique de la SFdS Montpellier** conference paper
        
 .. include:: ../README.rst
        
