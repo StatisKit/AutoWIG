@@ -43,7 +43,7 @@ Tutorials
 .. toctree::
     :maxepth: 2
 
-    A <https://raw.githubusercontent.com/StatisKit/FP17/master/README.rst>
+    A <http://raw.githubusercontent.com/StatisKit/FP17/master/README>
 
 Authors
 =======
