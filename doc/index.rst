@@ -46,7 +46,7 @@ Tutorials
 =========
 
 .. toctree::
-    :maxepth: 2
+    :maxepth: 1
 
     A <http://raw.githubusercontent.com/StatisKit/FP17/master/>
 
