@@ -24,4 +24,5 @@ For installing **AutoWIG** from source code, please refers to the **StatisKit** 
         cd ..
         cd ..
         cd ..
+        cd ..
 
