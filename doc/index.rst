@@ -14,8 +14,13 @@
 ..                                                                                  ..
 .. ................................................................................ ..
 
-.. include:: ../README.rst
+.. sidebar:: Presented at EuroSciPy 2017
 
+    .. image:: http://img.youtube.com/vi/N4q_Vud77Hw/1.jpg
+       :target: https://www.youtube.com/watch?v=N4q_Vud77Hw
+       
+.. include:: ../README.rst
+       
 Installation
 ============
 
