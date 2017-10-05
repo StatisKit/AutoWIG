@@ -4,7 +4,7 @@
 
     :Papers:
     :Preprints: |arXiv2017|
-    :Conference slide shows: |EuroScipy2017|
+    :Conference talks: |EuroScipy2017|
     :Conreference papers: |jdS2016|
     
 .. |EuroScipy2017| image:: http://img.youtube.com/vi/N4q_Vud77Hw/1.jpg
