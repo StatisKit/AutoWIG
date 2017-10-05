@@ -1,19 +1,3 @@
-##################################################################################
-#                                                                                #
-# AutoWIG: Automatic Wrapper and Interface Generator                             #
-#                                                                                #
-# Homepage: http://autowig.readthedocs.io                                        #
-#                                                                                #
-# Copyright (c) 2016 Pierre Fernique                                             #
-#                                                                                #
-# This software is distributed under the CeCILL license. You should have       #
-# received a copy of the legalcode along with this work. If not, see             #
-# <http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.html>.                 #
-#                                                                                #
-# File authors: Pierre Fernique <pfernique@gmail.com> (27)                       #
-#                                                                                #
-##################################################################################
-
 import autowig
 
 import unittest
@@ -21,9 +5,10 @@ from nose.plugins.attrib import attr
 
 import os
 import sys
+from path import Path
+from git import Repo
 import subprocess
 import shutil
-from path import Path
 import platform
 import six
 
@@ -39,61 +24,41 @@ class TestBasic(unittest.TestCase):
         if six.PY2:
             autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
-        cls.tgt = Path('.').abspath()/'doc'/'examples'/'basic'/'src'/'py'
+        cls.srcdir = Path('fp17')
+        cls.prefix = Path(sys.prefix).abspath()
         if any(platform.win32_ver()):
-            cls.src = Path(sys.prefix).abspath()/'Library'/'include'/'basic'
+            cls.prefix = os.path.join(cls.prefix, 'Library')
+        Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'))
+        subprocess.check_output(['scons', 'cpp', '--prefix=' + str(prefix)],
+                                cwd=cls.srcdir)
+        if any(platform.win32_ver()):
+            cls.scons = subprocess.check_output(['where', 'scons.bat']).strip()
         else:
-            cls.src = Path(sys.prefix).abspath()/'include'/'basic'
+            cls.scons = subprocess.check_output(['which', 'scons']).strip()
+        cls.incdir = cls.prefix.abspath()/'include'/'basic'
 
     def test_mapping_export(self):
         """Test `mapping` export"""
 
-        import sys
-        prefix = sys.prefix
-        if any(platform.win32_ver()):
-            prefix = os.path.join(prefix, 'Library')
-            scons = subprocess.check_output(['where', 'scons.bat']).strip()
-        else:
-            scons = subprocess.check_output(['which', 'scons']).strip()
-        if six.PY3:
-            scons = scons.decode('ascii', 'ignore')
-            
-        build = self.tgt.parent.parent/'build'
-        print build
-        if build.exists():
-            shutil.rmtree(build)
-        for wrapper in self.tgt.walkfiles('wrapper_*.cpp'):
-            wrapper.unlink()
-        wrapper = self.tgt/'_basic.h'
-        if wrapper.exists():
-            wrapper.unlink()
-        wrapper = self.tgt/'basic'/'_basic.py'
-        if wrapper.exists():
-            wrapper.unlink()
-        wrapper = self.tgt/'_basic.cpp'
-        if wrapper.exists():
-            wrapper.unlink()
-
-        print ' '.join([scons, 'cpp', '--prefix=' + prefix])
-        subprocess.check_call([scons, 'cpp', '--prefix=' + prefix],
-                              cwd=self.tgt.parent.parent)
+        subprocess.check_call([self.scons, 'cpp', '--prefix=' + self.prefix],
+                              cwd=self.srcdir)
 
         asg = autowig.AbstractSemanticGraph()
 
-        asg = autowig.parser(asg, self.src.files('*.h'),
-                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.src.parent)],
+        asg = autowig.parser(asg, self.incdir.files('*.h'),
+                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.incdir.parent)],
                                   silent = True)
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
 
-        wrappers = autowig.generator(asg, module = self.tgt/'__basic.cpp',
-                                        decorator = self.tgt/'basic'/'_basic.py',
+        wrappers = autowig.generator(asg, module = self.srcdir/'src'/'py'/'__basic.cpp',
+                                        decorator = self.srcdir/'src'/'py'/'basic'/'_basic.py',
                                         prefix = 'wrapper_')
         wrappers.write()
         
-        subprocess.check_call([scons, 'py', '--prefix=' + prefix],
-                              cwd=self.tgt.parent.parent)
+        subprocess.check_call([self.scons, 'py', '--prefix=' + self.prefix],
+                              cwd=self.srcdir)
 
     @attr(win=False)
     def test_pyclanglite_parser(self):

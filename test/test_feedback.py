@@ -1,19 +1,3 @@
-##################################################################################
-#                                                                                #
-# AutoWIG: Automatic Wrapper and Interface Generator                             #
-#                                                                                #
-# Homepage: http://autowig.readthedocs.io                                        #
-#                                                                                #
-# Copyright (c) 2016 Pierre Fernique                                             #
-#                                                                                #
-# This software is distributed under the CeCILL license. You should have       #
-# received a copy of the legalcode along with this work. If not, see             #
-# <http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.html>.                 #
-#                                                                                #
-# File authors: Pierre Fernique <pfernique@gmail.com> (5)                        #
-#                                                                                #
-##################################################################################
-
 import autowig
 import six
 
@@ -109,18 +93,6 @@ Default("build")
     def test_with_none_overload_export(self, overload="none"):
         """Test `feedback` with 'none' overload"""
 
-        for wrapper in self.srcdir.walkfiles('wrapper_*.cpp'):
-            wrapper.unlink()
-        wrapper = self.srcdir/'_module.h'
-        if wrapper.exists():
-            wrapper.unlink()
-        wrapper = self.srcdir/'_module.py'
-        if wrapper.exists():
-            wrapper.unlink()
-        wrapper = self.srcdir/'_module.cpp'
-        if wrapper.exists():
-            wrapper.unlink()
-
         asg = autowig.AbstractSemanticGraph()
 
         asg = autowig.parser(asg, [self.srcdir/'test.h'],
@@ -154,6 +126,10 @@ Default("build")
             s = subprocess.Popen(['scons', 'py'],
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             _, curr = s.communicate()
+
+        for filepath in (self.srcdir/'src'/'py').walkfiles():
+            if filepath.exists() and filepath.basename().startswith('wrapper_') or filepath.startswith('_module'):
+                filepath.remove()
 
     @attr(level=2)
     def test_with_all_overload_export(self):

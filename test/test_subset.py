@@ -1,20 +1,3 @@
-##################################################################################
-#                                                                                #
-# AutoWIG: Automatic Wrapper and Interface Generator                             #
-#                                                                                #
-# Homepage: http://autowig.readthedocs.io                                        #
-#                                                                                #
-# Copyright (c) 2016 Pierre Fernique                                             #
-#                                                                                #
-# This software is distributed under the CeCILL license. You should have       #
-# received a copy of the legalcode along with this work. If not, see             #
-# <http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.html>.                 #
-#                                                                                #
-# File authors: Pierre Fernique <pfernique@gmail.com> (46)                       #
-#                                                                                #
-##################################################################################
-
-
 import autowig
 
 import unittest
@@ -38,28 +21,31 @@ class TestSubset(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         autowig.parser.plugin = 'libclang'
-        srcdir = Path('ClangLite')
-        Repo.clone_from('https://github.com/StatisKit/ClangLite.git', srcdir.relpath('.'))
-        cls.srcdir = srcdir/'src'/'py'
-        subprocess.check_output(['scons', 'cpp', '--prefix=' + sys.prefix],
-                                cwd=cls.srcdir.parent.parent)
+        cls.srcdir = Path('fp17')
+        Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'), recursive=True)
+        cls.srcdir = srcdir/'share'/'git'/'ClangLite'
+        cls.incdir = Path(sys.prefix).abspath()
+        if any(platform.win32_ver()):
+            cls.incdir = cls.incdir/'Library'
+        subprocess.check_output(['scons', 'cpp', '--prefix=' + str(cls.incdir)],
+                                cwd=cls.srcdir)
+        if any(platform.win32_ver()):
+            cls.scons = subprocess.check_output(['where', 'scons.bat']).strip()
+        else:
+            cls.scons = subprocess.check_output(['which', 'scons']).strip()
+        cls.incdir = cls.incdir/'include'/'clanglite'
 
     def test_libclang_parser(self):
         """Test `libclang` parser"""
 
-        for wrapper in self.srcdir.walkfiles('*.cpp'):
-            wrapper.unlink()
-
-        prefix = Path(sys.prefix)
-
-        headers = [prefix/'include'/'clanglite'/'tool.h']
+        headers = [cls.incdir/'tool.h']
 
         asg = autowig.AbstractSemanticGraph()
         asg = autowig.parser(asg, headers,
                              flags = ['-x', 'c++', '-std=c++11',
                                       '-D__STDC_LIMIT_MACROS', '-D__STDC_CONSTANT_MACROS',
-                                      '-I' + str((prefix/'include').abspath()),
-                                      '-I' + str((prefix/'include').abspath()/'python2.7')],
+                                      '-I' + str(self.incdir.parent),
+                                      '-I' + str(self.incdir.parent.abspath()/'python2.7')],
                              bootstrap = False,
                              silent = True)
 
@@ -128,7 +114,7 @@ class TestSubset(unittest.TestCase):
                              + asg.nodes('::clang::ASTContext::getAllocator')):
                     node.boost_python_export = False
 
-            for header in (Path(sys.prefix)/'include'/'clang').walkfiles('*.h'):
+            for header in (self.incdir.parent/'include'/'clang').walkfiles('*.h'):
                 asg[header.abspath()].is_external_dependency = False
             
             return asg
@@ -139,8 +125,12 @@ class TestSubset(unittest.TestCase):
 
         autowig.generator.plugin = 'boost_python_internal'
         module = autowig.generator(asg,
-                                     module = self.srcdir/'_clanglite.cpp',
-                                     decorator = self.srcdir/'clanglite'/'_clanglite.py',
+                                     module = self.srcdir/'py'/'wrapper'/'_clanglite.cpp',
+                                     decorator = self.srcdir/'py'/'clanglite'/'_clanglite.py',
                                      closure = False)
 
         module.write()
+
+        for filepath in (self.srcdir/'src'/'py'/'wrapper').walkfiles():
+            if filepath.exists() and filepath.ext in ['.cpp', '.h']:
+                filepath.remove()
