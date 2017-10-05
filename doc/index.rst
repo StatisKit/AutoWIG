@@ -2,8 +2,13 @@
        
 .. sidebar:: External Ressources
 
-    :Papers: |arXiv2017|
-    :Conferences: |EuroScipy2017b| |EuroScipy2017a| |jdS2016|
+    :Papers:
+             * |arXiv2017|
+             
+    :Conferences:
+                  * |EuroScipy2017b|
+                  * |EuroScipy2017a|
+                  * |jdS2016|
 
 .. |EuroScipy2017b| image:: humbnails/EuroSciPy2017b.jpg
                    :target: https://www.youtube.com/watch?v=N4q_Vud77Hw
