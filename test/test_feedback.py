@@ -8,7 +8,7 @@ import subprocess
 from path import Path
 
 @attr(linux=True,
-      osx=True,
+      osx=False,
       win=False,
       level=1)
 class TestFeedback(unittest.TestCase):
