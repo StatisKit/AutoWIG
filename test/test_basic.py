@@ -29,12 +29,12 @@ class TestBasic(unittest.TestCase):
         if any(platform.win32_ver()):
             cls.prefix = os.path.join(cls.prefix, 'Library')
         Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'))
-        subprocess.check_output(['scons', 'cpp', '--prefix=' + str(cls.prefix)],
-                                cwd=cls.srcdir)
         if any(platform.win32_ver()):
             cls.scons = subprocess.check_output(['where', 'scons.bat']).strip()
         else:
             cls.scons = subprocess.check_output(['which', 'scons']).strip()
+        subprocess.check_output([cls.scons, 'cpp', '--prefix=' + str(cls.prefix)],
+                                cwd=cls.srcdir)
         cls.incdir = cls.prefix.abspath()/'include'/'basic'
 
     def test_mapping_export(self):
