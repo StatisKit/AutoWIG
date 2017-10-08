@@ -64,7 +64,7 @@ class TestBasic(unittest.TestCase):
             if filepath.exists() and filepath.ext in ['.cpp', '.h']:
                 filepath.remove()
 
-    @attr(win=False, osx=False)
+    @attr(osx=False)
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
         plugin = autowig.parser.plugin
