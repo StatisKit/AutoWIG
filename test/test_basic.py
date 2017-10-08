@@ -27,7 +27,7 @@ class TestBasic(unittest.TestCase):
         cls.srcdir = Path('fp17')
         cls.prefix = Path(Path(sys.prefix).abspath())
         if any(platform.win32_ver()):
-            cls.prefix = os.path.join(cls.prefix, 'Library')
+            cls.prefix = cls.prefix/'Library'
         Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'))
         if any(platform.win32_ver()):
             cls.scons = subprocess.check_output(['where', 'scons.bat']).strip()
