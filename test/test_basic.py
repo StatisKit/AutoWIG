@@ -25,7 +25,7 @@ class TestBasic(unittest.TestCase):
             autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
         cls.srcdir = Path('fp17')
-        cls.prefix = Path(sys.prefix).abspath()
+        cls.prefix = Path(Path(sys.prefix).abspath())
         if any(platform.win32_ver()):
             cls.prefix = os.path.join(cls.prefix, 'Library')
         Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'))
@@ -35,7 +35,7 @@ class TestBasic(unittest.TestCase):
             cls.scons = subprocess.check_output(['which', 'scons']).strip()
         subprocess.check_output([cls.scons, 'cpp', '--prefix=' + str(cls.prefix)],
                                 cwd=cls.srcdir)
-        cls.incdir = cls.prefix.abspath()/'include'/'basic'
+        cls.incdir = cls.prefix/'include'/'basic'
 
     def test_mapping_export(self):
         """Test `mapping` export"""
