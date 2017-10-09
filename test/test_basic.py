@@ -46,7 +46,7 @@ class TestBasic(unittest.TestCase):
         asg = autowig.AbstractSemanticGraph()
 
         asg = autowig.parser(asg, self.incdir.files('*.h'),
-                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.incdir.parent)],
+                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.incdir.parent), '-fms-compatibility-version=19' * any(platform.win32_ver())],
                                   silent = True)
 
         autowig.controller.plugin = 'default'
