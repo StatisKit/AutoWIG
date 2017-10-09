@@ -33,6 +33,8 @@ class TestBasic(unittest.TestCase):
             cls.scons = subprocess.check_output(['where', 'scons.bat']).strip()
         else:
             cls.scons = subprocess.check_output(['which', 'scons']).strip()
+        if six.PY3:
+            cls.scons = cls.scons.decode("ascii", "ignore")
         subprocess.check_output([cls.scons, 'cpp', '--prefix=' + str(cls.prefix)],
                                 cwd=cls.srcdir)
         cls.incdir = cls.prefix/'include'/'basic'
