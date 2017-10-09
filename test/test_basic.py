@@ -46,7 +46,7 @@ class TestBasic(unittest.TestCase):
         asg = autowig.AbstractSemanticGraph()
 
         asg = autowig.parser(asg, self.incdir.files('*.h'),
-                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.incdir.parent), '-fms-compatibility-version=18' * any(platform.win32_ver())],
+                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.incdir.parent)],
                                   silent = True)
 
         autowig.controller.plugin = 'default'
@@ -64,7 +64,7 @@ class TestBasic(unittest.TestCase):
             if filepath.exists() and filepath.ext in ['.cpp', '.h']:
                 filepath.remove()
 
-    @attr(osx=False)
+    @attr(win=False)
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
         plugin = autowig.parser.plugin
