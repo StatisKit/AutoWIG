@@ -53,7 +53,7 @@ class TestBasic(unittest.TestCase):
             kwargs = dict()
 
         asg = autowig.parser(asg, self.incdir.files('*.h'),
-                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.incdir.parent)],
+                                  flags = ['-x', 'c++', '-std=c++11', '-I' + str(self.incdir.parent)],
                                   **kwargs)
 
         autowig.controller.plugin = 'default'
