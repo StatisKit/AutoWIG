@@ -47,9 +47,14 @@ class TestBasic(unittest.TestCase):
 
         asg = autowig.AbstractSemanticGraph()
 
+        if autowig.parser.plugin == 'libclang':
+            kwargs = dict(silent = True)
+        else:
+            kwargs = dict()
+
         asg = autowig.parser(asg, self.incdir.files('*.h'),
                                   ['-x', 'c++', '-std=c++11', '-I' + str(self.incdir.parent)],
-                                  silent = True)
+                                  **kwargs)
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
