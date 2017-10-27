@@ -33,6 +33,8 @@ class TestBasic(unittest.TestCase):
             cls.scons = subprocess.check_output(['where', 'scons.bat']).strip()
         else:
             cls.scons = subprocess.check_output(['which', 'scons']).strip()
+        if six.PY3:
+            cls.scons = cls.scons.decode("ascii", "ignore")
         subprocess.check_output([cls.scons, 'cpp', '--prefix=' + str(cls.prefix)],
                                 cwd=cls.srcdir)
         cls.incdir = cls.prefix/'include'/'basic'
@@ -45,9 +47,14 @@ class TestBasic(unittest.TestCase):
 
         asg = autowig.AbstractSemanticGraph()
 
+        if autowig.parser.plugin == 'libclang':
+            kwargs = dict(silent = True)
+        else:
+            kwargs = dict()
+
         asg = autowig.parser(asg, self.incdir.files('*.h'),
-                                  ['-x', 'c++', '-std=c++11', '-I' + str(self.incdir.parent)],
-                                  silent = True)
+                                  flags = ['-x', 'c++', '-std=c++11', '-I' + str(self.incdir.parent)],
+                                  **kwargs)
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
@@ -64,7 +71,7 @@ class TestBasic(unittest.TestCase):
             if filepath.exists() and filepath.ext in ['.cpp', '.h']:
                 filepath.remove()
 
-    @attr(osx=False)
+    @attr(win=False)
     def test_pyclanglite_parser(self):
         """Test `pyclanglite` parser"""
         plugin = autowig.parser.plugin

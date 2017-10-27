@@ -146,6 +146,8 @@ class DirectoryProxy(FilesystemProxy):
         """
         if self._node == os.path.abspath(os.sep):
             return None
+        elif self._node in ["/", "\\"]:
+            return None 
         else:
             return self._asg[self.globalname[:len(self.globalname)-len(self.localname)]]
 
