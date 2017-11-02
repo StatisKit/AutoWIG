@@ -124,10 +124,14 @@ def cleaning(asg):
             pass
     nodes = sorted([node for node in asg.nodes() if node.clean], key=lambda node: -len(node.ancestors))
     for node in nodes:
-        if node._node not in ['::', '/']:
-            asg._syntax_edges[node.parent._node].remove(node._node)
-            if isinstance(node, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy)):
-                asg._specialization_edges[node.specialize._node].remove(node._node)
+        try:
+            if node._node not in ['::', os.sep]:
+                asg._syntax_edges[node.parent._node].remove(node._node)
+                if isinstance(node, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy)):
+                    asg._specialization_edges[node.specialize._node].remove(node._node)
+        except Exception as e:
+            print node._node
+            raise e
 
     nodes = set([node._node for node in nodes])
 
