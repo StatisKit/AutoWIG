@@ -144,12 +144,16 @@ class DirectoryProxy(FilesystemProxy):
 
         .. warning:: The parent directory is `None` only for the system root directory
         """
-        if self._node == os.path.abspath(os.sep):
-            return None
-        elif self._node in ["/", "\\"]:
-            return None 
-        else:
-            return self._asg[self.globalname[:len(self.globalname)-len(self.localname)]]
+        try:
+            if self._node == os.path.abspath(os.sep):
+                return None
+            elif self._node in ["/", "\\"]:
+                return None 
+            else:
+                return self._asg[self.globalname[:len(self.globalname)-len(self.localname)]]
+        except Exception as e:
+            print self._node
+            raise e
 
     def relpath(self, location):
         """Compute the relative path from the directory to the given location
