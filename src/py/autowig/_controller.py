@@ -1,3 +1,5 @@
+import os
+
 from .plugin import PluginManager
 
 from .asg import (HeaderProxy,
