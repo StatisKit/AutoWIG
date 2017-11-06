@@ -145,10 +145,8 @@ class DirectoryProxy(FilesystemProxy):
         .. warning:: The parent directory is `None` only for the system root directory
         """
         try:
-            if self._node == os.path.abspath(os.sep):
+            if self._node.lower() == os.path.abspath(os.sep).lower():
                 return None
-            elif self._node in ["/", "\\"]:
-                return None 
             else:
                 return self._asg[self.globalname[:len(self.globalname)-len(self.localname)]]
         except Exception as e:
