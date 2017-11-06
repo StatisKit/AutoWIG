@@ -127,7 +127,7 @@ def cleaning(asg):
     nodes = sorted([node for node in asg.nodes() if node.clean], key=lambda node: -len(node.ancestors))
     for node in nodes:
         try:
-            if node._node not in ['::', os.sep]:
+            if node.parent is not None:
                 asg._syntax_edges[node.parent._node].remove(node._node)
                 if isinstance(node, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy)):
                     asg._specialization_edges[node.specialize._node].remove(node._node)
