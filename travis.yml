@@ -7,9 +7,9 @@ os:
 sudo: required
   
 env:
-  - CONDA_RECIPE=python-autowig
+  - CONDA_RECIPE=bin/conda/python-autowig
     CONDA_VERSION=2
-  - CONDA_RECIPE=python-autowig
+  - CONDA_RECIPE=bin/conda/python-autowig
     CONDA_VERSION=3
     
 install:
