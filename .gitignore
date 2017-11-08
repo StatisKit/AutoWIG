@@ -1,44 +1,13 @@
-# IPython Notebook
 .ipynb_checkpoints
-
-# Pickle
-*.pkl
-
-# Sphinx
-_build
-_static
-
-# Doxygen
-*.db
-html
-latex
-xml
-
-# SCons
-.sconsign.dblite
-
-# C extensions
+doc/_build
+doc/_static
+*.*~
+*.swp
 *.so
 *.os
-
-# Test
-test/binomial/_*.cpp
-
-# Python
 *.py[cod]
-
-# Packages
 *.egg
 *.egg-info
-dist
 build
-build-scons
-
-# Vim
-*.swp
-
-# Gedit
-*.*~
-
-# Coverage
-.coverage
+.sconsign.dblite
+*.sublime-workspace
