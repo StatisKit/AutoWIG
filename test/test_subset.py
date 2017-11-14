@@ -20,7 +20,8 @@ class TestSubset(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        autowig.parser.plugin = 'libclang'
+        if 'libclang' in autowig.parser:
+            autowig.parser.plugin = 'libclang'
         cls.srcdir = Path('fp17')
         Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'), recursive=True)
         cls.srcdir = srcdir/'share'/'git'/'ClangLite'

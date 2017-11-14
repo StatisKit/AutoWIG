@@ -17,7 +17,7 @@ setup(packages = packages.keys(),
       license = 'Apache License 2.0',
       package_data = {package: [ "*.so", "*.dll"] for package in packages},
       entry_points = {
-        'autowig.parser': ['libclang = autowig.libclang_parser:libclang_parser'] * six.PY2,
+        'autowig.parser': [],
         'autowig.controller': ['default = autowig.default_controller:default_controller'],
         'autowig.generator': ['boost_python = autowig.boost_python_generator:boost_python_generator',
                               'boost_python_pattern = autowig.boost_python_generator:boost_python_pattern_generator',

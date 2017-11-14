@@ -12,7 +12,7 @@ if 'clanglite' in parser:
 elif 'libclang' in parser:
     parser.plugin = 'libclang'
 else:
-    warnings.warn("no parser implemented", RuntimeWarning)
+    warnings.warn("no parser available", RuntimeWarning)
     
 from ._documenter import documenter
 documenter.plugin = 'doxygen2sphinx'

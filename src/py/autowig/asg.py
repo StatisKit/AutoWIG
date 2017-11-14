@@ -122,6 +122,13 @@ class FilesystemProxy(NodeProxy):
         """Is the filesystem component on disk"""
         return os.path.exists(self.globalname)
 
+    @property
+    def globalname(self):
+        if 'CONDA_PREFIX' in os.environ and self._node.startswith('CONDA_PREFIX'):
+            return os.environ['CONDA_PREFIX'] + self._node[len('CONDA_PREFIX'):]
+        else:
+            return self._node
+
 class DirectoryProxy(FilesystemProxy):
     """Abstract semantic graph node proxy for a directory
 
@@ -146,6 +153,10 @@ class DirectoryProxy(FilesystemProxy):
         """
         try:
             if self._node.lower() == os.path.abspath(os.sep).lower():
+                return None
+            elif self._node == 'CONDA_PREFIX' + os.sep:
+                return None
+            elif 'CONDA_PREFIX' in os.environ and self._node == os.environ['CONDA_PREFIX'] + os.sep:
                 return None
             else:
                 return self._asg[self.globalname[:len(self.globalname)-len(self.localname)]]
@@ -1501,50 +1512,37 @@ class AbstractSemanticGraph(object):
         return len(self._nodes)
 
     def add_directory(self, dirname):
-        dirname = Path(dirname).abspath()
-        initname = str(dirname)
-        if not initname.endswith(os.sep):
-            initname += os.sep
-        if initname not in self._nodes:
-            idparent = initname
-            if idparent not in self._syntax_edges:
-                self._syntax_edges[idparent] = []
-            while not dirname == os.sep:
-                idnode = idparent
-                if not idnode.endswith(os.sep):
-                    idnode += os.sep
-                if idnode not in self._nodes:
-                    self._nodes[idnode] = dict(_proxy=DirectoryProxy)
-                    dirname = dirname.parent
-                    idparent = str(dirname)
-                    if not idparent.endswith(os.sep):
-                        idparent += os.sep
-                    if idparent not in self._syntax_edges:
-                        self._syntax_edges[idparent] = []
-                    self._syntax_edges[idparent].append(idnode)
-                else:
-                    break
-            if dirname == os.sep and os.sep not in self._nodes:
-                self._nodes[os.sep] = dict(_proxy=DirectoryProxy)
-        return self[initname]
+        if not dirname:
+            dirname = os.path.abspath(os.sep).lower()
+        if 'CONDA_PREFIX' not in os.environ or not dirname.startswith('CONDA_PREFIX'):
+            dirname = str(Path(dirname).abspath())
+        if not dirname.endswith(os.sep):
+            dirname += os.sep
+        if 'CONDA_PREFIX' in os.environ and dirname.startswith(os.environ['CONDA_PREFIX']):
+            dirname = 'CONDA_PREFIX' + dirname[len(os.environ['CONDA_PREFIX']):]
+        if not dirname in self._nodes:
+            self._nodes[dirname] = dict(_proxy=DirectoryProxy)
+            self._syntax_edges[dirname] = []
+            if dirname not in [os.sep, 'CONDA_PREFIX' + os.sep] and not dirname.lower() == os.path.abspath(os.sep).lower():
+                parent = self.add_directory(dirname.rsplit(os.sep, 2)[0])
+                if dirname not in self._syntax_edges[parent._node]:
+                    self._syntax_edges[parent._node].append(dirname)
+        return self[dirname]
 
     def add_file(self, filename, **kwargs):
-        filename = Path(filename).abspath()
-        initname = str(filename)
+        if 'CONDA_PREFIX' not in os.environ or not filename.startswith(os.environ['CONDA_PREFIX']):
+            filename = str(Path(filename).abspath())
+        if 'CONDA_PREFIX' in os.environ and filename.startswith(os.environ['CONDA_PREFIX']):
+            filename = 'CONDA_PREFIX' + filename[len(os.environ['CONDA_PREFIX']):]
         proxy = kwargs.pop('proxy', FileProxy)
-        if initname not in self._nodes:
-            idnode = str(filename)
-            self._nodes[idnode] = dict(_proxy=proxy, **kwargs)
-            idparent = str(filename.parent)
-            if not idparent.endswith(os.sep):
-                idparent += os.sep
-            if idparent not in self._syntax_edges:
-                self._syntax_edges[idparent] = []
-            self._syntax_edges[idparent].append(idnode)
-            self.add_directory(idparent)
+        if filename not in self._nodes:
+            self._nodes[filename] = dict(_proxy=proxy, **kwargs)
+            parent = self.add_directory(filename.rsplit(os.sep, 1)[0])
+            if filename not in self._syntax_edges[parent._node]:
+                self._syntax_edges[parent._node].append(filename)
         else:
-            self._nodes[initname].update(kwargs)
-        return self[initname]
+            self._nodes[filename].update(kwargs)
+        return self[filename]
 
     def nodes(self, pattern=None):
         if pattern is None:
@@ -1721,6 +1719,8 @@ class AbstractSemanticGraph(object):
     def __getitem__(self, node):
         if isinstance(node, NodeProxy):
             node = node.globalname
+        if 'CONDA_PREFIX' in os.environ and node.startswith(os.environ['CONDA_PREFIX']):
+            node = 'CONDA_PREFIX' + node[len(os.environ['CONDA_PREFIX']):]
         if not isinstance(node, basestring):
             raise TypeError('`node` parameter')
         if node in self._nodes:

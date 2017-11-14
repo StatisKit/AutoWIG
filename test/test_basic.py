@@ -21,7 +21,7 @@ class TestBasic(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        if six.PY2:
+        if 'libclang' in autowig.parser:
             autowig.parser.plugin = 'libclang'
         autowig.generator.plugin = 'boost_python_internal'
         cls.srcdir = Path('fp17')

@@ -26,7 +26,6 @@ requirements:
     - pandoc
     - pypandoc
     - path.py
-    - python-clang                                                                      [py2k]
     - numpy
 
 test:
