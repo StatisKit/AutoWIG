@@ -2,25 +2,37 @@
        
 .. sidebar:: External Ressources
 
-    :Papers:
-             * |arXiv2017|
+            .. raw:: html
 
-    :Conferences:
-                  * |EuroScipy2017b|
-                  * |EuroScipy2017a|
-                  * |jdS2016|
+               <a href="https://arxiv.org/pdf/1705.11000" target="_blank"><img src='thumbnails/arXiv2017.jpg' title="arXiv 2017"></a>
 
-.. |EuroScipy2017b| image:: thumbnails/EuroSciPy2017b.jpg
-                   :target: https://www.youtube.com/watch?v=N4q_Vud77Hw
-                   
+            .. raw:: html
+
+               <a href="https://www.youtube.com/watch?v=N4q_Vud77Hw" target="_blank"><img src='thumbnails/EuroSciPy2017b.jpg' title="EuroScipy 2017"></a>
+
+            .. raw:: html
+
+               <a href="https://hal.inria.fr/hal-01316276/file/submission_167.pdf" target="_blank"><img src='https://thumb.ccsd.cnrs.fr/8091494/thumb/little' title="JdS 2016"></a>
+        
+..   :Papers:
+..             * |arXiv2017|
+..
+..    :Conferences:
+..                  * |EuroScipy2017b|
+..                  * |EuroScipy2017a|
+..                  * |jdS2016|
+..
+.. .. |EuroScipy2017b| image:: thumbnails/EuroSciPy2017b.jpg
+..                   :target: https://www.youtube.com/watch?v=N4q_Vud77Hw
+..                  
 .. |EuroScipy2017a| image:: thumbnails/EuroSciPy2017a.jpg
-                   :target: https://www.euroscipy.org/2017/descriptions/19828.html
-
-.. |arXiv2017| image:: thumbnails/arXiv2017.jpg
-               :target: https://arxiv.org/pdf/1705.11000
-                   
-.. |jdS2016| image:: https://thumb.ccsd.cnrs.fr/8091494/thumb/little
-             :target: https://hal.inria.fr/hal-01316276/file/submission_167.pdf
+..                   :target: https://www.euroscipy.org/2017/descriptions/19828.html
+..
+.. .. |arXiv2017| image:: thumbnails/arXiv2017.jpg
+..               :target: https://arxiv.org/pdf/1705.11000
+..                   
+.. .. |jdS2016| image:: https://thumb.ccsd.cnrs.fr/8091494/thumb/little
+..             :target: https://hal.inria.fr/hal-01316276/file/submission_167.pdf
              
 Installation
 ============
