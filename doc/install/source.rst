@@ -30,9 +30,9 @@ For installing **AutoWIG** from source code, please refers to the **StatisKit** 
 ..                                                                       ..
 .. The Apache Software Foundation (ASF) licenses this file to you under  ..
 .. the Apache License, Version 2.0 (the "License"); you may not use this ..
-.. file except in compliance with the License.You should have received a ..
-.. copy of the Apache License, Version 2.0 along with this file; see the ..
-.. file LICENSE. If not, you may obtain a copy of the License at         ..
+.. file except in compliance with the License. You should have received  ..
+.. a copy of the Apache License, Version 2.0 along with this file; see   ..
+.. the file LICENSE. If not, you may obtain a copy of the License at     ..
 ..                                                                       ..
 ..     http://www.apache.org/licenses/LICENSE-2.0                        ..
 ..                                                                       ..
