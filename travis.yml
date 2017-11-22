@@ -35,7 +35,6 @@ env:
     TRAVIS_WAIT=30
   - CONDA_RECIPE=bin/conda/python-autowig
     CONDA_VERSION=3
-    TRAVIS_WAIT=30
 
 install:
   - git clone https://github.com/StatisKit/travis-ci.git travis-ci
