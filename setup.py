@@ -1,3 +1,26 @@
+## Copyright [2017-2018] UMR MISTEA INRA, UMR LEPSE INRA,                ##
+##                       UMR AGAP CIRAD, EPI Virtual Plants Inria        ##
+## Copyright [2015-2016] UMR AGAP CIRAD, EPI Virtual Plants Inria        ##
+##                                                                       ##
+## This file is part of the AutoWIG project. More information can be     ##
+## found at                                                              ##
+##                                                                       ##
+##     http://autowig.rtfd.io                                            ##
+##                                                                       ##
+## The Apache Software Foundation (ASF) licenses this file to you under  ##
+## the Apache License, Version 2.0 (the "License"); you may not use this ##
+## file except in compliance with the License. You should have received  ##
+## a copy of the Apache License, Version 2.0 along with this file; see   ##
+## the file LICENSE. If not, you may obtain a copy of the License at     ##
+##                                                                       ##
+##     http://www.apache.org/licenses/LICENSE-2.0                        ##
+##                                                                       ##
+## Unless required by applicable law or agreed to in writing, software   ##
+## distributed under the License is distributed on an "AS IS" BASIS,     ##
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or       ##
+## mplied. See the License for the specific language governing           ##
+## permissions and limitations under the License.                        ##
+
 import six
 import os
 from setuptools import setup, find_packages
@@ -17,7 +40,7 @@ setup(packages = packages.keys(),
       license = 'Apache License 2.0',
       package_data = {package: [ "*.so", "*.dll"] for package in packages},
       entry_points = {
-        'autowig.parser': ['libclang = autowig.libclang_parser:libclang_parser'] * six.PY2,
+        'autowig.parser': [],
         'autowig.controller': ['default = autowig.default_controller:default_controller'],
         'autowig.generator': ['boost_python = autowig.boost_python_generator:boost_python_generator',
                               'boost_python_pattern = autowig.boost_python_generator:boost_python_pattern_generator',
