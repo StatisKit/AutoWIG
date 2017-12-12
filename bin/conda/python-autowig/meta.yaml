@@ -7,6 +7,7 @@ source:
 
 build:
   number: 0
+  string: py{{ CONDA_PY }}
 
 about:
   home: http://autowig.readthedocs.org
@@ -32,8 +33,6 @@ requirements:
 test:
   source_files:
     - test
-    - doc
-    - src
   requires:
     - python
     - libtoolchain
@@ -42,7 +41,7 @@ test:
     - python-clanglite
     - git
     - gitpython
-    - libboost
+    - libboost_python-dev
   commands:
    - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and linux" [linux]
    - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and osx"   [osx]
