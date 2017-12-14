@@ -30,7 +30,7 @@ source:
 
 build:
   number: 0
-  string: py{{ CONDA_PY }}
+  string: py{{ CONDA_PY }}_0
 
 about:
   home: http://autowig.readthedocs.org
