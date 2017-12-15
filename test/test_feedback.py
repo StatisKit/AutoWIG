@@ -150,7 +150,7 @@ Default("build")
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             _, curr = s.communicate()
 
-        for filepath in (self.srcdir/'src'/'py').walkfiles():
+        for filepath in self.srcdir.walkfiles():
             if filepath.exists() and filepath.basename().startswith('wrapper_') or filepath.startswith('_module'):
                 filepath.remove()
 
