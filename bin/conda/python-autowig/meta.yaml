@@ -30,8 +30,11 @@ source:
 
 build:
   number: 0
-  string: py{{ CONDA_PY }}_0
-
+  features:
+    - vc12                [win]
+  track_features:
+    - vc12                 [win]
+    
 about:
   home: http://autowig.readthedocs.org
   license: Apache License 2.0
