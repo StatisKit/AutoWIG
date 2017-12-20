@@ -33,7 +33,7 @@ build:
   features:
     - vc12                [win]
   track_features:
-    - vc12                 [win]
+    - vc12                [win]
     
 about:
   home: http://autowig.readthedocs.org
@@ -60,6 +60,7 @@ test:
     - test
   requires:
     - python
+    - nose
     - libtoolchain
     - python-toolchain
     - clang
@@ -68,6 +69,7 @@ test:
     - gitpython
     - libboost_python-dev
   commands:
-   - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and linux" [linux]
+   # - pip install ipdbplugin
+   - nosetests test --pdb -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and linux" [linux]
    - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and osx"   [osx]
    - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and win"   [win]

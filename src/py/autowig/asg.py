@@ -1758,6 +1758,8 @@ class AbstractSemanticGraph(object):
                     parent = directory.parent
                 return directory
             else:
+                if node.startswith('CONDA_PREFIX'):
+                    node = os.environ['CONDA_PREFIX'] + node[len('CONDA_PREFIX'):]
                 node = Path(node)
                 if node.exists():
                     if node.isfile():

@@ -31,6 +31,7 @@ from path import Path
 from git import Repo
 import subprocess
 import sys
+import platform
 
 import autowig
 
@@ -46,8 +47,9 @@ class TestSubset(unittest.TestCase):
         if 'libclang' in autowig.parser:
             autowig.parser.plugin = 'libclang'
         cls.srcdir = Path('fp17')
-        Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'), recursive=True)
-        cls.srcdir = srcdir/'share'/'git'/'ClangLite'
+        if not cls.srcdir.exists():
+            Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'), recursive=True)
+        cls.srcdir = cls.srcdir/'share'/'git'/'ClangLite'
         cls.incdir = Path(sys.prefix).abspath()
         if any(platform.win32_ver()):
             cls.incdir = cls.incdir/'Library'
@@ -62,7 +64,7 @@ class TestSubset(unittest.TestCase):
     def test_libclang_parser(self):
         """Test `libclang` parser"""
 
-        headers = [cls.incdir/'tool.h']
+        headers = [self.incdir/'tool.h']
 
         asg = autowig.AbstractSemanticGraph()
         asg = autowig.parser(asg, headers,
@@ -138,7 +140,7 @@ class TestSubset(unittest.TestCase):
                              + asg.nodes('::clang::ASTContext::getAllocator')):
                     node.boost_python_export = False
 
-            for header in (self.incdir.parent/'include'/'clang').walkfiles('*.h'):
+            for header in (self.incdir.parent/'clang').walkfiles('*.h'):
                 asg[header.abspath()].is_external_dependency = False
             
             return asg

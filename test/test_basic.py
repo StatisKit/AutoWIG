@@ -51,7 +51,8 @@ class TestBasic(unittest.TestCase):
         cls.prefix = Path(Path(sys.prefix).abspath())
         if any(platform.win32_ver()):
             cls.prefix = cls.prefix/'Library'
-        Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'))
+        if not cls.srcdir.exists():
+            Repo.clone_from('https://github.com/StatisKit/FP17.git', cls.srcdir.relpath('.'), recursive=True)
         if any(platform.win32_ver()):
             cls.scons = subprocess.check_output(['where', 'scons.bat']).strip()
         else:
@@ -87,7 +88,7 @@ class TestBasic(unittest.TestCase):
                                         prefix = 'wrapper_')
         wrappers.write()
         
-        subprocess.check_call([self.scons, 'py', '--prefix=' + self.prefix],
+        subprocess.check_call([self.scons, 'py', '--prefix=' + self.prefix, '--package=basic'],
                               cwd=self.srcdir)
 
         for filepath in (self.srcdir/'src'/'py').walkfiles():
