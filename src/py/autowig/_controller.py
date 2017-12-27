@@ -22,6 +22,7 @@
 ## permissions and limitations under the License.                        ##
 
 import os
+import warnings
 
 from .plugin import PluginManager
 
@@ -155,8 +156,7 @@ def cleaning(asg):
                 if isinstance(node, (ClassTemplateSpecializationProxy, ClassTemplatePartialSpecializationProxy)):
                     asg._specialization_edges[node.specialize._node].remove(node._node)
         except Exception as e:
-            print node._node
-            raise e
+            warnings.warn("Cannot find the node '" + node._node + '"', UserWarning)
 
     nodes = set([node._node for node in nodes])
 
