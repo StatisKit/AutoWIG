@@ -149,7 +149,11 @@ def pre_processing(asg, headers, flags, **kwargs):
                 warnings.warn('System includes not computed: parsing clang command output failed', Warning)
             else:
                 sysincludes = sysincludes[sysincludes.index('#include <...> search starts here:')+1:sysincludes.index('End of search list.')]
-                sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in sysincludes]
+                if system == 'win' and 'msvc_version' in kwargs:
+                	msvc_version = kwargs.pop('msvc_version')
+                	sysincludes = [str(Path(sysinclude.strip()).abspath()).replace('14.0', msvc_version) for sysinclude in sysincludes]
+                else:
+                    sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in sysincludes]
                 flags.extend(['-I' + sysinclude for sysinclude in sysincludes if not '-I' + sysinclude in flags])
                 for sysinclude in sysincludes:
                     asg.add_directory(sysinclude).is_searchpath = True
