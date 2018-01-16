@@ -256,13 +256,9 @@ def bootstrap(asg, flags, **kwargs):
                 for header in asg.includes(*[asg[node] for node in gray]):
                     headers.append("#include \"" + header.globalname + "\"")
                 headers.append("")
-                headers.append("int main(void)")
-                headers.append("{")
                 for spc in gray:
                     if spc not in forbidden:
-                        headers.append("\tsizeof(" + spc + ");")
-                headers.append("\treturn 0;")
-                headers.append("}")
+                        headers.append("template " + spc + ";")
                 forbidden.update(set(gray))
                 header = NamedTemporaryFile(delete=False)
                 if six.PY2:
