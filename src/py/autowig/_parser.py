@@ -249,10 +249,7 @@ def bootstrap(asg, flags, **kwargs):
                                         black.add(dcl._node)
                             except:
                                 pass
-                        if isinstance(node, ClassTemplateSpecializationProxy):
-                            if not node.is_complete:
-                                gray.add(node._node)
-                        elif not node.is_complete and node.access in ['none', 'public']:
+                        if isinstance(node, ClassTemplateSpecializationProxy) and not node.is_complete:
                             gray.add(node._node)
             gray = list(gray)
             for gray in [gray[index:index+maximum] for index in xrange(0, len(gray), maximum)]:
@@ -272,19 +269,14 @@ def bootstrap(asg, flags, **kwargs):
                 header.close()
                 asg = parser(asg, [header.name], flags +["-Wno-unused-value",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
                 os.unlink(header.name)
-                asg._syntax_edges[asg[header.name].parent.globalname].remove(header.name)
-                asg._nodes.pop(header.name)
+                if header.name in asg:
+                    asg._syntax_edges[asg[header.name].parent.globalname].remove(header.name)
+                    asg._nodes.pop(header.name)
                 asg._include_edges.pop(header.name, None)
                 asg._include_edges = {key : value for key, value in asg._include_edges.iteritems() if not value == header.name}
-                for node in asg.nodes('::main::.*'):
-                    asg._syntax_edges['::'].remove(node._node)
-                    asg._nodes.pop(node._node)
-                    asg._include_edges.pop(node._node, None)
-                    asg._syntax_edges.pop(node._node, None)
-                    asg._base_edges.pop(node._node, None)
-                    asg._type_edges.pop(node._node, None)
-                    asg._parameter_edges.pop(node._node, None)
-                    asg._specialization_edges.pop(node._node, None)
+                for node in asg._nodes.keys():
+                    if '_header' in asg._nodes[node] and asg._nodes[node]['_header'] == header.name:
+                        asg._nodes[node].pop('_header')
             __index += 1
 
 def update_overload(asg, overload='none', **kwargs):
