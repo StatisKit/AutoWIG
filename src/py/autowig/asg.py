@@ -1385,6 +1385,10 @@ class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
     """
 
     @property
+    def is_complete(self):
+        return self._is_complete or len(self.declarations()) > 0
+
+    @property
     def header(self):
         if not hasattr(self, '_header'):
             return self.specialize.header
