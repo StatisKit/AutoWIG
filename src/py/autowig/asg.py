@@ -1392,6 +1392,10 @@ class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
             return self._asg[self._header]
 
     @property
+    def is_complete(self):
+        return self._is_complete or len(self.declarations()) > 0
+
+    @property
     def is_explicit(self):
         return self._is_explicit
 
