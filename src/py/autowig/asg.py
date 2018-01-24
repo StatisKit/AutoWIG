@@ -1144,12 +1144,20 @@ class ClassProxy(DeclarationProxy):
         else:
             return self.destructor is not None and self.destructor.access == 'public'
 
+    @is_instantiable.setter
+    def is_instantiable(self, is_instantiable):
+        self._asg._nodes[self._node]['_is_instantiable'] = is_instantiable
+
     @property
     def is_assignable(self):
         if hasattr(self, '_is_assignable'):
             return self._is_assignable
         else:
             return all(method.access == 'public' for method in self.methods(pattern='.*operator=', access='deleted'))
+
+    @is_assignable.setter
+    def is_assignable(self, is_assignable):
+        self._asg._nodes[self._node]['_is_assignable'] = is_assignable
 
     @property
     def is_derived(self):
@@ -1383,10 +1391,6 @@ class TemplateSpecializationProxy(object):
 class ClassTemplateSpecializationProxy(ClassProxy, TemplateSpecializationProxy):
     """
     """
-
-    @property
-    def is_complete(self):
-        return self._is_complete or len(self.declarations()) > 0
 
     @property
     def header(self):
