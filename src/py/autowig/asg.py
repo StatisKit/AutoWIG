@@ -1664,7 +1664,7 @@ class AbstractSemanticGraph(object):
             if node._node not in black:
                 black.add(node._node)
                 parent = node.parent
-                if not isinstance(parent, NamespaceProxy) and visitor(parent):
+                if parent is not None and not isinstance(parent, NamespaceProxy) and visitor(parent):
                     white.append(parent)
                 if isinstance(node, FundamentalTypeProxy):
                     continue
