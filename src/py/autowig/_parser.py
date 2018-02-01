@@ -128,11 +128,11 @@ def pre_processing(asg, headers, flags, **kwargs):
 
     if '-x c++' in cmd:
         asg._language = 'c++'
-        s = subprocess.Popen([os.environ.get('CXX', 'clang'), '-x', 'c++', '-v', '-E', devnull],
+        s = subprocess.Popen(['clang', '-x', 'c++', '-v', '-E', devnull],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     elif '-x c' in cmd:
         asg._language = 'c'
-        s = subprocess.Popen([os.environ.get('CC', 'clang'), '-x', 'c', '-v', '-E', devnull],
+        s = subprocess.Popen(['clang', '-x', 'c', '-v', '-E', devnull],
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
@@ -157,6 +157,13 @@ def pre_processing(asg, headers, flags, **kwargs):
                 flags.extend(['-I' + sysinclude for sysinclude in sysincludes if not '-I' + sysinclude in flags])
                 for sysinclude in sysincludes:
                     asg.add_directory(sysinclude).is_searchpath = True
+
+    if system == 'win':
+        if '-fno-exceptions' not in flags and '-fexceptions' not in flags:
+            flags.append('-fexceptions')
+
+        if '-fno-cxx-exceptions' not in flags and '-fcxx-exceptions' not in flags:
+            flags.append('-fcxx-exceptions')
 
     if '::' not in asg._nodes:
         asg._nodes['::'] = dict(_proxy = NamespaceProxy)
