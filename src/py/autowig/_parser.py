@@ -107,7 +107,10 @@ def pre_processing(asg, headers, flags, **kwargs):
             if flag.startswith('-I'):
                 includedir = asg.add_directory(flag.strip('-I'))
                 includedir.is_searchpath = True
-                
+            if flag.startswith('/I'):
+                includedir = asg.add_directory(flag.strip('/I'))
+                includedir.is_searchpath = True
+
     SYSTEMS = dict(Linux   = "linux",
                    Darwin  = "osx",
                    Windows = "win")
