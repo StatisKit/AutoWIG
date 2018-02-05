@@ -120,12 +120,28 @@ def pre_processing(asg, headers, flags, **kwargs):
     else:
       system = SYSTEMS[system]
 
+    if '-x c++' in cmd:
+        asg._language = 'c++'
+    elif '-x c' in cmd:
+        asg._language = 'c'
+    else:
+        raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
+
     if system == 'win':
         devnull = 'nul'
-        # compiler = 'clang'
+        compiler = 'clang'
     elif system in ['linux', 'osx']:
         devnull = '/dev/null'
-        # compiler = 'clang'# os.environ['GXX']
+        if asg._language == 'c++':
+            compiler = os.environ.get('GXX', 'clang')
+        else:
+            compiler = os.environ.get('GCC', 'clang')
+    elif system == 'osx':
+        devnull = '/dev/null'
+        if asg._language == 'c++':
+            compiler = os.environ.get('CLANGXX', os.environ.get('CLANG__', 'clang'))
+        else:
+            compiler = os.environ.get('CLANG', 'clang')
     else:
         raise Exception("unknown system")
 
