@@ -145,18 +145,9 @@ def pre_processing(asg, headers, flags, **kwargs):
     else:
         raise Exception("unknown system")
 
-    if '-x c++' in cmd:
-        asg._language = 'c++'
-        s = subprocess.Popen(['clang', '-x', 'c++', '-v', '-E', devnull],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    elif '-x c' in cmd:
-        asg._language = 'c'
-        s = subprocess.Popen(['clang', '-x', 'c', '-v', '-E', devnull],
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    else:
-        raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
-
     if not bootstrapping:
+        s = subprocess.Popen([compiler, '-x', asg._language, '-v', '-E', devnull],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if s.returncode:
             warnings.warn('System includes not computed: clang command failed', Warning)
         else:
