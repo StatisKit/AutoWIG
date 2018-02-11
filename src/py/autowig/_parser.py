@@ -127,25 +127,25 @@ def pre_processing(asg, headers, flags, **kwargs):
     else:
         raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
 
-    if system == 'win':
-        devnull = 'nul'
-        compiler = 'clang'
-    elif system in ['linux', 'osx']:
-        devnull = '/dev/null'
-        if asg._language == 'c++':
-            compiler = os.environ.get('GXX', 'clang')
-        else:
-            compiler = os.environ.get('GCC', 'clang')
-    elif system == 'osx':
-        devnull = '/dev/null'
-        if asg._language == 'c++':
-            compiler = os.environ.get('CLANGXX', os.environ.get('CLANG__', 'clang'))
-        else:
-            compiler = os.environ.get('CLANG', 'clang')
-    else:
-        raise Exception("unknown system")
-
     if not bootstrapping:
+        if system == 'win':
+            devnull = 'nul'
+            compiler = 'clang'
+        elif system == 'linux':
+            devnull = '/dev/null'
+            if asg._language == 'c++':
+                compiler = os.environ.get('GXX', 'clang')
+            else:
+                compiler = os.environ.get('GCC', 'clang')
+        elif system == 'osx':
+            devnull = '/dev/null'
+            if asg._language == 'c++':
+                compiler = os.environ.get('CLANGXX', os.environ.get('CLANG__', 'clang'))
+            else:
+                compiler = os.environ.get('CLANG', 'clang')
+        else:
+            raise Exception("unknown system")
+
         s = subprocess.Popen([compiler, '-x', asg._language, '-v', '-E', devnull],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if s.returncode:
@@ -159,11 +159,30 @@ def pre_processing(asg, headers, flags, **kwargs):
                 warnings.warn('System includes not computed: parsing clang command output failed', Warning)
             else:
                 sysincludes = sysincludes[sysincludes.index('#include <...> search starts here:')+1:sysincludes.index('End of search list.')]
-                if system == 'win' and 'msvc_version' in kwargs:
-                    msvc_version = kwargs.pop('msvc_version')
-                    sysincludes = [str(Path(sysinclude.strip()).abspath()).replace('14.0', msvc_version) for sysinclude in sysincludes]
+                if system == 'win':
+                    if 'msvc_version' in kwargs:
+                        msvc_version = kwargs.pop('msvc_version')
+                        sysincludes = [str(Path(sysinclude.strip()).abspath()).replace('14.0', msvc_version) for sysinclude in sysincludes]
+                    else:
+                        sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in sysincludes]
                 else:
                     sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in sysincludes]
+                    if system == 'linux':
+                        sysincludes = [sysinclude for sysinclude in sysincludes if not 'lib/gcc' in sysinclude]
+                        s = subprocess.Popen(['clang', '-x', asg._language, '-v', '-E', devnull],
+                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        if s.returncode:
+                            warnings.warn('System includes not computed: clang command failed', Warning)
+                        else:
+                            out, err = s.communicate()
+                            if six.PY3:
+                                err = err.decode('ascii', 'ignore')
+                            _sysincludes = err.splitlines()
+                            if '#include <...> search starts here:' not in _sysincludes or 'End of search list.' not in _sysincludes:
+                                warnings.warn('System includes not computed: parsing clang command output failed', Warning)
+                            else:
+                                _sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in _sysincludes]
+                                sysincludes += [sysinclude for sysinclude in _sysincludes if 'lib/clang' in sysinclude]
                 flags.extend(['-I' + sysinclude for sysinclude in sysincludes if not '-I' + sysinclude in flags])
                 for sysinclude in sysincludes:
                     asg.add_directory(sysinclude).is_searchpath = True
@@ -271,8 +290,9 @@ def bootstrap(asg, flags, **kwargs):
             gray = list(gray)
             for gray in [gray[index:index+maximum] for index in xrange(0, len(gray), maximum)]:
                 headers = []
-                for header in asg.includes(*[asg[node] for node in gray]):
-                    headers.append("#include \"" + header.globalname + "\"")
+                for header in asg.files(header=True):
+                    if not header.is_external_dependency:
+                        headers.append("#include \"" + header.globalname + "\"")
                 headers.append("")
                 for spc in gray:
                     if spc not in forbidden:
