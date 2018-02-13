@@ -1105,9 +1105,12 @@ class ConstructorProxy(DeclarationProxy):
     def is_virtual(self):
         return self._is_virtual
 
-    @property
-    def prototype(self):
-        return self.parent.localname + '(' + ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
+    def prototype(self, desugared):
+        if desugared:
+            return self.parent.localname + '(' + ', '.join(str(parameter.qualified_type.desugared_type) for parameter in self.parameters) + ')'
+        else:
+            return self.parent.localname + '(' + ', '.join(str(parameter.qualified_type) for parameter in self.parameters) + ')'
+
 
     @property
     def is_copy_constructor(self):
