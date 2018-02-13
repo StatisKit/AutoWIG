@@ -1034,10 +1034,13 @@ class FunctionProxy(DeclarationProxy):
         else:
             raise NotImplementedError('For parent class \'' + parent.__class__.__name__ + '\'')
 
-    @property
-    def prototype(self):
-        return self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + \
-        ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')'
+    def prototype(self, desugared):
+        if desugared:
+            return str(self.return_type.desugared_type) + ' ' + self.localname + '(' + \
+                    ', '.join(str(parameter.qualified_type.desugared_type) for parameter in self.parameters) + ')'
+        else:
+            return str(self.return_type) + ' ' + self.localname + '(' + \
+                    ', '.join(str(parameter.qualified_type) for parameter in self.parameters) + ')'
 
 class MethodProxy(FunctionProxy):
     """
@@ -1076,11 +1079,14 @@ class MethodProxy(FunctionProxy):
             if len(methods) > 0:
                 return methods
 
-    @property
-    def prototype(self):
-        return 'static ' * self.is_static + self.return_type.desugared_type.globalname + ' ' + self.localname + '(' + \
-        ', '.join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ')' + ' const' * self.is_const + ' volatile' * self.is_volatile
-
+    def prototype(self, desugared):
+        if desugared:
+            return 'static ' * self.is_static + str(self.return_type.desugared_type) + ' ' + self.localname + '(' + \
+                    ', '.join(str(parameter.qualified_type.desugared_type) for parameter in self.parameters) + ')' + ' const' * self.is_const + ' volatile' * self.is_volatile
+        else:
+            return 'static ' * self.is_static + str(self.return_type) + ' ' + self.localname + '(' + \
+                    ', '.join(str(parameter.qualified_type) for parameter in self.parameters) + ')' + ' const' * self.is_const + ' volatile' * self.is_volatile
+                    
 class ConstructorProxy(DeclarationProxy):
     """
     """
