@@ -240,6 +240,7 @@ def bootstrap(asg, flags, **kwargs):
             gray = set()
             while len(white) > 0:
                 node, depth = white.popitem()
+
                 if node.access in ['none', 'public']:
                     if isinstance(node, NamespaceProxy):
                         for dcl in node.declarations():
@@ -285,7 +286,7 @@ def bootstrap(asg, flags, **kwargs):
                                         black.add(dcl._node)
                             except:
                                 pass
-                        if isinstance(node, ClassTemplateSpecializationProxy) and not node.is_complete:
+                        if isinstance(node, ClassTemplateSpecializationProxy) and (not node.is_complete or any([not cls.is_complete for cls in node.classes(templated=False)])):
                             gray.add(node._node)
             gray = list(gray)
             for gray in [gray[index:index+maximum] for index in xrange(0, len(gray), maximum)]:

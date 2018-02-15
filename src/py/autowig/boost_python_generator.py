@@ -445,7 +445,7 @@ namespace autowig
             <% prototypes = set() %>
             % for mtd in cls.methods(access=access, inherited=True):
                 % if mtd.access == access:
-                    %if mtd.prototype not in prototypes and mtd.is_virtual and mtd.is_pure:
+                    %if mtd.prototype(desugared=True) not in prototypes and mtd.is_virtual and mtd.is_pure:
             virtual ${mtd.return_type.globalname} ${mtd.localname}(${', '.join(parameter.qualified_type.globalname + ' param_' + str(parameter.index) for parameter in mtd.parameters)}) \
                         % if mtd.is_const:
 const
@@ -471,7 +471,7 @@ this->get_override("${mtd.localname}")(${", ".join('param_' + str(parameter.inde
                         % endif
                         
                     % endif
-<% prototypes.add(mtd.prototype) %>\
+<% prototypes.add(mtd.prototype(desugared=True)) %>\
                 % endif
             % endfor
 
@@ -955,7 +955,7 @@ ${field.globalname}, "${documenter(field)}");
                         if not parsed:
                             parsed = parse.parse('    class_{hash}.def(boost::python::init<  >({documentation}));', line)
                         if parsed:
-                            return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype == '" + node.localname + "(" + parsed.named.get("parameters","") + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak\n"
+                            return "for constructor in asg['" + node.globalname + "'].constructors(access='public'):\n\tif constructor.prototype(desugared=False) == '" + node.localname + "(" + parsed.named.get("parameters","") + ")" + "':\n\t\tconstructor.boost_python_export = False\n\t\tbreak\n"
                         else:
                             parsed = parse.parse('    class_{hash}.def{what}({python}, {cpp}, {documentation});', line)
                             if not parsed:
@@ -972,7 +972,7 @@ ${field.globalname}, "${documenter(field)}");
                                                 parsed = parse.parse('    {return_type} (::{scope}::*'+ pointer + ')(){cv}= {globalname};', lines[row])
                                         if parsed:
                                             localname = parsed["globalname"].split('::')[-1]
-                                            return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
+                                            return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype(desugared=False) == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
                                         else:
                                             row = row + 1
                                             while row < len(lines) and parsed is None:
@@ -982,7 +982,7 @@ ${field.globalname}, "${documenter(field)}");
                                                 row = row + 1
                                             if parsed:
                                                 localname = parsed["globalname"].split('::')[-1]
-                                                return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype == 'static " + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
+                                                return "for method in asg['" + node.globalname + "'].methods(access='public'):\n\tif method.prototype(desugared=False) == 'static " + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
                                             else:
                                                 return ""
                                     elif parsed['cpp'].startswith('function_pointer_'):
@@ -998,7 +998,7 @@ ${field.globalname}, "${documenter(field)}");
                                     parsed = parse.parse('    {return_type} ({pointer})(){cv}= {globalname};', line)
                                 if parsed:
                                     localname = parsed["globalname"].split('::')[-1]
-                                    return "for method in asg['" + node.globalname + "'].methods(access='public') + asg['" + node.globalname + "'].functions():\n\tif method.prototype == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
+                                    return "for method in asg['" + node.globalname + "'].methods(access='public') + asg['" + node.globalname + "'].functions():\n\tif method.prototype(desugared=False) == '" + parsed["return_type"].lstrip() + " " + localname + "(" + parsed.named.get("parameters","") + ")" + parsed["cv"].rstrip() + "':\n\t\tmethod.boost_python_export = False\n\t\tbreak\n"
                                 else:
                                     return ""
 
