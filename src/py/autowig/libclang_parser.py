@@ -133,10 +133,10 @@ def libclang_parser(asg, filepaths, flags, silent=False, **kwargs):
     with open(filehandler.name, 'r') as filehandler:
         _asg = filehandler.read()
         for fct in asg.functions():
-            _asg.replace(fct._node,  fct.globalname + '::' + str(uuid.uuid5(uuid.NAMESPACE_X500, fct.prototype)))
+            _asg.replace(fct._node,  fct.globalname + '::' + str(uuid.uuid5(uuid.NAMESPACE_X500, fct.prototype(True))))
         for cls in asg.classes():
             for ctr in cls.constructors():
-                _asg.replace(ctr._node,  ctr.globalname + '::' + str(uuid.uuid5(uuid.NAMESPACE_X500, ctr.prototype)))
+                _asg.replace(ctr._node,  ctr.globalname + '::' + str(uuid.uuid5(uuid.NAMESPACE_X500, ctr.prototype(True))))
     with open(filehandler.name, 'w') as filehandler:
         filehandler.write(_asg)
     with open(filehandler.name, 'r') as filehandler:
@@ -615,42 +615,3 @@ def read_cursor(asg, cursor, scope):
     else:
         warnings.warn('Undefined behaviour for \'' + str(cursor.kind) + '\' cursor')
         return []
-
-#def read_cursor(asg, cursor):
-#    asg._node += 1
-#    node = asg._node
-#    asg._nodes[node] = cursor
-#    asg._children[node] = []
-#    for child in cursor.get_children():
-#        asg._children[node].append(asg._libclang_read_cursor(child))
-#    return node
-#
-#AbstractSyntaxTree._libclang_read_cursor = _libclang_read_cursor
-#del _libclang_read_cursor
-#
-#def create(cls, tu):
-#    asg = AbstractSyntaxTree()
-#    asg.node = 0
-#    node = asg.node
-#    asg._nodes[node] = tu.cursor
-#    asg._children[node] = []
-#    asg.node += 1
-#    for child in tu.cursor.get_children():
-#        asg._children[node].append(asg._libclang_read_cursor(child))
-#    del asg.node
-#    return asg
-#
-#AbstractSyntaxTree.create = classmethod(create)
-#del create
-#
-#def _libclang_read_cursor(asg, cursor):
-#    node = asg._node
-#    asg._nodes[node] = cursor
-#    asg._children[node] = []
-#    asg._node += 1
-#    for child in cursor.get_children():
-#        asg._children[node].append(asg._libclang_read_cursor(child))
-#    return node
-#
-#AbstractSyntaxTree._libclang_read_cursor = _libclang_read_cursor
-#del _libclang_read_cursor
