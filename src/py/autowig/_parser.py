@@ -168,7 +168,7 @@ def pre_processing(asg, headers, flags, **kwargs):
                 else:
                     sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in sysincludes]
                     if system == 'linux':
-                        sysincludes = [sysinclude for sysinclude in sysincludes if not 'lib/gcc' in sysinclude]
+                        sysincludes = [sysinclude for sysinclude in sysincludes if not 'lib/gcc' in sysinclude and os.path.exists(sysinclude)]
                         s = subprocess.Popen(['clang', '-x', asg._language, '-v', '-E', devnull],
                                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                         if s.returncode:
@@ -182,7 +182,7 @@ def pre_processing(asg, headers, flags, **kwargs):
                                 warnings.warn('System includes not computed: parsing clang command output failed', Warning)
                             else:
                                 _sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in _sysincludes]
-                                sysincludes += [sysinclude for sysinclude in _sysincludes if 'lib/clang' in sysinclude]
+                                sysincludes += [sysinclude for sysinclude in _sysincludes if 'lib/clang' in sysinclude and os.path.exists(sysinclude)]
                 flags.extend(['-I' + sysinclude for sysinclude in sysincludes if not '-I' + sysinclude in flags])
                 for sysinclude in sysincludes:
                     asg.add_directory(sysinclude).is_searchpath = True
@@ -214,6 +214,7 @@ def pre_processing(asg, headers, flags, **kwargs):
             header.is_self_contained = True
             header.is_external_dependency = False
 
+    print(flags)
     return "\n".join('#include "' + str(header.abspath()) + '"' for header in headers)
 
 def post_processing(asg, flags, **kwargs):
@@ -297,15 +298,19 @@ def bootstrap(asg, flags, **kwargs):
                 headers.append("")
                 for spc in gray:
                     if spc not in forbidden:
-                        headers.append("template " + spc + ";")
+                        # if not spc.startswith('class ::std::unique_ptr') and not spc.startswith('class ::statiskit::Selection'):
+                        # if not spc.startswith('class ::statiskit::Selection'):
+                        if not spc.startswith('class ::std::unique_ptr'):
+                            headers.append("template " + spc + ";")
                 forbidden.update(set(gray))
                 header = NamedTemporaryFile(delete=False)
                 if six.PY2:
                     header.write('\n'.join(headers))
                 else:
                     header.write(('\n'.join(headers)).encode())
+                print('\n'.join(headers))
                 header.close()
-                asg = parser(asg, [header.name], flags +["-Wno-unused-value",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
+                asg = parser(asg, [header.name], flags + ["-Wno-everything",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
                 os.unlink(header.name)
                 if header.name in asg:
                     asg._syntax_edges[asg[header.name].parent.globalname].remove(header.name)
