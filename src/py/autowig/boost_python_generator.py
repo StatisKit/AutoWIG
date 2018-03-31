@@ -286,10 +286,13 @@ del _default_boost_python_export, _valid_boost_python_export
 
 def _default_boost_python_export(self):
     if self.is_virtual:
-        try:
-            return self.overrides is None
-        except:
-            return self.is_pure
+        if self.parent.boost_python_export:
+            try:
+                return self.overrides is None
+            except:
+                return self.is_pure
+        else:
+            return False
     else:
         return bool(self.parent.boost_python_export)
 

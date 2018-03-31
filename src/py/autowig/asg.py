@@ -1074,7 +1074,7 @@ class MethodProxy(FunctionProxy):
             methods = []
             for base in self.parent.bases(inherited = True):
                 for method in base.methods():
-                    if method.prototype == self.prototype:
+                    if method.prototype(desugared=True) == self.prototype(desugared=True):
                         methods.append(method)
             if len(methods) > 0:
                 return methods
