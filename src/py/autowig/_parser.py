@@ -298,10 +298,7 @@ def bootstrap(asg, flags, **kwargs):
                 headers.append("")
                 for spc in gray:
                     if spc not in forbidden:
-                        # if not spc.startswith('class ::std::unique_ptr') and not spc.startswith('class ::statiskit::Selection'):
-                        # if not spc.startswith('class ::statiskit::Selection'):
-                        if not spc.startswith('class ::std::unique_ptr'):
-                            headers.append("template " + spc + ";")
+                        headers.append("template " + spc + ";")
                 forbidden.update(set(gray))
                 header = NamedTemporaryFile(delete=False)
                 if six.PY2:
