@@ -1539,6 +1539,7 @@ class AbstractSemanticGraph(object):
         self._template_edges = dict()
         self._specialization_edges = dict()
         self._include_edges = dict()
+        self._bootstrapped = set()
 
     def merge(self, other):
         if not isinstance(other, AbstractSemanticGraph):
@@ -1551,6 +1552,7 @@ class AbstractSemanticGraph(object):
         self._template_edges.update(other._template_edges)
         self._specialization_edges.update(other._specialization_edges)
         self._include_edges.update(other._include_edges)
+        self._bootstrapped.update(other._bootstrapped)
 
     def __len__(self):
         return len(self._nodes)

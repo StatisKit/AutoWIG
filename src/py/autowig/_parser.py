@@ -214,7 +214,6 @@ def pre_processing(asg, headers, flags, **kwargs):
             header.is_self_contained = True
             header.is_external_dependency = False
 
-    print(flags)
     return "\n".join('#include "' + str(header.abspath()) + '"' for header in headers)
 
 def post_processing(asg, flags, **kwargs):
@@ -233,7 +232,6 @@ def bootstrap(asg, flags, **kwargs):
         if isinstance(bootstrap, bool):
             bootstrap = float("Inf")
         nodes = 0
-        forbidden = set()
         while not nodes == len(asg) and __index < bootstrap:
             nodes = len(asg)
             black = set()
@@ -297,15 +295,14 @@ def bootstrap(asg, flags, **kwargs):
                         headers.append("#include \"" + header.globalname + "\"")
                 headers.append("")
                 for spc in gray:
-                    if spc not in forbidden:
+                    if spc not in asg._bootstrapped:
                         headers.append("template " + spc + ";")
-                forbidden.update(set(gray))
+                asg._bootstrapped.update(set(gray))
                 header = NamedTemporaryFile(delete=False)
                 if six.PY2:
                     header.write('\n'.join(headers))
                 else:
                     header.write(('\n'.join(headers)).encode())
-                print('\n'.join(headers))
                 header.close()
                 asg = parser(asg, [header.name], flags + ["-Wno-everything",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
                 os.unlink(header.name)
