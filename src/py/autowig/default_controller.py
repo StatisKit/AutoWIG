@@ -51,6 +51,6 @@ def default_controller(asg, **kwargs):
     """
     if kwargs.pop('refactoring', True):
         asg = refactoring(asg)
-    if kwargs.pop('clean', True):
+    if kwargs.pop('clean', False):
         asg = cleaning(asg)
     return asg

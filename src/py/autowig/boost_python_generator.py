@@ -1337,10 +1337,13 @@ class BoostPythonDecoratorFileProxy(FileProxy):
     def package(self):
         modules = []
         parent = self.parent
-        while parent is not None and os.path.exists(parent.globalname + '__init__.py'):
+        while parent is not None and parent.globalname + '__init__.py' in self._asg:
             modules.append(parent.localname.strip(os.sep))
             parent = parent.parent
-        return '.'.join(reversed(modules))
+        if len(modules) == 0:
+            return '.'
+        else:
+            return '.'.join(reversed(modules))
 
 class BoostPythonDecoratorDefaultFileProxy(BoostPythonDecoratorFileProxy):
 
@@ -1351,7 +1354,7 @@ __all__ = []
 # Import dependency decorator modules
     % for dependency in dependencies:
         % if dependency:
-import ${dependency.package}.${dependency.prefix}
+from ${dependency.package} import ${dependency.prefix}
         % endif
     % endfor
 % endif
@@ -1505,6 +1508,10 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         else:
             decorator = asg.add_file(decorator, proxy=boost_python_decorator())
         decorator.module = module
+        parent = decorator.parent
+        while parent is not None and os.path.exists(parent.globalname + '__init__.py'):
+            asg.add_file(parent.globalname + '__init__.py')
+            parent = parent.parent
 
     if 'helder' in kwargs:
         module.header.helder = kwargs.pop('helder')
