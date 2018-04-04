@@ -288,33 +288,36 @@ def bootstrap(asg, flags, **kwargs):
                         if isinstance(node, ClassTemplateSpecializationProxy) and (not node.is_complete or any([not cls.is_complete for cls in node.classes(templated=False)])):
                             gray.add(node._node)
             gray = list(gray)
-            for gray in [gray[index:index+maximum] for index in xrange(0, len(gray), maximum)]:
-                headers = []
-                for header in asg.files(header=True):
-                    if not header.is_external_dependency:
-                        headers.append("#include \"" + header.globalname + "\"")
-                headers.append("")
-                for spc in gray:
-                    if spc not in asg._bootstrapped:
-                        headers.append("template " + spc + ";")
-                asg._bootstrapped.update(set(gray))
-                header = NamedTemporaryFile(delete=False)
-                if six.PY2:
-                    header.write('\n'.join(headers))
-                else:
-                    header.write(('\n'.join(headers)).encode())
-                header.close()
-                asg = parser(asg, [header.name], flags + ["-Wno-everything",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
-                os.unlink(header.name)
-                if header.name in asg:
-                    asg._syntax_edges[asg[header.name].parent.globalname].remove(header.name)
-                    asg._nodes.pop(header.name)
-                asg._include_edges.pop(header.name, None)
-                asg._include_edges = {key : value for key, value in asg._include_edges.iteritems() if not value == header.name}
-                for node in asg._nodes.keys():
-                    if '_header' in asg._nodes[node] and asg._nodes[node]['_header'] == header.name:
-                        asg._nodes[node].pop('_header')
-            __index += 1
+            if len(gray) == 0:
+                break
+            else:
+                for gray in [gray[index:index+maximum] for index in xrange(0, len(gray), maximum)]:
+                    headers = []
+                    for header in asg.files(header=True):
+                        if not header.is_external_dependency:
+                            headers.append("#include \"" + header.globalname + "\"")
+                    headers.append("")
+                    for spc in gray:
+                        if spc not in asg._bootstrapped:
+                            headers.append("template " + spc + ";")
+                    asg._bootstrapped.update(set(gray))
+                    header = NamedTemporaryFile(delete=False)
+                    if six.PY2:
+                        header.write('\n'.join(headers))
+                    else:
+                        header.write(('\n'.join(headers)).encode())
+                    header.close()
+                    asg = parser(asg, [header.name], flags + ["-Wno-everything",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
+                    os.unlink(header.name)
+                    if header.name in asg:
+                        asg._syntax_edges[asg[header.name].parent.globalname].remove(header.name)
+                        asg._nodes.pop(header.name)
+                    asg._include_edges.pop(header.name, None)
+                    asg._include_edges = {key : value for key, value in asg._include_edges.iteritems() if not value == header.name}
+                    for node in asg._nodes.keys():
+                        if '_header' in asg._nodes[node] and asg._nodes[node]['_header'] == header.name:
+                            asg._nodes[node].pop('_header')
+                __index += 1
 
 def update_overload(asg, overload='none', **kwargs):
     """
@@ -395,6 +398,8 @@ def suppress_forward_declaration(asg, **kwargs):
                 black.add(tdf._node)
             for cls in cls.classes():
                 blacklist(cls, black)
+        if isinstance(cls, ClassTemplateSpecializationProxy):
+            asg._bootstrapped.add(cls._node)
     def blacklisted(type, black):
         return type.unqualified_type._node in black or type.desugared_type.unqualified_type._node in black
     for cls in asg.classes(templated=False):
