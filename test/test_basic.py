@@ -66,6 +66,9 @@ class TestBasic(unittest.TestCase):
     def test_mapping_export(self):
         """Test `mapping` export"""
 
+        subprocess.check_call([self.scons, 'cpp', '-c', '--prefix=' + self.prefix],
+                              cwd=self.srcdir)
+
         subprocess.check_call([self.scons, 'cpp', '--prefix=' + self.prefix],
                               cwd=self.srcdir)
 
@@ -82,12 +85,17 @@ class TestBasic(unittest.TestCase):
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
+        # for node in  ['enum ::max_align_t', '::max_align_t::__clang_max_align_nonce1', '::max_align_t::__clang_max_align_nonce2']:
+        #     if node in asg:
+        #         asg[node].boost_python_export = False
 
         wrappers = autowig.generator(asg, module = self.srcdir/'src'/'py'/'__basic.cpp',
-                                        decorator = self.srcdir/'src'/'py'/'basic'/'_basic.py',
-                                        prefix = 'wrapper_')
+                                          decorator = self.srcdir/'src'/'py'/'basic'/'_basic.py',
+                                          prefix = 'wrapper_')
         wrappers.write()
-        
+
+        subprocess.check_call([self.scons, 'py', '-c', '--prefix=' + self.prefix],
+                              cwd=self.srcdir)        
         subprocess.check_call([self.scons, 'py', '--prefix=' + self.prefix, '--package=basic'],
                               cwd=self.srcdir)
 
@@ -103,9 +111,9 @@ class TestBasic(unittest.TestCase):
         self.test_mapping_export()
         autowig.parser.plugin = plugin
 
-    def test_boost_python_pattern_generator(self):
-        """Test `boost_python_pattern` generator"""
-        plugin = autowig.generator.plugin
-        autowig.generator.plugin = 'boost_python_pattern'
-        self.test_mapping_export()
-        autowig.generator.plugin = plugin
+    # def test_boost_python_pattern_generator(self):
+    #     """Test `boost_python_pattern` generator"""
+    #     plugin = autowig.generator.plugin
+    #     autowig.generator.plugin = 'boost_python_pattern'
+    #     self.test_mapping_export()
+    #     autowig.generator.plugin = plugin

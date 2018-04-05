@@ -195,12 +195,12 @@ NodeProxy._valid_boost_python_export = property(_valid_boost_python_export)
 del _valid_boost_python_export
 
 def _default_boost_python_export(self):
-    return bool(self.parent.boost_python_export)
+    return bool(self.parent.boost_python_export) and not self.localname.startswith('_')
 
 EnumeratorProxy._default_boost_python_export = property(_default_boost_python_export)
 
 def _default_boost_python_export(self):
-    return not self.localname.startswith('_') and len(self.enumerators) > 0 and bool(self.parent.boost_python_export)
+    return not self.localname.startswith('_') and len(self.enumerators) > 0 and not all(enumerator.localname.startswith('_') for enumerator in self.enumerators) and bool(self.parent.boost_python_export)
 
 EnumerationProxy._default_boost_python_export = property(_default_boost_python_export)
 
@@ -1354,7 +1354,7 @@ __all__ = []
 # Import dependency decorator modules
     % for dependency in dependencies:
         % if dependency:
-from ${dependency.package} import ${dependency.prefix}
+import ${dependency.package}.${dependency.prefix}
         % endif
     % endfor
 % endif
