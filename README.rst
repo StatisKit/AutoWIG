@@ -32,3 +32,10 @@ While several semi-automatic solutions and tools exist to wrap these compiled li
 **AutoWIG** is a *Python* library that wraps automatically compiled libraries into high-level languages.
 Our approach consists in parsing *C++*  code using the **LLVM**/**Clang** technologies and generating the wrappers using the **Mako** templating engine.
 Our approach is automatic, extensible, and applies to very complex *C++* libraries, composed of thousands of classes or incorporating modern meta-programming constructs.
+
+Citation
+========
+
+If you use AutoWIG in a scientific publication, we would appreciate citations: 
+
+         Fernique P, Pradal C. (2018) AutoWIG: automatic generation of python bindings for C++ libraries. PeerJ Computer Science 4:e149 https://doi.org/10.7717/peerj-cs.149 
