@@ -32,7 +32,7 @@ sudo: required
 env:
   - CONDA_RECIPE=bin/conda/python-autowig
     CONDA_VERSION=2
-    TRAVIS_WAIT=30
+    # TRAVIS_WAIT=30
   - CONDA_RECIPE=bin/conda/python-autowig
     CONDA_VERSION=3
 
