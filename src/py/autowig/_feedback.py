@@ -31,7 +31,7 @@ feedback = PluginManager('autowig.feedback', brief="",
         details="""""")
 
 def parse_errors(err, directory, asg, **kwargs):
-    if not isinstance(err, basestring):
+    if not isinstance(err, str):
         raise TypeError('\'err\' parameter')
     if not isinstance(directory, Path):
         directory = Path(directory)

@@ -31,7 +31,7 @@ def subclasses(cls, recursive=True):
             cls = front.pop()
             front.extend(cls.__subclasses__())
             subclasses.append(cls)
-        return {subclass.__name__ : subclass for subclass in subclasses}.values()
+        return list({subclass.__name__ : subclass for subclass in subclasses}.values())
     else:
         return cls.__subclasses__()
 

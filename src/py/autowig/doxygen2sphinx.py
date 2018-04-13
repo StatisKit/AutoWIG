@@ -260,7 +260,7 @@ def desc_parser(asg, text):
                     node = nodes.pop()
                 else:
                     node = ':cpp:any:`' + node + '`'
-            if not isinstance(node, basestring):
+            if not isinstance(node, str):
                 node = name_formatter(node)
             desc += '~~' + node + '~~'
         else:

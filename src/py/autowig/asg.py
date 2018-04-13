@@ -57,7 +57,7 @@ class NodeProxy(object):
     def __eq__(self, other):
         if isinstance(other, NodeProxy):
             return self._asg == other._asg and self._node == other._node
-        elif isinstance(other, basestring):
+        elif isinstance(other, str):
             return self._node == other
         else:
             return False
@@ -99,7 +99,7 @@ class NodeProxy(object):
         return int(uuid.uuid5(uuid.NAMESPACE_X500, self._node).hex, 16)
 
     def __dir__(self):
-        return sorted([key for key in self._asg._nodes[self._node].keys()] + [key for key in dir(self.__class__)])
+        return sorted([key for key in list(self._asg._nodes[self._node].keys())] + [key for key in dir(self.__class__)])
 
     def __getattr__(self, attr):
         if attr not in dir(self):
@@ -184,7 +184,7 @@ class DirectoryProxy(FilesystemProxy):
             else:
                 return self._asg[self.globalname[:len(self.globalname)-len(self.localname)]]
         except Exception as e:
-            print self._node
+            print(self._node)
             raise e
 
     def relpath(self, location):
@@ -196,7 +196,7 @@ class DirectoryProxy(FilesystemProxy):
         :Returns Type:
           str
         """
-        if isinstance(location, basestring):
+        if isinstance(location, str):
             try:
                 location = self._asg[location]
             except:
@@ -399,7 +399,7 @@ def get_language(self):
     return self._language
 
 def set_language(self, language):
-    if not isinstance(language, basestring):
+    if not isinstance(language, str):
         raise TypeError('\'language\' parameter')
     language = language.lower()
     if language not in ['c', 'c++']:
@@ -539,7 +539,7 @@ class DeclarationProxy(NodeProxy):
 
     @parent.setter
     def parent(self, parent):
-        if isinstance(parent, basestring):
+        if isinstance(parent, str):
             parent = self._asg[parent]
         if not isinstance(parent, DeclarationProxy):
             raise TypeError('\'parent\' parameter')
@@ -971,7 +971,7 @@ class ParameterProxy(EdgeProxy):
 
     @localname.setter
     def localname(self, name):
-        if not isinstance(name, basestring):
+        if not isinstance(name, str):
             raise TypeError('\'name\' parameter')
         self._asg._parameter_edges[self._source][self._target]['name'] = name
 
@@ -1539,7 +1539,7 @@ class AbstractSemanticGraph(object):
         self._template_edges = dict()
         self._specialization_edges = dict()
         self._include_edges = dict()
-        self._bootstrapped = set()
+        self._forbidden = set()
 
     def merge(self, other):
         if not isinstance(other, AbstractSemanticGraph):
@@ -1552,7 +1552,7 @@ class AbstractSemanticGraph(object):
         self._template_edges.update(other._template_edges)
         self._specialization_edges.update(other._specialization_edges)
         self._include_edges.update(other._include_edges)
-        self._bootstrapped.update(other._bootstrapped)
+        self._forbidden.update(other._forbidden)
 
     def __len__(self):
         return len(self._nodes)
@@ -1592,9 +1592,9 @@ class AbstractSemanticGraph(object):
 
     def nodes(self, pattern=None):
         if pattern is None:
-            return [self[node] for node in self._nodes.keys()]
+            return [self[node] for node in list(self._nodes.keys())]
         else:
-            return [self[node] for node in self._nodes.keys() if re.match(pattern, node)]
+            return [self[node] for node in list(self._nodes.keys()) if re.match(pattern, node)]
 
     def directories(self, **kwargs):
         return [node for node in self.nodes(**kwargs) if isinstance(node, DirectoryProxy)]
@@ -1663,7 +1663,7 @@ class AbstractSemanticGraph(object):
     def dependencies(self, *nodes):
         white = []
         for node in nodes:
-            if isinstance(node, basestring):
+            if isinstance(node, str):
                 node = self[node]
             if isinstance(node, DeclarationProxy) and visitor(node):
                 white.append(node)
@@ -1736,7 +1736,7 @@ class AbstractSemanticGraph(object):
                 headers.append(header)
         visitor.plugin = plugin
 
-        white = [self[node] if isinstance(node, basestring) else node for node in nodes]
+        white = [self[node] if isinstance(node, str) else node for node in nodes]
         while len(white) > 0:
             node = white.pop()
             if isinstance(node, FunctionProxy):
@@ -1767,7 +1767,7 @@ class AbstractSemanticGraph(object):
             node = node.globalname
         if 'CONDA_PREFIX' in os.environ and node.startswith(os.environ['CONDA_PREFIX']):
             node = 'CONDA_PREFIX' + node[len(os.environ['CONDA_PREFIX']):]
-        if not isinstance(node, basestring):
+        if not isinstance(node, str):
             raise TypeError('`node` parameter')
         if node in self._nodes:
             return self._nodes[node]["_proxy"](self, node)

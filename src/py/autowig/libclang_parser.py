@@ -124,7 +124,7 @@ def libclang_parser(asg, filepaths, flags, silent=False, **kwargs):
             else:
                 warnings.simplefilter('always')
             read_translation_unit(asg, tu)
-    for node in asg._syntax_edges.keys():
+    for node in list(asg._syntax_edges.keys()):
         asg._syntax_edges[node] = list(set(asg._syntax_edges[node]))
     post_processing(asg, flags, **kwargs)
     filehandler = NamedTemporaryFile(delete=False)
@@ -141,7 +141,7 @@ def libclang_parser(asg, filepaths, flags, silent=False, **kwargs):
         filehandler.write(_asg)
     with open(filehandler.name, 'r') as filehandler:
         asg = pickle.load(filehandler)
-    for node, edges in asg._syntax_edges.items():
+    for node, edges in list(asg._syntax_edges.items()):
         if edges:
             asg._syntax_edges[node] = numpy.unique(edges).tolist()
     os.unlink(filehandler.name)

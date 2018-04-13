@@ -41,7 +41,7 @@ class ProxyManager(object):
 
     def __iter__(self):
         def listing():
-            for key in self._cache.keys():
+            for key in list(self._cache.keys()):
                 yield key
             for proxy in pkg_resources.iter_entry_points(self._group):
                 yield proxy.name
@@ -63,11 +63,11 @@ class ProxyManager(object):
             return list(pkg_resources.iter_entry_points(self._group, proxy)).pop().load()
 
     def __setitem__(self, proxy, implementation):
-        if not isinstance(proxy, basestring):
+        if not isinstance(proxy, str):
             raise TypeError('\'proxy\' parameter must be a basestring instance')
         if callable(implementation):
             self._cache[proxy] = implementation
-        elif isinstance(implementation, basestring):
+        elif isinstance(implementation, str):
             if implementation not in self:
                 raise ValueError('\'implementation\' parameter must be one of ' + ', '.join('\'' + proxy + '\'' for proxy in self))
             if proxy == implementation:
@@ -132,7 +132,7 @@ class PluginManager(object):
 
     def __iter__(self):
         def listing():
-            for key in self._cache.keys():
+            for key in list(self._cache.keys()):
                 yield key
             for plugin in pkg_resources.iter_entry_points(self._group):
                 yield plugin.name
@@ -154,11 +154,11 @@ class PluginManager(object):
             return list(pkg_resources.iter_entry_points(self._group, plugin)).pop().load()
 
     def __setitem__(self, plugin, implementation):
-        if not isinstance(plugin, basestring):
+        if not isinstance(plugin, str):
             raise TypeError('\'plugin\' parameter must be a basestring instance')
         if callable(implementation):
             self._cache[plugin] = implementation
-        elif isinstance(implementation, basestring):
+        elif isinstance(implementation, str):
             if implementation not in self:
                 raise ValueError('\'implementation\' parameter must be one of ' + ', '.join('\'' + plugin + '\'' for plugin in self))
             if plugin == implementation:

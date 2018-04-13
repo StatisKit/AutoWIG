@@ -163,7 +163,7 @@ def get_boost_python_export(self):
 def set_boost_python_export(self, boost_python_export):
     if not self._valid_boost_python_export and boost_python_export:
         raise ValueError('\'boost_python_export\' cannot be set to another value than \'False\'')
-    if isinstance(boost_python_export, basestring):
+    if isinstance(boost_python_export, str):
         boost_python_export = self._asg[boost_python_export]
     if isinstance(boost_python_export, BoostPythonExportFileProxy):
         scope = boost_python_export.scope
@@ -195,12 +195,12 @@ NodeProxy._valid_boost_python_export = property(_valid_boost_python_export)
 del _valid_boost_python_export
 
 def _default_boost_python_export(self):
-    return bool(self.parent.boost_python_export) and not self.localname.startswith('_')
+    return bool(self.parent.boost_python_export)
 
 EnumeratorProxy._default_boost_python_export = property(_default_boost_python_export)
 
 def _default_boost_python_export(self):
-    return not self.localname.startswith('_') and len(self.enumerators) > 0 and not all(enumerator.localname.startswith('_') for enumerator in self.enumerators) and bool(self.parent.boost_python_export)
+    return not self.localname.startswith('_') and len(self.enumerators) > 0 and bool(self.parent.boost_python_export)
 
 EnumerationProxy._default_boost_python_export = property(_default_boost_python_export)
 
@@ -286,13 +286,10 @@ del _default_boost_python_export, _valid_boost_python_export
 
 def _default_boost_python_export(self):
     if self.is_virtual:
-        if self.parent.boost_python_export:
-            try:
-                return self.overrides is None
-            except:
-                return self.is_pure
-        else:
-            return False
+        try:
+            return self.overrides is None
+        except:
+            return self.is_pure
     else:
         return bool(self.parent.boost_python_export)
 
@@ -1254,7 +1251,7 @@ BOOST_PYTHON_MODULE(_${module.prefix})
 
     @decorator.setter
     def decorator(self, decorator):
-        if isinstance(decorator, basestring):
+        if isinstance(decorator, str):
             decorator = self._asg[decorator]
         if not isinstance(decorator, BoostPythonDecoratorFileProxy):
             raise TypeError("'decorator' parameter")
@@ -1318,7 +1315,7 @@ class BoostPythonDecoratorFileProxy(FileProxy):
 
     @module.setter
     def module(self, module):
-        if isinstance(module, basestring):
+        if isinstance(module, str):
             module = self._asg[module]
         if not isinstance(module, BoostPythonModuleFileProxy):
             raise TypeError('\'module\' parameter')
@@ -1337,13 +1334,10 @@ class BoostPythonDecoratorFileProxy(FileProxy):
     def package(self):
         modules = []
         parent = self.parent
-        while parent is not None and parent.globalname + '__init__.py' in self._asg:
+        while parent is not None and os.path.exists(parent.globalname + '__init__.py'):
             modules.append(parent.localname.strip(os.sep))
             parent = parent.parent
-        if len(modules) == 0:
-            return '.'
-        else:
-            return '.'.join(reversed(modules))
+        return '.'.join(reversed(modules))
 
 class BoostPythonDecoratorDefaultFileProxy(BoostPythonDecoratorFileProxy):
 
@@ -1444,7 +1438,7 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
                         templates[spc].append(declaration)
                     else:
                         templates[spc] = [declaration]
-        content.append(self.TEMPLATES.render(decorator = self, module = self.module, templates = [(self._asg[tpl], spcs) for tpl, spcs in templates.iteritems()],
+        content.append(self.TEMPLATES.render(decorator = self, module = self.module, templates = [(self._asg[tpl], spcs) for tpl, spcs in templates.items()],
                 node_rename = node_rename))
         typedefs = []
         for export in self.module.exports:
@@ -1508,10 +1502,6 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         else:
             decorator = asg.add_file(decorator, proxy=boost_python_decorator())
         decorator.module = module
-        parent = decorator.parent
-        while parent is not None and os.path.exists(parent.globalname + '__init__.py'):
-            asg.add_file(parent.globalname + '__init__.py')
-            parent = parent.parent
 
     if 'helder' in kwargs:
         module.header.helder = kwargs.pop('helder')

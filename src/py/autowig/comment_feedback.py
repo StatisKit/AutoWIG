@@ -21,11 +21,11 @@
 ## mplied. See the License for the specific language governing           ##
 ## permissions and limitations under the License.                        ##
 
-from _feedback import parse_errors
+from ._feedback import parse_errors
 
 def comment_feedback(err, directory, asg, **kwargs):
     wrappers = parse_errors(err, directory, asg, **kwargs)
-    for wrapper, rows in wrappers.iteritems():
+    for wrapper, rows in wrappers.items():
         with open(wrapper, 'r') as filehandler:
             content = filehandler.readlines()
         for row in rows:

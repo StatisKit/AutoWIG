@@ -168,7 +168,7 @@ def pre_processing(asg, headers, flags, **kwargs):
                 else:
                     sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in sysincludes]
                     if system == 'linux':
-                        sysincludes = [sysinclude for sysinclude in sysincludes if not 'lib/gcc' in sysinclude and os.path.exists(sysinclude)]
+                        sysincludes = [sysinclude for sysinclude in sysincludes if not 'lib/gcc' in sysinclude]
                         s = subprocess.Popen(['clang', '-x', asg._language, '-v', '-E', devnull],
                                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                         if s.returncode:
@@ -182,7 +182,7 @@ def pre_processing(asg, headers, flags, **kwargs):
                                 warnings.warn('System includes not computed: parsing clang command output failed', Warning)
                             else:
                                 _sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in _sysincludes]
-                                sysincludes += [sysinclude for sysinclude in _sysincludes if 'lib/clang' in sysinclude and os.path.exists(sysinclude)]
+                                sysincludes += [sysinclude for sysinclude in _sysincludes if 'lib/clang' in sysinclude]
                 flags.extend(['-I' + sysinclude for sysinclude in sysincludes if not '-I' + sysinclude in flags])
                 for sysinclude in sysincludes:
                     asg.add_directory(sysinclude).is_searchpath = True
@@ -232,21 +232,21 @@ def bootstrap(asg, flags, **kwargs):
         if isinstance(bootstrap, bool):
             bootstrap = float("Inf")
         nodes = 0
+        # forbidden = set()
         while not nodes == len(asg) and __index < bootstrap:
             nodes = len(asg)
             black = set()
-            white = {asg['::'] : 0 }
+            white = {asg['::'] : 0}
             gray = set()
             while len(white) > 0:
                 node, depth = white.popitem()
-
                 if node.access in ['none', 'public']:
                     if isinstance(node, NamespaceProxy):
                         for dcl in node.declarations():
                             header = dcl.header
                             if isinstance(dcl, NamespaceProxy) or header and not header.is_external_dependency and dcl._node not in black:
                                 white[dcl] = depth
-                                black.add(dcl._node)              
+                                black.add(dcl._node)             
                     elif isinstance(node, (TypedefProxy, VariableProxy)) and depth <= maxdepth - 1:
                         target = node.qualified_type.desugared_type.unqualified_type
                         if target._node not in black:
@@ -285,39 +285,38 @@ def bootstrap(asg, flags, **kwargs):
                                         black.add(dcl._node)
                             except:
                                 pass
-                        if isinstance(node, ClassTemplateSpecializationProxy) and (not node.is_complete or any([not cls.is_complete for cls in node.classes(templated=False)])):
+                        if depth <= maxdepth - 1 and isinstance(node, ClassTemplateSpecializationProxy) and (not node.is_complete or any([not cls.is_complete for cls in node.classes(templated=False)])):
+                            gray.add(node._node)
+                        if isinstance(node, ClassTemplateSpecializationProxy) and not node.is_complete:
                             gray.add(node._node)
             gray = list(gray)
-            if len(gray) == 0:
-                break
-            else:
-                for gray in [gray[index:index+maximum] for index in xrange(0, len(gray), maximum)]:
-                    headers = []
-                    for header in asg.files(header=True):
-                        if not header.is_external_dependency:
-                            headers.append("#include \"" + header.globalname + "\"")
-                    headers.append("")
-                    for spc in gray:
-                        if spc not in asg._bootstrapped:
-                            headers.append("template " + spc + ";")
-                    asg._bootstrapped.update(set(gray))
-                    header = NamedTemporaryFile(delete=False)
-                    if six.PY2:
-                        header.write('\n'.join(headers))
-                    else:
-                        header.write(('\n'.join(headers)).encode())
-                    header.close()
-                    asg = parser(asg, [header.name], flags + ["-Wno-everything",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
-                    os.unlink(header.name)
-                    if header.name in asg:
-                        asg._syntax_edges[asg[header.name].parent.globalname].remove(header.name)
-                        asg._nodes.pop(header.name)
-                    asg._include_edges.pop(header.name, None)
-                    asg._include_edges = {key : value for key, value in asg._include_edges.iteritems() if not value == header.name}
-                    for node in asg._nodes.keys():
-                        if '_header' in asg._nodes[node] and asg._nodes[node]['_header'] == header.name:
-                            asg._nodes[node].pop('_header')
-                __index += 1
+            for gray in [gray[index:index+maximum] for index in range(0, len(gray), maximum)]:
+                headers = []
+                for header in asg.files(header=True):
+                    if not header.is_external_dependency:
+                        headers.append("#include \"" + header.globalname + "\"")
+                headers.append("")
+                for spc in gray:
+                    if spc not in asg._forbidden:
+                        headers.append("template " + spc + ";")
+                asg._forbidden.update(set(gray))
+                header = NamedTemporaryFile(delete=False)
+                if six.PY2:
+                    header.write('\n'.join(headers))
+                else:
+                    header.write(('\n'.join(headers)).encode())
+                header.close()
+                asg = parser(asg, [header.name], flags +["-Wno-unused-value",  "-ferror-limit=0"], bootstrapping=True, **kwargs)
+                os.unlink(header.name)
+                if header.name in asg:
+                    asg._syntax_edges[asg[header.name].parent.globalname].remove(header.name)
+                    asg._nodes.pop(header.name)
+                asg._include_edges.pop(header.name, None)
+                asg._include_edges = {key : value for key, value in asg._include_edges.items() if not value == header.name}
+                for node in list(asg._nodes.keys()):
+                    if '_header' in asg._nodes[node] and asg._nodes[node]['_header'] == header.name:
+                        asg._nodes[node].pop('_header')
+            __index += 1
 
 def update_overload(asg, overload='none', **kwargs):
     """
@@ -327,7 +326,7 @@ def update_overload(asg, overload='none', **kwargs):
             overload = 'all'
         else:
             overload = 'none'
-    if not isinstance(overload, basestring):
+    if not isinstance(overload, str):
         raise TypeError('\'overload\' parameter')
     if overload == 'all':
         for fct in asg.functions(free=None):
@@ -398,8 +397,6 @@ def suppress_forward_declaration(asg, **kwargs):
                 black.add(tdf._node)
             for cls in cls.classes():
                 blacklist(cls, black)
-        if isinstance(cls, ClassTemplateSpecializationProxy):
-            asg._bootstrapped.add(cls._node)
     def blacklisted(type, black):
         return type.unqualified_type._node in black or type.desugared_type.unqualified_type._node in black
     for cls in asg.classes(templated=False):
@@ -444,14 +441,14 @@ def suppress_forward_declaration(asg, **kwargs):
                 else:
                     complete = complete._node
                     duplicate = duplicate._node
-                    for edge in asg._type_edges.itervalues():
+                    for edge in asg._type_edges.values():
                         if edge['target'] == duplicate:
                             edge['target'] = complete
-                    for edges in asg._base_edges.itervalues():
+                    for edges in asg._base_edges.values():
                         for index, edge in enumerate(edges):
                             if edge['base'] == duplicate:
                                 edges[index]['base'] = complete
-                    for  edges in asg._template_edges.itervalues():
+                    for  edges in asg._template_edges.values():
                         for index, edge in enumerate(edges):
                             if edge['target'] == duplicate:
                                 edges[index]['target'] = complete
@@ -547,7 +544,7 @@ def suppress_forward_declaration(asg, **kwargs):
     # for tdf in asg.typedefs():
     #     if blacklisted(tdf.qualified_type, gray) or to_blacklist(tdf, gray, asg):
     #         gray.add(tdf._node)
-    for parent, children in asg._syntax_edges.items():
+    for parent, children in list(asg._syntax_edges.items()):
         asg._syntax_edges[parent] = [child for child in children if child not in gray]
     # gray = set()
     # for cls in asg.classes(templated=False):
@@ -615,7 +612,7 @@ def suppress_forward_declaration(asg, **kwargs):
         asg._nodes.pop(node)
     for parameter_edge in _parameter_edges:
         asg._parameter_edges.pop(parameter_edge)
-    for parent, children in asg._syntax_edges.items():
+    for parent, children in list(asg._syntax_edges.items()):
         asg._syntax_edges[parent] = [child for child in children if child not in gray]
     for cls in black:
         asg._nodes.pop(cls)
