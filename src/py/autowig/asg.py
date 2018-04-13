@@ -29,6 +29,8 @@ import itertools
 import os
 import re
 from path import Path
+import six
+
 from .plugin import PluginManager
 
 from .tools import subclasses
@@ -1767,7 +1769,12 @@ class AbstractSemanticGraph(object):
             node = node.globalname
         if 'CONDA_PREFIX' in os.environ and node.startswith(os.environ['CONDA_PREFIX']):
             node = 'CONDA_PREFIX' + node[len(os.environ['CONDA_PREFIX']):]
+        if six.PY2:
+            if isinstance(node, unicode):
+                node = str(node)
         if not isinstance(node, str):
+            print(node)
+            print(node.__class__)
             raise TypeError('`node` parameter')
         if node in self._nodes:
             return self._nodes[node]["_proxy"](self, node)
