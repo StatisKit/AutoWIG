@@ -24,7 +24,7 @@
 set -ev
 
 if [[ "$PY3K" = 0 ]]; then
-  3to2 -n -w $SRC_DIR/src/py/autowig
+  3to2 -n -w $SRC_DIR/src/py/autowig -x str
   3to2 -n -w $SRC_DIR/test
 fi
 
