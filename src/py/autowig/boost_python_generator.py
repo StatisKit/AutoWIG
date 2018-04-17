@@ -1502,6 +1502,9 @@ def boost_python_generator(asg, nodes, module='./module.cpp', decorator=None, **
         else:
             decorator = asg.add_file(decorator, proxy=boost_python_decorator())
         decorator.module = module
+        parent = os.path.join(decorator.parent.globalname, '__init__.py')
+        while os.path.exists(parent):
+            parent = os.path.join(asg.add_file(parent).parent.parent.globalname, '__init__.py')
 
     if 'helder' in kwargs:
         module.header.helder = kwargs.pop('helder')
