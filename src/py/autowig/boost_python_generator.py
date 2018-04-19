@@ -1334,10 +1334,11 @@ class BoostPythonDecoratorFileProxy(FileProxy):
     def package(self):
         modules = []
         parent = self.parent
-        while parent is not None and os.path.exists(parent.globalname + '__init__.py'):
+        while parent is not None and parent.globalname + '__init__.py' in self._asg:
             modules.append(parent.localname.strip(os.sep))
             parent = parent.parent
         return '.'.join(reversed(modules))
+
 
 class BoostPythonDecoratorDefaultFileProxy(BoostPythonDecoratorFileProxy):
 
