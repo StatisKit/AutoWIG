@@ -681,7 +681,14 @@ ${field.globalname}, "${documenter(field)}");
         }
 
         static void* convertible(PyObject* obj_ptr)
-        { return obj_ptr; }
+        {
+            void* res;
+            if(PyObject_HasAttrString(obj_ptr, "__iter__"))
+            { res = obj_ptr; } 
+            else
+            { res = nullptr; }
+            return res;
+        }
 
         static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data)
         {
@@ -718,7 +725,14 @@ ${field.globalname}, "${documenter(field)}");
         }
 
         static void* convertible(PyObject* obj_ptr)
-        { return obj_ptr; }
+        {
+            void* res;
+            if(PyObject_HasAttrString(obj_ptr, "__iter__"))
+            { res = obj_ptr; } 
+            else
+            { res = nullptr; }
+            return res;
+        }
 
         static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data)
         {
