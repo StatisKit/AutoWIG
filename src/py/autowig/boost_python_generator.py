@@ -1210,8 +1210,10 @@ BOOST_PYTHON_MODULE(_${module.prefix})
     def get_dependencies(self):
         modules = set([self.globalname])
         temp = [declaration for export in self.exports for declaration in export.declarations]
+        black = set()
         while len(temp) > 0:
             declaration = temp.pop()
+            black.add(declaration._node)
             if isinstance(declaration, FunctionProxy):
                 export = declaration.return_type.desugared_type.unqualified_type.boost_python_export
                 if export and export is not True:
@@ -1236,8 +1238,8 @@ BOOST_PYTHON_MODULE(_${module.prefix})
                     module = export.module
                     if module is not None:
                         modules.add(module.globalname)
-                temp.extend([bse for bse in declaration.bases() if bse.access == 'public'])
-                temp.extend([dcl for dcl in declaration.declarations() if dcl.access == 'public'])
+                temp.extend([bse for bse in declaration.bases() if bse.access == 'public' and not bse._node in black])
+                temp.extend([dcl for dcl in declaration.declarations() if dcl.access == 'public' and not dcl._node in black])
             elif isinstance(declaration, ClassTemplateProxy):
                 export = declaration.boost_python_export
                 if export and export is not True:
@@ -1246,7 +1248,7 @@ BOOST_PYTHON_MODULE(_${module.prefix})
                         modules.add(module.globalname)
         modules.remove(self.globalname)
         return [self._asg[module] for module in modules]
-
+      
     @property
     def depth(self):
         dependencies = self.dependencies
