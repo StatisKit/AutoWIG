@@ -67,7 +67,8 @@ test:
     - python-clanglite
     - git
     - gitpython
-    - libboost_python-dev
+    - libboost-dev
+    - libboost_python
   commands:
     - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and linux" [linux]
     - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and osx"   [osx]
