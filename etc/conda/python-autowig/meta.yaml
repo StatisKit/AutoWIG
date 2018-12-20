@@ -23,18 +23,14 @@
 
 package:
   name: python-autowig
-  version: "1.0.1"
+  version: {{ GIT_DESCRIBE_VERSION }}
 
 source:
   path: ../../..
 
 build:
-  number: 0
-  features:
-    - vc12                [win]
-  track_features:
-    - vc12                [win]
-    
+  number: {{ GIT_DESCRIBE_NUMBER }}
+
 about:
   home: http://autowig.readthedocs.org
   license: Apache License 2.0
@@ -42,8 +38,9 @@ about:
 
 requirements:
   build:
-    - python
     - python-toolchain
+  host:
+    - python
   run:
     - python
     - mako
@@ -72,4 +69,4 @@ test:
   commands:
     - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and linux" [linux]
     - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and osx"   [osx]
-  #  - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and win"   [win]
+    - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and win"   [win]

@@ -21,50 +21,65 @@
 ## mplied. See the License for the specific language governing           ##
 ## permissions and limitations under the License.                        ##
 
+branches:
+  except:
+    - doc
+  
 language: cpp
+
+sudo: required
+
+git:
+  depth: false
+  
+services:
+  - docker
 
 os:
   - linux
   - osx
+  - windows
 
-sudo: required
-  
+dist: trusty
+osx_image: xcode8.3
+
 env:
-  - CONDA_RECIPE=bin/conda/python-autowig
-    CONDA_VERSION=2
-    # TRAVIS_WAIT=30
-  - CONDA_RECIPE=bin/conda/python-autowig
-    CONDA_VERSION=3
+
+env:
+  - CONDA_RECIPE=etc/conda/python-autowig
+
+before_install:
+  - git clone https://github.com/StatisKit/travis-ci.git --depth=1
+  - cd travis-ci
+  - ./before_install
 
 install:
-  - git clone https://github.com/StatisKit/travis-ci.git travis-ci
-  - cd travis-ci
-  - source install.sh
+  - ./install
 
 before_script:
-  - source before_script.sh
+  - ./before_script
 
 script:
-  - source script.sh
+  - ./script
 
 after_success:
-  - source after_success.sh
+  - ./after_success
 
 after_failure:
-  - source after_failure.sh
+  - ./after_failure
 
 before_deploy:
-  - source before_deploy.sh
+  - ./before_deploy
 
 deploy:
   skip_cleanup: true
   provider: script
   on:
-      branch: master
-  script: bash deploy_script.sh
+      all_branches: true
+  script: ./deploy_script
 
 after_deploy:
-  - source after_deploy.sh
+  - ./after_deploy
 
 after_script:
-  - source after_script.sh
+  - ./after_script
