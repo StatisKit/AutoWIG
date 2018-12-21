@@ -21,66 +21,35 @@
 ## mplied. See the License for the specific language governing           ##
 ## permissions and limitations under the License.                        ##
 
-branches:
-  except:
-    - doc
-  
-language: cpp
+package:
+  name: autowig-toolchain
+  version: {{ GIT_DESCRIBE_VERSION }}
 
-sudo: required
+build:
+  number: {{ GIT_DESCRIBE_NUMBER }}
 
-git:
-  depth: false
-  
-services:
-  - docker
+about:
+  home: http://autowig.readthedocs.org
+  license: Apache License 2.0
+  summary: Automatic Wrapper and Interface Generator
 
-os:
-  - linux
-  - osx
-  - windows
-
-dist: trusty
-osx_image: xcode8.3
-
-env:
-
-env:
-  - CONDA_RECIPE=etc/conda/python-autowig
-  - CONDA_RECIPE=etc/conda/autowig-toolchain
-
-before_install:
-  - git clone https://github.com/StatisKit/travis-ci.git --depth=1
-  - cd travis-ci
-  - ./before_install
-
-install:
-  - ./install
-
-before_script:
-  - ./before_script
-
-script:
-  - ./script
-
-after_success:
-  - ./after_success
-
-after_failure:
-  - ./after_failure
-
-before_deploy:
-  - ./before_deploy
-
-deploy:
-  skip_cleanup: true
-  provider: script
-  on:
-      all_branches: true
-  script: ./deploy_script
-
-after_deploy:
-  - ./after_deploy
-
-after_script:
-  - ./after_script
+requirements:
+  build:
+    - libboost-dev
+    - libboost_python
+    - libpybind11-dev
+    - python-pybind11
+    - python-autowig
+    - libtoolchain
+    - python-toolchain
+  host:
+    - python
+  run:
+    - {{ pin_compatible('libboost-dev', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('libboost_python', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('libpybind11-dev', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('python-pybind11', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('python-autowig', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('libtoolchain', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('python-toolchain', min_pin='x.x', max_pin='x.x') }}
+    - python

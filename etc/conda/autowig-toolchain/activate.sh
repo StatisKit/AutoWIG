@@ -2,10 +2,10 @@
 ##                       UMR AGAP CIRAD, EPI Virtual Plants Inria        ##
 ## Copyright [2015-2016] UMR AGAP CIRAD, EPI Virtual Plants Inria        ##
 ##                                                                       ##
-## This file is part of the AutoWIG project. More information can be     ##
+## This file is part of the StatisKit project. More information can be   ##
 ## found at                                                              ##
 ##                                                                       ##
-##     http://autowig.rtfd.io                                            ##
+##     http://statiskit.rtfd.io                                          ##
 ##                                                                       ##
 ## The Apache Software Foundation (ASF) licenses this file to you under  ##
 ## the Apache License, Version 2.0 (the "License"); you may not use this ##
@@ -21,66 +21,4 @@
 ## mplied. See the License for the specific language governing           ##
 ## permissions and limitations under the License.                        ##
 
-branches:
-  except:
-    - doc
-  
-language: cpp
-
-sudo: required
-
-git:
-  depth: false
-  
-services:
-  - docker
-
-os:
-  - linux
-  - osx
-  - windows
-
-dist: trusty
-osx_image: xcode8.3
-
-env:
-
-env:
-  - CONDA_RECIPE=etc/conda/python-autowig
-  - CONDA_RECIPE=etc/conda/autowig-toolchain
-
-before_install:
-  - git clone https://github.com/StatisKit/travis-ci.git --depth=1
-  - cd travis-ci
-  - ./before_install
-
-install:
-  - ./install
-
-before_script:
-  - ./before_script
-
-script:
-  - ./script
-
-after_success:
-  - ./after_success
-
-after_failure:
-  - ./after_failure
-
-before_deploy:
-  - ./before_deploy
-
-deploy:
-  skip_cleanup: true
-  provider: script
-  on:
-      all_branches: true
-  script: ./deploy_script
-
-after_deploy:
-  - ./after_deploy
-
-after_script:
-  - ./after_script
+export MACOSX_DEPLOYMENT_TARGET=10.9
