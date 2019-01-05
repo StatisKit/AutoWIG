@@ -24,6 +24,7 @@
 branches:
   except:
     - doc
+    - add_pybind11_generator
   
 language: cpp
 
