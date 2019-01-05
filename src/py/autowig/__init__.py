@@ -58,5 +58,11 @@ boost_python_export.proxy = 'default'
 boost_python_module.proxy = 'default'
 boost_python_decorator.proxy = 'default'
 
+from .pybind11_generator import pybind11_call_policy, pybind11_export, pybind11_module, pybind11_decorator
+pybind11_call_policy.plugin = 'default'
+pybind11_export.proxy = 'default'
+pybind11_module.proxy = 'default'
+pybind11_decorator.proxy = 'default'
+
 from ._generator import generator
 generator.plugin = 'boost_python'

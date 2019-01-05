@@ -114,6 +114,6 @@ class TestBasic(unittest.TestCase):
     def test_pybin11_generator(self):
         """Test `pyclanglite` parser"""
         plugin = autowig.generator.plugin
-        autowig.generator.plugin = 'pybind11'
+        autowig.generator.plugin = 'pybind11_internal'
         self.test_mapping_export()
         autowig.generator.plugin = plugin
