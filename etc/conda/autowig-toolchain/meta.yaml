@@ -23,7 +23,7 @@
 
 package:
   name: autowig-toolchain
-  version: {{ GIT_DESCRIBE_VERSION }}
+  version: {{ GIT_DESCRIBE_TAG }}
 
 build:
   number: {{ GIT_DESCRIBE_NUMBER }}

@@ -23,7 +23,7 @@
 
 package:
   name: python-autowig
-  version: {{ GIT_DESCRIBE_VERSION }}
+  version: {{ GIT_DESCRIBE_TAG }}
 
 source:
   path: ../../..
