@@ -42,6 +42,7 @@ requirements:
     - python-autowig
     - libtoolchain
     - python-toolchain
+    - python-clanglite
   host:
     - python
   run:
@@ -52,4 +53,5 @@ requirements:
     - {{ pin_compatible('python-autowig', min_pin='x.x', max_pin='x.x') }}
     - {{ pin_compatible('libtoolchain', min_pin='x.x', max_pin='x.x') }}
     - {{ pin_compatible('python-toolchain', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('python-clanglite', min_pin='x.x', max_pin='x.x') }}
     - python
