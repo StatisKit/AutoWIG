@@ -50,8 +50,8 @@ requirements:
     - {{ pin_compatible('libboost_python', min_pin='x.x', max_pin='x.x') }}
     - {{ pin_compatible('libpybind11-dev', min_pin='x.x', max_pin='x.x') }}
     - {{ pin_compatible('python-pybind11', min_pin='x.x', max_pin='x.x') }}
-    - {{ pin_compatible('python-autowig', min_pin='x.x', max_pin='x.x') }}
-    - {{ pin_compatible('libtoolchain', min_pin='x.x', max_pin='x.x') }}
-    - {{ pin_compatible('python-toolchain', min_pin='x.x', max_pin='x.x') }}
-    - {{ pin_compatible('python-clanglite', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('python-autowig', exact=True) }}
+    - {{ pin_compatible('libtoolchain', exact=True) }}
+    - {{ pin_compatible('python-toolchain', exact=True) }}
+    - {{ pin_compatible('python-clanglite', exact=True) }}
     - python
