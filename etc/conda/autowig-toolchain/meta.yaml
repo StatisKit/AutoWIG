@@ -23,10 +23,10 @@
 
 package:
   name: autowig-toolchain
-  version: {{ GIT_DESCRIBE_TAG }}
+  version: {{ DATETIME_DESCRIBE_VERSION }}
 
 build:
-  number: {{ GIT_DESCRIBE_NUMBER }}
+  number: {{ DATETIME_DESCRIBE_NUMBER }}
 
 about:
   home: http://autowig.readthedocs.org
