@@ -190,34 +190,22 @@ VARIABLE = Template(text="""\
     module.attr("${node_rename(variable)}") = ${variable.globalname};\
 """)
 
-FUNCTION = Template(text=r"""\
-    % if function.is_overloaded:
-#if defined(PYBIND11_OVERLOAD_CAST)
-    module.def("${node_rename(fonction)}", pybind11::overload_cast< ${", ".join(parameter.qualified_type.globalname for parameter in function.parameters)} >(&${function.globalname})\
-        % if function.pybind11_call_policy:
-, ${function.pybind11_call_policy}\
-        % endif
-, "${documenter(function)}");
-#else
-    module.def("${node_rename(fonction)}", static_cast< ${function.return_type.globalname} (*)(${", ".join(parameter.qualified_type.globalname for parameter in function.parameters)} >(&${function.globalname})\
-        % if function.pybind11_call_policy:
-, ${function.pybind11_call_policy}\
-        % endif
-, "${documenter(function)}");
-#endif
-    % else:
-    module.def("${node_rename(function)}", ${function.globalname}\
-        % if function.pybind11_call_policy:
-, ${function.pybind11_call_policy}\
-        % endif
-, "${documenter(function)}");
-    % endif""")
-
-ERROR = Template(text=r"""\
-    pybind11::register_exception< ${error.globalname} >(module, "${node_rename(error}");
+FUNCTION_POINTER = Template(text=r"""\
+${function.return_type.globalname} (*function_pointer_${function.hash})(${", ".join(parameter.qualified_type.globalname for parameter in function.parameters)}) = ${function.globalname};
 """)
 
-TRAMPOLINE = Template(text=r"""\
+FUNCTION = Template(text=r"""\
+    module.def("${node_rename(function)}", function_pointer_${function.hash}\
+        % if function.pybind11_call_policy:
+, ${function.pybind11_call_policy}\
+        % endif
+, "${documenter(function)}");""")
+
+ERROR = Template(text=r"""\
+    pybind11::register_exception< ${error.globalname} >(module, "${node_rename(error)}");
+""")
+
+ABSTRACT_CLASS = Template(text=r"""\
 namespace autowig
 {
     class Wrap_${cls.hash} : public ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)}
@@ -231,17 +219,15 @@ namespace autowig
             % for mtd in cls.methods(access=access, inherited=True):
                 % if mtd.access == access:
                     %if mtd.prototype(desugared=True) not in prototypes and mtd.is_virtual:
-            virtual ${mtd.return_type.globalname} ${mtd.localname}(${', '.join(parameter.qualified_type.globalname + ' param_' + str(parameter.index) for parameter in mtd.parameters)}) override \
+            virtual ${mtd.return_type.globalname} ${mtd.localname}(${', '.join(parameter.qualified_type.globalname + ' param_' + str(parameter.index) for parameter in mtd.parameters)}) \
                         % if mtd.is_const:
-const {
-                        % else:
-{
+const \
                         % endif
-PYBIND11_OVERLOAD\
+{ PYBIND11_OVERLOAD\
                         % if mtd.is_pure:
 _PURE\
                         % endif
-(${mtd.return_type}, ${cls.globalname}, ${mtd.localname}, ${', '.join('param_' + str(parameter.index) for parameter in mtd.parameters)});
+(${mtd.return_type}, ${cls.globalname.replace('class ', '').replace('struct ', '')}, ${mtd.localname}, ${', '.join('param_' + str(parameter.index) for parameter in mtd.parameters)}); };
                     % endif
 <% prototypes.add(mtd.prototype(desugared=True)) %>\
                 % endif
@@ -249,16 +235,30 @@ _PURE\
 
         % endfor
     };
-}""")
+}
+""")
+
+METHOD_POINTERS = Template(text=r"""\
+% for method in cls.methods(access='public'):
+    % if method.pybind11_export:
+${method.return_type.globalname} (\
+        % if not method.is_static:
+${method.parent.globalname.replace('class ', '').replace('struct ', '').replace('union ', '')}::\
+        % endif
+*method_pointer_${method.hash})(${", ".join(parameter.qualified_type.globalname for parameter in method.parameters)})\
+        % if method.is_const:
+const\
+        % endif
+= \
+        % if not method.is_static:
+&\
+        % endif
+${method.globalname};
+    % endif
+% endfor
+""")
 
 CLASS = Template(text=r"""\
-<%
-def wrapper_name(cls):
-    if cls.is_abstract:
-        return 'autowig::' + 'Wrap_' + cls.hash
-    else:
-        return cls.globalname
-%>\
     % if any(function.pybind11_export for function in cls.functions()):
     struct function_group
     {
@@ -280,42 +280,32 @@ ${function.globalname}\
         % endfor
     };
     % endif
-    pybind11::class_< ${wrapper_name(cls)}, \
-    % if cls.destructor is None or not cls.destructor.access == "public":
-autowig::HolderType< ${wrapper_name(cls)} >::Type\
-    % else: 
-autowig::HolderType< ${wrapper_name(cls)} >::Type\
+    pybind11::class_<${cls.globalname}, \
+    % if cls.is_abstract:
+autowig::Wrap_${cls.hash}, \
     % endif
+autowig::\
+    % if not cls.is_deletable:
+NoDelete\
+    % endif
+HolderType< ${cls.globalname} >::Type\
     % if any(base for base in cls.bases(access='public') if base.pybind11_export):
-, boost::python::bases< ${", ".join(base.globalname for base in cls.bases(access='public') if base.pybind11_export)} >\
+, ${", ".join(base.globalname for base in cls.bases(access='public') if base.pybind11_export)}\
     % endif
-    % if not cls.is_copyable or cls.is_abstract:
-, boost::noncopyable\
-    % endif
- > class_${cls.hash}("${node_rename(cls)}", "${documenter(cls)}", boost::python::no_init);
-    % if not cls.is_abstract and cls.is_instantiable:
-        % for constructor in cls.constructors(access = 'public'):
-            % if constructor.pybind11_export:
+ > class_${cls.hash}(module, "${node_rename(cls)}", "${documenter(cls)}");
+    % for constructor in cls.constructors(access = 'public'):
+        % if constructor.pybind11_export:
     class_${cls.hash}.def(\
-boost::python::init< ${", ".join(parameter.qualified_type.globalname for parameter in constructor.parameters)} >("${documenter(constructor)}"));
-            % endif
-        % endfor
-    % endif
+pybind11::init< ${", ".join(parameter.qualified_type.globalname for parameter in constructor.parameters)} >());
+        % endif
+    % endfor
     % for method in cls.methods(access = 'public'):
         % if method.pybind11_export:
-    class_${cls.hash}.def("${node_rename(method)}", \
-                % if method.is_virtual and method.is_pure:
-boost::python::pure_virtual(\
-                % endif
-                % if method.is_overloaded:
-method_pointer_${method.hash}\
-                % else:
-&${method.globalname}
-                % endif
-                % if method.is_virtual and method.is_pure:
-)\
-                % endif
-, \
+    class_${cls.hash}.def\
+            % if method.is_static:
+_static\
+            % endif
+("${node_rename(method)}", method_pointer_${method.hash}, \
                 % if method.pybind11_call_policy:
 ${method.pybind11_call_policy}, \
                 % endif
@@ -324,9 +314,6 @@ ${method.pybind11_call_policy}, \
     class_${cls.hash}.def("${node_rename(method)}", autowig::method_decorator_${method.hash});
                 % endif
         % endif
-    % endfor
-    % for methodname in {node_rename(method) for method in cls.methods() if method.access == 'public' and method.is_static and method.pybind11_export}:
-    class_${cls.hash}.staticmethod("${methodname}");
     % endfor
     % for function in cls.functions():
         % if function.pybind11_export:
@@ -351,36 +338,7 @@ ${function.pybind11_call_policy}, \
 ${field.globalname}, "${documenter(field)}");
         % endif
     % endfor
-    %if any(base for base in cls.bases(access='public') if base.pybind11_export):
-
-    if(autowig::Held< ${cls.globalname} >::is_class)
-    {
-        % if cls.is_abstract:
-        boost::python::implicitly_convertible< autowig::Held< ${wrapper_name(cls)} >::Type, autowig::Held< ${cls.globalname} >::Type >();
-        boost::python::register_ptr_to_python< autowig::Held< ${cls.globalname} >::Type >();
-        % endif
-        % for bse in cls.bases(access='public'):
-            % if bse.pybind11_export:
-        boost::python::implicitly_convertible< autowig::Held< ${cls.globalname} >::Type, autowig::Held< ${bse.globalname} >::Type >();
-            % endif
-        % endfor
-    }
-    % elif cls.is_abstract:
-    if(autowig::Held< ${cls.globalname} >::is_class)
-    {
-        % if cls.is_abstract:
-        boost::python::implicitly_convertible< autowig::Held< ${wrapper_name(cls)} >::Type, autowig::Held< ${cls.globalname} >::Type >();
-        boost::python::register_ptr_to_python< autowig::Held< ${cls.globalname} >::Type >();
-        % endif
-    }    
-    % endif
-% else:
-    std::string name_${cls.hash} = boost::python::extract< std::string >(boost::python::scope().attr("__name__"));
-    name_${cls.hash} = name_${cls.hash} + "." + "${node_rename(cls)}";
-    autowig::error_${cls.hash} = PyErr_NewException(strdup(name_${cls.hash}.c_str()), PyExc_RuntimeError, NULL);
-    boost::python::scope().attr("${node_rename(cls)}") = boost::python::object(boost::python::handle<>(boost::python::borrowed(autowig::error_${cls.hash})));
-    boost::python::register_exception_translator< ${cls.globalname} >(&autowig::translate_${cls.hash});
-% endif""")
+""")
 
 
 def get_pybind11_call_policy(self):
@@ -489,16 +447,13 @@ def set_pybind11_export(self, pybind11_export):
         raise ValueError('\'pybind11_export\' cannot be set to another value than \'False\'')
     if isinstance(pybind11_export, str):
         pybind11_export = self._asg[pybind11_export]
-    if isinstance(pybind11_export, PyBind11ExportFileProxy):
-        scope = pybind11_export.scope
-        if scope and not scope == self.parent:
-            raise ValueError()
-    elif not isinstance(pybind11_export, bool):
+    elif not isinstance(pybind11_export, (bool, PyBind11ExportFileProxy)):
         raise TypeError('\'pybind11_export\' parameter must be boolean, a \'' + PyBind11ExportFileProxy.__class__.__name__ + '\' instance or identifer')
     del self.pybind11_export
     if isinstance(pybind11_export, PyBind11ExportFileProxy):
-        scope = pybind11_export.scope
-        pybind11_export._declarations.add(self._node)
+        if '__declaration' in self._asg._nodes[pybind11_export._node]:
+            del pybind11_export.declaration.pybind11_export
+        self._asg._nodes[pybind11_export._node]['_declaration'] = self._node
         pybind11_export = pybind11_export._node
     self._asg._nodes[self._node]['_pybind11_export'] = pybind11_export
 
@@ -506,7 +461,7 @@ def del_pybind11_export(self):
     if hasattr(self, '_pybind11_export'):
         pybind11_export = self.pybind11_export
         if isinstance(pybind11_export, PyBind11ExportFileProxy):
-            self._asg._nodes[pybind11_export._node]['_declarations'].remove(self._node)
+            self._asg._nodes[pybind11_export._node].pop('_declaration')
         self._asg._nodes[self._node].pop('_pybind11_export', pybind11_export)
 
 DeclarationProxy.pybind11_export = property(get_pybind11_export, set_pybind11_export, del_pybind11_export)
@@ -639,34 +594,10 @@ class PyBind11ExportFileProxy(FileProxy):
 
     @property
     def _clean_default(self):
-        return len(self._declarations) == 0
+        return '_declaration' not in self._asg._nodes[self._node]
 
     def __init__(self, asg, node):
         super(PyBind11ExportFileProxy, self).__init__(asg, node)
-        if not hasattr(self, '_declarations'):
-            self._asg._nodes[self._node]['_declarations'] = set()
-
-    @property
-    def declarations(self):
-        declarations = [self._asg[declaration] for declaration in self._declarations]
-        return [declaration for declaration in declarations if not isinstance(declaration, ClassProxy)] + \
-               sorted([declaration for declaration in declarations if isinstance(declaration, ClassProxy)],
-                       key = lambda cls: cls.depth)
-
-    @property
-    def depth(self):
-        if not hasattr(self, '_depth'):
-            return 0
-        else:
-            return self._depth
-
-    @depth.setter
-    def depth(self, depth):
-        self._asg._nodes[self._node]['_depth'] = depth
-
-    @depth.deleter
-    def del_depth(self):
-        self._asg._nodes[self._node].pop('_depth')
 
     @property
     def module(self):
@@ -696,7 +627,7 @@ class PyBind11ExportFileProxy(FileProxy):
 
     @property
     def is_empty(self):
-        return len(self._declarations) == 0
+        return '_declaration' not in self._asg._nodes[self._node]
 
     @property
     def depth(self):
@@ -704,90 +635,106 @@ class PyBind11ExportFileProxy(FileProxy):
             return 0
         else:
             depth = 0
-            for declaration in self.declarations:
-                if isinstance(declaration, ClassProxy):
-                    depth = max(declaration.depth, depth)
-                elif isinstance(declaration, VariableProxy):
-                    target = declaration.qualified_type.desugared_type.unqualified_type
-                    if isinstance(target, ClassProxy):
-                        depth = max(target.depth+1, depth)
+            declaration = self.declaration
+            if isinstance(declaration, ClassProxy):
+                depth = declaration.depth
+            elif isinstance(declaration, VariableProxy):
+                target = declaration.qualified_type.desugared_type.unqualified_type
+                if isinstance(target, ClassProxy):
+                    depth = target.depth + 1
             return depth
 
     @property
     def scope(self):
-        if len(self._declarations) > 0:
-            return self.declarations[0].parent
-        else:
-            return []
+        if not self.is_empty:
+            return self.declaration.parent
+
     @property
     def scopes(self):
-        if len(self._declarations) > 0:
-            return self.declarations[0].ancestors[1:]
-        else:
-            return []
+        if not self.is_empty:
+            return self.declaration.ancestors[1:]
            
-    @property         
-    def _content(self):
+    @property
+    def declaration(self):
+        if hasattr(self, '_declaration'):
+            return self._asg[self._declaration]
+
+    def get_content(self):
         content = '#include "' + self.header.localname + '"\n'
-        for arg in self.declarations:
-            if isinstance(arg, ClassProxy) and arg.is_error:
-                content += '\n\n' + self.ERROR.render(error = arg)
-            # if arg.is_abstract:
-            #     content += '\n\n' + self.ABSTRACT_CLASS.render(cls = arg)
-        for arg in self.declarations:
-            if isinstance(arg, ClassProxy):
-                if arg.globalname not in self.IGNORE:
-                    content += '\n\n' + self.DECORATOR.render(cls = arg)
-        content += '\n\nvoid ' + self.prefix + '()\n{\n' + self.SCOPE.render(scopes = self.scopes, node_rename = node_rename, documenter = documenter)
-        for arg in self.declarations:
-            if isinstance(arg, EnumeratorProxy):
-                content += '\n' + self.ENUMERATOR.render(enumerator = arg,
+        declaration = self.declaration
+        if isinstance(declaration, ClassProxy) and not declaration.is_error:
+            if declaration.is_abstract:
+                content += '\n' + ABSTRACT_CLASS.render(cls = declaration,
                         node_rename = node_rename,
                         documenter = documenter)
-            elif isinstance(arg, EnumerationProxy):
-                if arg.globalname not in IGNORE:
-                    content += '\n' + self.ENUMERATION.render(enumeration = arg,
-                                            node_rename = node_rename,
-                                            documenter = documenter)
-            elif isinstance(arg, VariableProxy):
-                content += '\n' + self.VARIABLE.render(variable = arg,
-                        node_rename = node_rename,
-                        documenter = documenter)
-            elif isinstance(arg, FunctionProxy):
-                content += '\n' + self.FUNCTION.render(function = arg,
-                        node_rename = node_rename,
-                        documenter = documenter)
-            elif isinstance(arg, ClassTemplateSpecializationProxy):
-                if arg.globalname not in self.IGNORE and arg.specialize.globalname not in self.IGNORE:
-                    content += '\n' + self.CLASS.render(cls = arg,
+            content += '\n' + METHOD_POINTERS.render(cls = declaration,
+                    node_rename = node_rename,
+                    documenter = documenter)
+        elif isinstance(declaration, FunctionProxy):
+            content += '\n' + FUNCTION_POINTER.render(function = declaration,
+                    node_rename = node_rename,
+                    documenter = documenter)
+        content += '\n\nvoid ' + self.prefix + '(pybind11::module& module)\n{\n' 
+        if isinstance(declaration, EnumeratorProxy):
+            content += '\n' + ENUMERATOR.render(enumerator = declaration,
+                    node_rename = node_rename,
+                    documenter = documenter)
+        elif isinstance(declaration, EnumerationProxy):
+            if declaration.globalname not in IGNORE:
+                content += '\n' + ENUMERATION.render(enumeration = declaration,
+                                        node_rename = node_rename,
+                                        documenter = documenter)
+        elif isinstance(declaration, VariableProxy):
+            content += '\n' + VARIABLE.render(variable = declaration,
+                    node_rename = node_rename,
+                    documenter = documenter)
+        elif isinstance(declaration, FunctionProxy):
+            content += '\n' + FUNCTION.render(function = declaration,
+                    node_rename = node_rename,
+                    documenter = documenter)
+        elif isinstance(declaration, ClassTemplateSpecializationProxy):
+            if declaration.globalname not in IGNORE and declaration.specialize.globalname not in IGNORE:
+                if declaration.is_error:
+                    content += '\n\n' + ERROR.render(error = declaration,
+                                                     node_rename = node_rename,
+                                                     documenter = documenter)
+                else:
+                    content += '\n' + CLASS.render(cls = declaration,
                             node_rename = node_rename,
                             documenter = documenter)
-                if arg.specialize.globalname in TO:
-                    content += '\n' + TO[arg.specialize.globalname].render(cls = arg)
-                elif arg.globalname in TO:
-                    content += '\n' + TO[arg.globalname].render(cls = arg)
-                if arg.specialize.globalname in self.FROM:
-                    content += '\n' + FROM[arg.specialize.globalname].render(cls = arg)
-                elif arg.globalname in FROM:
-                    content += '\n' + FROM[arg.globalname].render(cls = arg)
-            elif isinstance(arg, ClassProxy):
-                if arg.globalname not in self.IGNORE:
-                    content += '\n' + self.CLASS.render(cls = arg,
+            if declaration.specialize.globalname in TO:
+                content += '\n' + TO[declaration.specialize.globalname].render(cls = declaration)
+            elif declaration.globalname in TO:
+                content += '\n' + TO[declaration.globalname].render(cls = declaration)
+            if declaration.specialize.globalname in self.FROM:
+                content += '\n' + FROM[declaration.specialize.globalname].render(cls = declaration)
+            elif declaration.globalname in FROM:
+                content += '\n' + FROM[declaration.globalname].render(cls = declaration)
+        elif isinstance(declaration, ClassProxy):
+            if declaration.globalname not in IGNORE:
+                if declaration.is_error:
+                    content += '\n\n' + ERROR.render(error = declaration,
+                                                     node_rename = node_rename,
+                                                     documenter = documenter)
+                else:
+                    content += '\n' + CLASS.render(cls = declaration,
                             node_rename = node_rename,
                             documenter = documenter)
-                if arg.globalname in TO:
-                    content += '\n' + TO[arg.globalname].render(cls = arg)
-                if arg.globalname in FROM:
-                    content += '\n' + FROM[arg.globalname].render(cls = arg)
-            elif isinstance(arg, TypedefProxy):
-                continue
-            else:
-                raise NotImplementedError(arg.__class__.__name__)
+            if declaration.globalname in TO:
+                content += '\n' + TO[declaration.globalname].render(cls = declaration)
+            if declaration.globalname in FROM:
+                content += '\n' + FROM[declaration.globalname].render(cls = declaration)
+        elif isinstance(declaration, TypedefProxy):
+            pass
+        else:
+            raise NotImplementedError(declaration.__class__.__name__)
         content += '\n}'
         return content
 
     def edit(self, row):
         return ""
+
+PyBind11ExportFileProxy._content = property(PyBind11ExportFileProxy.get_content)
 
 def pybind11_exports(self, *args, **kwargs):
     return [export for export in self.files(*args, **kwargs) if isinstance(export, PyBind11ExportFileProxy)]
@@ -795,6 +742,8 @@ def pybind11_exports(self, *args, **kwargs):
 AbstractSemanticGraph.pybind11_exports = pybind11_exports
 del pybind11_exports
 
+pybind11_export = ProxyManager('autowig.pybind11_export', brief="",
+        details="")
 
 class PyBind11HeaderFileProxy(FileProxy):
 
@@ -818,7 +767,19 @@ extern "C" {
 
 }\
     % endif
-% endfor""")
+% endfor
+
+
+namespace autowig
+{
+    template<class T> struct HolderType {
+        typedef std::unique_ptr< T > Type;
+    };
+
+    template<class T> struct NoDeleteHolderType {
+        typedef std::unique_ptr< T, pybind11::nodelete > Type;
+    };
+}""")
 
     @property
     def module(self):
@@ -843,12 +804,14 @@ void ${export.prefix}(pybind11::module& module);
     % endif
 % endfor
 
-PYBIND11_MODULE(_${module.prefix}, module_${module._asg['::'].hash})
+PYBIND11_MODULE(${module.prefix}, module_${module._asg['::'].hash})
 {
 <% modules = set() %>\
 % for export in sorted(module.exports, key = lambda export: len(export.scopes)):
     % if not export.is_empty:
-    pybind11::module module_${export.scope.hash} = module.${export.scope.parent.hash}.def_submodule("${export.scope.localname}", "${export.scope.doc}")\
+        % if not export.scope.globalname == '::':
+    pybind11::module module_${export.scope.hash} = module_${export.scope.parent.hash}.def_submodule("${node_rename(export.scope, scope=True).split('.')[-1]}", "");\
+        % endif
 <% modules.add(export.scope.hash) %>
     % endif
 % endfor
@@ -911,7 +874,7 @@ PYBIND11_MODULE(_${module.prefix}, module_${module._asg['::'].hash})
     #@property
     def get_dependencies(self):
         modules = set([self.globalname])
-        temp = [declaration for export in self.exports for declaration in export.declarations]
+        temp = [export.declaration for export in self.exports]
         black = set()
         while len(temp) > 0:
             declaration = temp.pop()
@@ -960,7 +923,8 @@ PYBIND11_MODULE(_${module.prefix}, module_${module._asg['::'].hash})
             return max(dependency.depth for dependency in dependencies) + 1
 
     def get_content(self):
-        return self.CONTENT.render(module = self)
+        return self.CONTENT.render(module = self,
+                                   node_rename = node_rename)
 
     @property
     def decorator(self):
@@ -1073,15 +1037,15 @@ import ${dependency.package}.${dependency.prefix}
 % endif
 
 # Import Boost.Python module
-from . import _${module.prefix}
+from . import ${module.prefix}
 """)
 
     SCOPES = Template(text=r"""\
 % if len(scopes) > 0:
 # Resolve scopes
     % for scope in scopes:
-_${module.prefix}.${".".join(node_rename(ancestor) for ancestor in scope.ancestors[1:])}.${node_rename(scope)} = \
-_${module.prefix}.${".".join(node_rename(ancestor, scope=True) for ancestor in scope.ancestors[1:])}.${node_rename(scope)}
+${module.prefix}.${".".join(node_rename(ancestor) for ancestor in scope.ancestors[1:])}.${node_rename(scope)} = \
+${module.prefix}.${".".join(node_rename(ancestor, scope=True) for ancestor in scope.ancestors[1:])}.${node_rename(scope)}
     % endfor
 % endif
 """)
@@ -1124,8 +1088,6 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
 
     def get_content(self):
 
-        IGNORE = self.module.exports[0].IGNORE
-
         def ignore(decl):
             if not decl.globalname in IGNORE:
                 if isinstance(decl, NamespaceProxy):
@@ -1143,29 +1105,29 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
         content = [self.IMPORTS.render(decorator = self, module = self.module, dependencies = [module.decorator for module in sorted(dependencies, key = lambda dependency: dependency.depth)])]
         scopes = []
         for export in self.module.exports:
-            for declaration in export.declarations:
-                if isinstance(declaration.parent, ClassProxy) and not ignore(declaration):
-                    scopes.append(declaration)
+            declaration = export.declaration
+            if isinstance(declaration.parent, ClassProxy) and not ignore(declaration):
+                scopes.append(declaration)
         content.append(self.SCOPES.render(scopes = sorted(scopes, key = lambda scope: len(scope.ancestors)), decorator = self, module = self.module,
                 node_rename = node_rename))
         templates = dict()
         for export in self.module.exports:
-            for declaration in export.declarations:
-                if isinstance(declaration, ClassTemplateSpecializationProxy) and not ignore(declaration):
-                    spc = declaration.specialize.globalname
-                    if spc in templates:
-                        templates[spc].append(declaration)
-                    else:
-                        templates[spc] = [declaration]
+            declaration = export.declaration
+            if isinstance(declaration, ClassTemplateSpecializationProxy) and not ignore(declaration):
+                spc = declaration.specialize.globalname
+                if spc in templates:
+                    templates[spc].append(declaration)
+                else:
+                    templates[spc] = [declaration]
         content.append(self.TEMPLATES.render(decorator = self, module = self.module, templates = [(self._asg[tpl], spcs) for tpl, spcs in templates.items()],
                 node_rename = node_rename))
         typedefs = []
         for export in self.module.exports:
-            for declaration in export.declarations:
-                if isinstance(declaration, TypedefProxy) and declaration.qualified_type.desugared_type.unqualified_type.pybind11_export and declaration.qualified_type.desugared_type.unqualified_type.pybind11_export is not True and not ignore(declaration):
-                    typedefs.append(declaration)
-                elif isinstance(declaration, ClassProxy) and not ignore(declaration):
-                    typedefs.extend([tdf for tdf in declaration.typedefs() if tdf.pybind11_export and tdf.qualified_type.desugared_type.unqualified_type.pybind11_export and tdf.qualified_type.desugared_type.unqualified_type.pybind11_export is not True])
+            declaration = export.declaration
+            if isinstance(declaration, TypedefProxy) and declaration.qualified_type.desugared_type.unqualified_type.pybind11_export and declaration.qualified_type.desugared_type.unqualified_type.pybind11_export is not True and not ignore(declaration):
+                typedefs.append(declaration)
+            elif isinstance(declaration, ClassProxy) and not ignore(declaration):
+                typedefs.extend([tdf for tdf in declaration.typedefs() if tdf.pybind11_export and tdf.qualified_type.desugared_type.unqualified_type.pybind11_export and tdf.qualified_type.desugared_type.unqualified_type.pybind11_export is not True])
         content.append(self.TYPEDEFS.render(decorator = self, module = self.module, typedefs = typedefs, node_rename=node_rename))
         return "\n".join(content)
 
