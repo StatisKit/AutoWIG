@@ -46,10 +46,10 @@ requirements:
   host:
     - python
   run:
-    - {{ pin_compatible('libboost-dev', exact=True) }}
-    - {{ pin_compatible('libboost_python', exact=True) }}
-    - {{ pin_compatible('libpybind11-dev', exact=True) }}
-    - {{ pin_compatible('python-pybind11', exact=True) }}
+    - {{ pin_compatible('libboost-dev', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('libboost_python', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('libpybind11-dev', min_pin='x.x', max_pin='x.x') }}
+    - {{ pin_compatible('python-pybind11', min_pin='x.x', max_pin='x.x') }}
     - {{ pin_compatible('python-autowig', exact=True) }}
     - {{ pin_compatible('libtoolchain', exact=True) }}
     - {{ pin_compatible('python-toolchain', exact=True) }}
