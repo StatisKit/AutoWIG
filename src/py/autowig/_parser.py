@@ -128,6 +128,9 @@ def pre_processing(asg, headers, flags, **kwargs):
         raise ValueError('\'flags\' parameter must include the `-x` option with `c` or `c++`')
 
     if not bootstrapping:
+
+        sysroot = ''
+
         if system == 'win':
             devnull = 'nul'
             compiler = 'clang'
@@ -137,6 +140,8 @@ def pre_processing(asg, headers, flags, **kwargs):
                 compiler = os.environ.get('GXX', 'clang')
             else:
                 compiler = os.environ.get('GCC', 'clang')
+            if "CONDA_PREFIX" in os.environ:
+                sysroot = "--sysroot=" + os.environ["CONDA_PREFIX"]
         elif system == 'osx':
             devnull = '/dev/null'
             if asg._language == 'c++':
@@ -146,7 +151,7 @@ def pre_processing(asg, headers, flags, **kwargs):
         else:
             raise Exception("unknown system")
 
-        s = subprocess.Popen([compiler, '-x', asg._language, '-v', '-E', devnull],
+        s = subprocess.Popen([compiler, '-x', asg._language, '-v', '-E', sysroot, devnull],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if s.returncode:
             warnings.warn('System includes not computed: clang command failed', Warning)
