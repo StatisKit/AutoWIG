@@ -60,7 +60,7 @@ class TestBasic(unittest.TestCase):
         if six.PY3:
             cls.scons = cls.scons.decode("ascii", "ignore")
         subprocess.check_output([cls.scons, 'cpp', '--prefix=' + str(cls.prefix)],
-                                cwd=cls.srcdir)
+                                 cwd=cls.srcdir)
         cls.incdir = cls.prefix/'include'/'basic'
 
     def test_mapping_export(self):
@@ -85,9 +85,6 @@ class TestBasic(unittest.TestCase):
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
-        # for node in  ['enum ::max_align_t', '::max_align_t::__clang_max_align_nonce1', '::max_align_t::__clang_max_align_nonce2']:
-        #     if node in asg:
-        #         asg[node].boost_python_export = False
 
         wrappers = autowig.generator(asg, module = self.srcdir/'src'/'py'/'__basic.cpp',
                                           decorator = self.srcdir/'src'/'py'/'basic'/'_basic.py',
@@ -95,9 +92,13 @@ class TestBasic(unittest.TestCase):
         wrappers.write()
 
         subprocess.check_call([self.scons, 'py', '-c', '--prefix=' + self.prefix],
-                              cwd=self.srcdir)        
+                              cwd=self.srcdir)
         subprocess.check_call([self.scons, 'py', '--prefix=' + self.prefix, '--package=basic'],
                               cwd=self.srcdir)
+
+        if autowig.generator.plugin == 'pybind11_internal':
+            subprocess.check_call(['nosetests', 'test', '--pdb', '-v'],
+                                  cwd=self.srcdir)        
 
         for filepath in (self.srcdir/'src'/'py').walkfiles():
             if filepath.exists() and filepath.ext in ['.cpp', '.h']:
@@ -111,9 +112,9 @@ class TestBasic(unittest.TestCase):
         self.test_mapping_export()
         autowig.parser.plugin = plugin
 
-    # def test_boost_python_pattern_generator(self):
-    #     """Test `boost_python_pattern` generator"""
-    #     plugin = autowig.generator.plugin
-    #     autowig.generator.plugin = 'boost_python_pattern'
-    #     self.test_mapping_export()
-    #     autowig.generator.plugin = plugin
+    def test_pybin11_generator(self):
+        """Test `pyclanglite` parser"""
+        plugin = autowig.generator.plugin
+        autowig.generator.plugin = 'pybind11_internal'
+        self.test_mapping_export()
+        autowig.generator.plugin = plugin

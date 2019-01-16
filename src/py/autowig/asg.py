@@ -1171,6 +1171,21 @@ class ClassProxy(DeclarationProxy):
         self._asg._nodes[self._node]['_is_assignable'] = is_assignable
 
     @property
+    def is_deletable(self):
+        if hasattr(self, '_is_deletable'):
+            return self._is_deletable
+        else:
+            destructor = self.destructor
+            if destructor:
+                return destructor.access == "public"
+            else:
+                return True
+
+    @is_deletable.setter
+    def is_deletable(self, is_deletable):
+        self._asg._nodes[self._node]['_is_deletable'] = is_deletable
+
+    @property
     def is_derived(self):
         return len(self._asg._base_edges[self._node]) > 0
 
@@ -1330,7 +1345,7 @@ class ClassProxy(DeclarationProxy):
     @property
     def destructor(self):
         try:
-            return [dtr for dtr in self.declarations(inherited=False) if isinstance(dtr, DestructorProxy)].pop()
+            return [dtr for dtr in self.declarations(access='deleted', inherited=False) if isinstance(dtr, DestructorProxy)].pop()
         except:
             return None
 
