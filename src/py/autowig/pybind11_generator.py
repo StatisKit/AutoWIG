@@ -64,7 +64,26 @@ TO = {}
 FROM = {}
 
 IGNORE = {"class ::std::shared_ptr",
-          "class ::std::unique_ptr"}
+          "class ::std::unique_ptr",
+          "class ::pybind11::handle",
+          "class ::pybind11::object",
+          "class ::pybind11::bool_",
+          "class ::pybind11::int_",
+          "class ::pybind11::float_",
+          "class ::pybind11::str",
+          "class ::pybind11::bytes",
+          "class ::pybind11::tuple",
+          "class ::pybind11::list",
+          "class ::pybind11::dict",
+          "class ::pybind11::slice",
+          "class ::pybind11::none",
+          "class ::pybind11::capsule",
+          "class ::pybind11::iterable",
+          "class ::pybind11::iterator",
+          "class ::pybind11::function",
+          "class ::pybind11::buffer",
+          "class ::pybind11::array",
+          "class ::pybind11::array_t"}
 
 ENUMERATOR = Template(text="""\
     module.attr("${node_rename(enumerator)}") = (int)(${enumerator.globalname});\
@@ -699,13 +718,13 @@ namespace autowig
 
     @property
     def include_stl(self):
-        if not hasattr(self. "_include_stl"):
+        if not hasattr(self, "_include_stl"):
             return False
         else:
             return self._include_stl
     
     @include_stl.setter
-    def include_stl(self. include):
+    def include_stl(self, include):
         self._include_stl = include
     
     @include_stl.deleter
