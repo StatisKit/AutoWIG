@@ -770,7 +770,7 @@ PYBIND11_MODULE(${module.prefix}, module_${module._asg['::'].hash})
 <% modules = set() %>\
 % for export in sorted(module.exports, key = lambda export: len(export.scopes)):
     % if not export.is_empty:
-        % if not export.scope.globalname == '::':
+        % if not export.scope.globalname == '::' and not export.scope.hash in modules:
     pybind11::module module_${export.scope.hash} = module_${export.scope.parent.hash}.def_submodule("${node_rename(export.scope, scope=True).split('.')[-1]}", "");\
         % endif
 <% modules.add(export.scope.hash) %>
