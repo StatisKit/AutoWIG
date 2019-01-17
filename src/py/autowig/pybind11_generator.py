@@ -158,6 +158,24 @@ _PURE\
 }
 """)
 
+METHOD_DECORATOR = Template(text=r"""\
+namespace autowig {
+    % for method in cls.methods(access='public'):
+        % if method.pybind11_export and method.return_type.desugared_type.is_reference and not method.return_type.desugared_type.is_const and method.return_type.desugared_type.unqualified_type.is_assignable:
+    void method_decorator_${method.hash}\
+(${cls.globalname + " const" * bool(method.is_const) + " & instance, " + \
+   ", ".join(parameter.qualified_type.globalname + ' param_in_' + str(parameter.index) for parameter in method.parameters) + ", " * bool(method.nb_parameters > 0)}\
+            % if method.return_type.desugared_type.is_fundamental_type:
+${method.return_type.desugared_type.unqualified_type.globalname}\
+            % else:
+const ${method.return_type.globalname}\
+            % endif
+ param_out) { instance.${method.localname}\
+(${", ".join('param_in_' + str(parameter.index) for parameter in method.parameters)}) = param_out; }
+        % endif
+    % endfor
+}""")
+
 METHOD_POINTERS = Template(text=r"""\
 % for method in cls.methods(access='public'):
     % if method.pybind11_export:
@@ -254,11 +272,7 @@ ${function.pybind11_call_policy}, \
             % if field.is_static:
 _static\
             % endif
-("${node_rename(field)}", \
-            % if not field.is_static:
-&\
-            % endif
-${field.globalname}, "${documenter(field)}");
+("${node_rename(field)}", &${field.globalname}, "${documenter(field)}");
         % endif
     % endfor
 """)
@@ -499,6 +513,8 @@ MethodProxy._default_pybind11_export = property(_default_pybind11_export)
 del _default_pybind11_export
 
 def _valid_pybind11_export(self):
+    if self.return_type.desugared_type.is_reference and self.return_type.desugared_type.is_pointer:
+        return False
     if self.pybind11_call_policy in ['pybind11::return_value_policy::reference_internal',
                                      'pybind11::return_value_policy::reference']:
         if not isinstance(self.return_type.desugared_type.unqualified_type, ClassProxy):
@@ -591,6 +607,9 @@ class PyBind11ExportFileProxy(FileProxy):
                         node_rename = node_rename,
                         documenter = documenter)
             content += '\n' + METHOD_POINTERS.render(cls = declaration,
+                    node_rename = node_rename,
+                    documenter = documenter)
+            content += '\n' + METHOD_DECORATOR.render(cls = declaration,
                     node_rename = node_rename,
                     documenter = documenter)
         elif isinstance(declaration, FunctionProxy):
