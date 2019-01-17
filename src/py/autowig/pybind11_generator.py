@@ -59,111 +59,12 @@ from ._node_rename import PYTHON_OPERATOR
 
 __all__ = ['pybind11_call_policy', 'pybind11_export', 'pybind11_module', 'pybind11_decorator', 'TO', 'FROM']
 
-TO = {"class ::std::unique_ptr" : Template(r"""\
-    struct unique_ptr_${cls.hash}_to_python
-    {
-        static PyObject* convert(${cls.globalname} const & unique_ptr_${cls.hash})
-        {
-            //return boost::python::incref(boost::python::object(const_cast< ${cls.globalname} & >(unique_ptr_${cls.hash}).release()).ptr());
-            std::shared_ptr< ${cls.templates[0].globalname} > shared_ptr_${cls.hash}(std::move(const_cast< ${cls.globalname} & >(unique_ptr_${cls.hash})));
-            return boost::python::incref(boost::python::object(shared_ptr_${cls.hash}).ptr());
-        }
-    };
+TO = {}
 
-    boost::python::to_python_converter< ${cls.globalname}, unique_ptr_${cls.hash}_to_python >();""") }
+FROM = {}
 
-FROM = {
-    "class ::std::vector" : Template(r"""\
-    struct vector_${cls.hash}_from_python
-    {
-        vector_${cls.hash}_from_python()
-        {
-            boost::python::converter::registry::push_back(
-                &convertible,
-                &construct,
-                boost::python::type_id< ${cls.globalname} >());
-        }
-
-        static void* convertible(PyObject* obj_ptr)
-        {
-            void* res;
-            if(PyObject_HasAttrString(obj_ptr, "__iter__"))
-            { res = obj_ptr; } 
-            else
-            { res = nullptr; }
-            return res;
-        }
-
-        static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data)
-        {
-            boost::python::handle<> obj_iter(PyObject_GetIter(obj_ptr));
-            void* storage = ((boost::python::converter::rvalue_from_python_storage< ${cls.globalname} >*)data)->storage.bytes;
-            new (storage) ${cls.globalname}();
-            data->convertible = storage;
-            ${cls.globalname}& result = *((${cls.globalname}*)storage);
-            unsigned int i = 0;
-            for(;; i++)
-            {
-                boost::python::handle<> py_elem_hdl(boost::python::allow_null(PyIter_Next(obj_iter.get())));
-                if(PyErr_Occurred())
-                { boost::python::throw_error_already_set(); }
-                if(!py_elem_hdl.get())
-                { break; }
-                boost::python::object py_elem_obj(py_elem_hdl);
-                result.push_back(boost::python::extract< ${cls.templates[0].globalname} >(py_elem_obj));
-            }
-        }
-    };
-
-    vector_${cls.hash}_from_python();"""),
-
-    "class ::std::set" : Template(r"""\
-    struct set_${cls.hash}_from_python
-    {
-        set_${cls.hash}_from_python()
-        {
-            boost::python::converter::registry::push_back(
-            &convertible,
-            &construct,
-            boost::python::type_id< ${cls.globalname} >());
-        }
-
-        static void* convertible(PyObject* obj_ptr)
-        {
-            void* res;
-            if(PyObject_HasAttrString(obj_ptr, "__iter__"))
-            { res = obj_ptr; } 
-            else
-            { res = nullptr; }
-            return res;
-        }
-
-        static void construct(PyObject* obj_ptr, boost::python::converter::rvalue_from_python_stage1_data* data)
-        {
-            boost::python::handle<> obj_iter(PyObject_GetIter(obj_ptr));
-            void* storage = ((boost::python::converter::rvalue_from_python_storage< ${cls.globalname} >*)data)->storage.bytes;
-            new (storage) ${cls.globalname}();
-            data->convertible = storage;
-            ${cls.globalname}& result = *((${cls.globalname}*)storage);
-            unsigned int i = 0;
-            for(;; i++)
-            {
-                boost::python::handle<> py_elem_hdl(boost::python::allow_null(PyIter_Next(obj_iter.get())));
-                if(PyErr_Occurred())
-                { boost::python::throw_error_already_set(); }
-                if(!py_elem_hdl.get())
-                { break; }
-                boost::python::object py_elem_obj(py_elem_hdl);
-                result.insert((${cls.templates[0].globalname})(boost::python::extract< ${cls.templates[0].globalname} >(py_elem_obj)));
-            }
-        }
-
-    };
-
-    set_${cls.hash}_from_python();""")}
-
-IGNORE =   {"class ::std::shared_ptr",
-            "class ::std::unique_ptr"}
+IGNORE = {"class ::std::shared_ptr",
+          "class ::std::unique_ptr"}
 
 ENUMERATOR = Template(text="""\
     module.attr("${node_rename(enumerator)}") = (int)(${enumerator.globalname});\
@@ -330,6 +231,9 @@ ${function.pybind11_call_policy}, \
     class_${cls.hash}.def_readonly\
             % else:
     class_${cls.hash}.def_readwrite\
+            % endif
+            % if field.is_static:
+_static\
             % endif
 ("${node_rename(field)}", \
             % if not field.is_static:
@@ -755,6 +659,9 @@ class PyBind11HeaderFileProxy(FileProxy):
 #pragma once
 
 #include <pybind11/pybind11.h>
+% if include_stl:
+#include <pybind11/stl.h>
+% endif
 
 #include <memory>\
 % for header in headers:
@@ -787,7 +694,23 @@ namespace autowig
 
     @property
     def content(self):
-        return self.CONTENT.render(headers = [header for header in self._asg.files(header=True) if not header.is_external_dependency and header.is_self_contained])
+        return self.CONTENT.render(headers = [header for header in self._asg.files(header=True) if not header.is_external_dependency and header.is_self_contained],
+                                   include_stl = self.include_stl)
+
+    @property
+    def include_stl(self):
+        if not hasattr(self. "_include_stl"):
+            return False
+        else:
+            return self._include_stl
+    
+    @include_stl.setter
+    def include_stl(self. include):
+        self._include_stl = include
+    
+    @include_stl.deleter
+    def include_stl(self):
+        del self._include_stl
 
 class PyBind11ModuleFileProxy(FileProxy):
 
