@@ -1103,7 +1103,7 @@ def pybind11_generator(asg, nodes, module='./module.cpp', decorator=None, **kwar
 
     exports = set()
     for node in nodes:
-        if node.pybind11_export is True:
+        if node.pybind11_export is True and not node.globalname in IGNORE:
             if isinstance(node, EnumeratorProxy) and isinstance(node.parent, (EnumerationProxy, ClassProxy)) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)) or isinstance(node, FunctionProxy) and isinstance(node.parent, ClassProxy):
                 continue
             elif not isinstance(node, NamespaceProxy) and not any(isinstance(ancestor, ClassTemplateProxy) for ancestor in reversed(node.ancestors)):
