@@ -133,10 +133,10 @@ namespace autowig
         public:
             using ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)}::${cls.localname};
 
-        % for access in ['public', 'protected', 'private']:
+        % for access in ['public']:
         ${access}:
             <% prototypes = set() %>
-            % for mtd in cls.methods(access=access, inherited=True):
+            % for mtd in cls.methods(access=access):
                 % if mtd.access == access:
                     %if mtd.prototype(desugared=True) not in prototypes and mtd.is_virtual:
             virtual ${mtd.return_type.globalname} ${mtd.localname}(${', '.join(parameter.qualified_type.globalname + ' param_' + str(parameter.index) for parameter in mtd.parameters)}) \
@@ -476,6 +476,10 @@ TypedefProxy._default_pybind11_export = property(_default_pybind11_export)
 del _default_pybind11_export
 
 def _default_pybind11_export(self):
+    # self.return_type.desugared_type.is_reference and self.return_type.desugared_type.is_pointer
+    # if (self.return_type.desugared_type.is_reference and self.return_type.desugared_type.is_pointer) or any(parameter.qualified_type.desugared_type.is_reference and parameter.qualified_type.desugared_type.is_pointer for parameter in self.parameters):
+    #     return False
+    # else:
     return bool(self.parent.pybind11_export)
 
 FunctionProxy._default_pybind11_export = property(_default_pybind11_export)
@@ -514,6 +518,8 @@ del _default_pybind11_export
 
 def _valid_pybind11_export(self):
     if self.return_type.desugared_type.is_reference and self.return_type.desugared_type.is_pointer:
+        return False
+    if any(parameter.qualified_type.desugared_type.is_reference and parameter.qualified_type.desugared_type.is_pointer for parameter in self.parameters):
         return False
     if self.pybind11_call_policy in ['pybind11::return_value_policy::reference_internal',
                                      'pybind11::return_value_policy::reference']:
@@ -771,9 +777,10 @@ PYBIND11_MODULE(${module.prefix}, module_${module._asg['::'].hash})
 % for export in sorted(module.exports, key = lambda export: len(export.scopes)):
     % if not export.is_empty:
         % if not export.scope.globalname == '::' and not export.scope.hash in modules:
+
     pybind11::module module_${export.scope.hash} = module_${export.scope.parent.hash}.def_submodule("${node_rename(export.scope, scope=True).split('.')[-1]}", "");\
         % endif
-<% modules.add(export.scope.hash) %>
+<% modules.add(export.scope.hash) %>\
     % endif
 % endfor
 % for export in module.exports:
