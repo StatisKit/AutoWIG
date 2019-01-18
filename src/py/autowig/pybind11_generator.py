@@ -476,10 +476,6 @@ TypedefProxy._default_pybind11_export = property(_default_pybind11_export)
 del _default_pybind11_export
 
 def _default_pybind11_export(self):
-    # self.return_type.desugared_type.is_reference and self.return_type.desugared_type.is_pointer
-    # if (self.return_type.desugared_type.is_reference and self.return_type.desugared_type.is_pointer) or any(parameter.qualified_type.desugared_type.is_reference and parameter.qualified_type.desugared_type.is_pointer for parameter in self.parameters):
-    #     return False
-    # else:
     return bool(self.parent.pybind11_export)
 
 FunctionProxy._default_pybind11_export = property(_default_pybind11_export)
