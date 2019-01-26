@@ -37,7 +37,7 @@ import autowig
 
 @attr(linux=True,
       osx=True,
-      win=True,
+      win=False,
       level=2)
 class TestSubset(unittest.TestCase):
     """Test the wrapping of a library subset"""

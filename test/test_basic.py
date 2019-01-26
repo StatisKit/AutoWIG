@@ -35,7 +35,7 @@ import shutil
 import platform
 import six
 
-@attr(win=True,
+@attr(win=False,
       linux=True,
       osx=True,
       level=1)
