@@ -51,9 +51,7 @@ matrix:
   exclude:
     - os: windows
       env: CONDA_RECIPE=etc/conda/python-autowig
-    - os: windows
-      env: CONDA_RECIPE=etc/conda/autowig-toolchain
-
+      
 before_install:
   - git clone https://github.com/StatisKit/travis-ci.git --depth=1
   - cd travis-ci

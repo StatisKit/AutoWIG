@@ -29,7 +29,6 @@ platform:
 environment:
   matrix:
     - CONDA_RECIPE: etc\conda\python-autowig
-    - CONDA_RECIPE: etc\conda\autowig-toolchain
 
 install:
   - git clone https://github.com/StatisKit/appveyor-ci.git
