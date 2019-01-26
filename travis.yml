@@ -24,7 +24,6 @@
 branches:
   except:
     - doc
-    - add_pybind11_generator
   
 language: cpp
 
@@ -45,10 +44,15 @@ dist: trusty
 osx_image: xcode8.3
 
 env:
-
-env:
   - CONDA_RECIPE=etc/conda/python-autowig
   - CONDA_RECIPE=etc/conda/autowig-toolchain
+
+matrix:
+  exclude:
+    - os: windows
+      env: CONDA_RECIPE=etc/conda/python-autowig
+    - os: windows
+      env: CONDA_RECIPE=etc/conda/autowig-toolchain
 
 before_install:
   - git clone https://github.com/StatisKit/travis-ci.git --depth=1

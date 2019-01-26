@@ -21,20 +21,20 @@
 ## mplied. See the License for the specific language governing           ##
 ## permissions and limitations under the License.                        ##
 
+image: Visual Studio 2015
+
 platform:
-  - x86
   - x64
 
 environment:
   matrix:
-    - CONDA_RECIPE: bin\conda\python-autowig
-      CONDA_VERSION: 2
-    - CONDA_RECIPE: bin\conda\python-autowig
-      CONDA_VERSION: 3
-            
+    - CONDA_RECIPE: etc\conda\python-autowig
+    - CONDA_RECIPE: etc\conda\autowig-toolchain
+
 install:
-  - git clone https://github.com/StatisKit/appveyor-ci.git appveyor-ci
+  - git clone https://github.com/StatisKit/appveyor-ci.git
   - cd appveyor-ci
+  - call before_install.bat
   - call install.bat
     
 before_build:
