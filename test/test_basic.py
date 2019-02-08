@@ -66,6 +66,9 @@ class TestBasic(unittest.TestCase):
     def test_mapping_export(self):
         """Test `mapping` export"""
 
+        if autowig.generator.plugin == 'pybind11_internal':
+            os.environ['PYBIND11'] = "true"
+
         subprocess.check_call([self.scons, 'cpp', '-c', '--prefix=' + self.prefix],
                               cwd=self.srcdir)
 
@@ -85,6 +88,7 @@ class TestBasic(unittest.TestCase):
 
         autowig.controller.plugin = 'default'
         autowig.controller(asg)
+
 
         wrappers = autowig.generator(asg, module = self.srcdir/'src'/'py'/'__basic.cpp',
                                           decorator = self.srcdir/'src'/'py'/'basic'/'_basic.py',
@@ -112,6 +116,7 @@ class TestBasic(unittest.TestCase):
         self.test_mapping_export()
         autowig.parser.plugin = plugin
 
+    @attr(level=2)
     def test_pybin11_generator(self):
         """Test `pyclanglite` parser"""
         plugin = autowig.generator.plugin

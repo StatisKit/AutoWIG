@@ -650,7 +650,7 @@ class PyBind11ExportFileProxy(FileProxy):
                 content += '\n' + TO[declaration.specialize.globalname].render(cls = declaration)
             elif declaration.globalname in TO:
                 content += '\n' + TO[declaration.globalname].render(cls = declaration)
-            if declaration.specialize.globalname in self.FROM:
+            if declaration.specialize.globalname in FROM:
                 content += '\n' + FROM[declaration.specialize.globalname].render(cls = declaration)
             elif declaration.globalname in FROM:
                 content += '\n' + FROM[declaration.globalname].render(cls = declaration)
@@ -767,18 +767,21 @@ void ${export.prefix}(pybind11::module& module);
     % endif
 % endfor
 
-PYBIND11_MODULE(${module.prefix}, module_${module._asg['::'].hash})
+PYBIND11_MODULE(_${module.prefix}, module_${module._asg['::'].hash})
 {
 <% modules = set() %>\
 % for export in sorted(module.exports, key = lambda export: len(export.scopes)):
     % if not export.is_empty:
-        % if not export.scope.globalname == '::' and not export.scope.hash in modules:
+        % for scope in export.scope.ancestors + [export.scope]:
+            % if not scope.globalname == '::' and not scope.hash in modules:
 
-    pybind11::module module_${export.scope.hash} = module_${export.scope.parent.hash}.def_submodule("${node_rename(export.scope, scope=True).split('.')[-1]}", "");\
-        % endif
-<% modules.add(export.scope.hash) %>\
+    pybind11::module module_${scope.hash} = module_${scope.parent.hash}.def_submodule("${node_rename(scope, scope=True).split('.')[-1]}", "");\
+            %  endif
+<% modules.add(scope.hash) %>\
+        % endfor
     % endif
 % endfor
+
 % for export in module.exports:
     % if not export.is_empty:
     ${export.prefix}(module_${export.scope.hash});
@@ -917,9 +920,13 @@ PYBIND11_MODULE(${module.prefix}, module_${module._asg['::'].hash})
         if header:
             self.header.write()
         if exports:
-            for export in self.exports:
-                if not export.is_empty:
-                    export.write()
+            try:
+                for export in self.exports:
+                    if not export.is_empty:
+                        export.write()
+            except:
+                import pdb
+                pdb.set_trace()
         if decorator:
             decorator = self.decorator
         if decorator:
@@ -1001,7 +1008,7 @@ import ${dependency.package}.${dependency.prefix}
 % endif
 
 # Import Boost.Python module
-from . import ${module.prefix}
+from . import _${module.prefix}
 """)
 
     SCOPES = Template(text=r"""\
@@ -1087,11 +1094,14 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
                 node_rename = node_rename))
         typedefs = []
         for export in self.module.exports:
+            for scope in export.scope.ancestors + [export.scope]:
+                if isinstance(scope, NamespaceProxy) and not ignore(scope):
+                    typedefs.extend([tdf for tdf in scope.typedefs() if tdf.pybind11_export and tdf.qualified_type.desugared_type.unqualified_type.pybind11_export and tdf.qualified_type.desugared_type.unqualified_type.pybind11_export is not True])
             declaration = export.declaration
-            if isinstance(declaration, TypedefProxy) and declaration.qualified_type.desugared_type.unqualified_type.pybind11_export and declaration.qualified_type.desugared_type.unqualified_type.pybind11_export is not True and not ignore(declaration):
-                typedefs.append(declaration)
-            elif isinstance(declaration, ClassProxy) and not ignore(declaration):
+            if isinstance(declaration, ClassProxy) and not ignore(declaration):
                 typedefs.extend([tdf for tdf in declaration.typedefs() if tdf.pybind11_export and tdf.qualified_type.desugared_type.unqualified_type.pybind11_export and tdf.qualified_type.desugared_type.unqualified_type.pybind11_export is not True])
+        typedefs = {tdf._node for tdf in typedefs}
+        typedefs = [self._asg[tdf] for tdf in typedefs]
         content.append(self.TYPEDEFS.render(decorator = self, module = self.module, typedefs = typedefs, node_rename=node_rename))
         return "\n".join(content)
 
@@ -1126,7 +1136,7 @@ def pybind11_generator(asg, nodes, module='./module.cpp', decorator=None, **kwar
     exports = set()
     for node in nodes:
         if node.pybind11_export is True and not node.globalname in IGNORE:
-            if isinstance(node, EnumeratorProxy) and isinstance(node.parent, (EnumerationProxy, ClassProxy)) or isinstance(node, TypedefProxy) and isinstance(node.parent, ClassProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)) or isinstance(node, FunctionProxy) and isinstance(node.parent, ClassProxy):
+            if (isinstance(node, EnumeratorProxy) and isinstance(node.parent, (EnumerationProxy, ClassProxy))) or isinstance(node, TypedefProxy) or isinstance(node, (FieldProxy, MethodProxy, ConstructorProxy, DestructorProxy, ClassTemplateProxy, ClassTemplatePartialSpecializationProxy)) or (isinstance(node, FunctionProxy) and isinstance(node.parent, ClassProxy)):
                 continue
             elif not isinstance(node, NamespaceProxy) and not any(isinstance(ancestor, ClassTemplateProxy) for ancestor in reversed(node.ancestors)):
                 export = directory.globalname + node_path(node, prefix=prefix, suffix=suffix).strip('./')
