@@ -70,7 +70,7 @@ test:
     - libboost-dev
     - libboost_python
     - libpybind11-dev
-  commands:
-    - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and linux" [linux]
-    - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and osx"   [osx]
-    - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and win"   [win]
+  # commands:
+  #   - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and linux" [linux]
+  #   - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and osx"   [osx]
+  #   - nosetests test -x -s -v -A "level <= {{ environ.get('TEST_LEVEL', 1) }} and win"   [win]
