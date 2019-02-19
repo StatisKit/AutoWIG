@@ -38,8 +38,6 @@ about:
 
 requirements:
   build:
-    - {{ compiler('c') }}
-    - {{ compiler('cxx') }}
     - python-toolchain
   host:
     - python
