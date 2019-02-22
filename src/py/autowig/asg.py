@@ -1482,6 +1482,16 @@ class ClassTemplatePartialSpecializationProxy(DeclarationProxy, TemplateSpeciali
 
     _pakwargs = ['class ', 'struct ', 'union ', '']
 
+    @property
+    def header(self):
+        if not hasattr(self, '_header'):
+            try:
+                return self.specialize.header
+            except:
+                pass
+        else:
+            return self._asg[self._header]
+            
 class NamespaceProxy(DeclarationProxy):
     """
 
