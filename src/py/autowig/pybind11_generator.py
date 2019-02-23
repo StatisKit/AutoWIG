@@ -131,8 +131,9 @@ namespace autowig
     class Wrap_${cls.hash} : public ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)}
     {
         public:
-            using ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)}::${cls.localname};
-
+% if any(cls.constructors(access='public')):
+            using ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)}::${cls.constructors(access='public')[0].localname};
+% endif
         % for access in ['public']:
         ${access}:
             <% prototypes = set() %>
@@ -147,7 +148,7 @@ const \
                         % if mtd.is_pure:
 _PURE\
                         % endif
-(${mtd.return_type}, ${cls.globalname.replace('class ', '').replace('struct ', '')}, ${mtd.localname}, ${', '.join('param_' + str(parameter.index) for parameter in mtd.parameters)}); };
+(PYBIND11_TYPE(${mtd.return_type}), PYBIND11_TYPE(${cls.globalname.replace('class ', '').replace('struct ', '')}), ${mtd.localname}, ${', '.join('param_' + str(parameter.index) for parameter in mtd.parameters)}); };
                     % endif
 <% prototypes.add(mtd.prototype(desugared=True)) %>\
                 % endif
