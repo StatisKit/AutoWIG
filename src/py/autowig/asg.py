@@ -828,6 +828,11 @@ class QualifiedTypeProxy(EdgeProxy):
         return isinstance(self.unqualified_type, FundamentalTypeProxy)
 
     @property
+    def is_std_unique_ptr(self):
+        unqualified_type = self.unqualified_type
+        return isinstance(unqualified_type, ClassTemplateSpecializationProxy) and unqualified_type.specialize.globalname == 'class ::std::unique_ptr'
+        
+    @property
     def is_enumeration(self):
         """Is the unqualified type an enumeration type"""
         return isinstance(self.unqualified_type, EnumerationProxy)
@@ -1304,7 +1309,17 @@ class ClassProxy(DeclarationProxy):
         return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, FunctionProxy) and not isinstance(dcl, MethodProxy)]
 
     def methods(self, **kwargs):
-        return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, MethodProxy)]
+        if kwargs.pop('strict', False):
+            mtds = []
+            prototypes = set()
+            for mtd in sorted([mtd for mtd in self.methods(**kwargs)], key=lambda mtd: -mtd.parent.depth):
+                prototype = mtd.prototype(desugared=True)
+                if prototype not in prototypes:
+                    mtds.append(mtd)
+                    prototypes.add(prototype)
+            return mtds
+        else:
+            return [dcl for dcl in self.declarations(**kwargs) if isinstance(dcl, MethodProxy)]
 
     def classes(self, templated=None, specialized=None, **kwargs):
         if templated is None:

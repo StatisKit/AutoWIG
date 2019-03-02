@@ -128,34 +128,48 @@ ERROR = Template(text=r"""\
 ABSTRACT_CLASS = Template(text=r"""\
 namespace autowig
 {
-    class Wrap_${cls.hash} : public ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)}
+    typedef ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)} class_type;
+
+    class Trampoline : public class_type
     {
         public:
 % if any(cls.constructors(access='public')):
             using ${cls.globalname.replace('struct ', '', 1).replace('class ', '', 1)}::${cls.constructors(access='public')[0].localname};
 % endif
-        % for access in ['public']:
-        ${access}:
-            <% prototypes = set() %>
-            % for mtd in cls.methods(access=access):
-                % if mtd.access == access:
-                    %if mtd.prototype(desugared=True) not in prototypes and mtd.is_virtual:
-            virtual ${mtd.return_type.globalname} ${mtd.localname}(${', '.join(parameter.qualified_type.globalname + ' param_' + str(parameter.index) for parameter in mtd.parameters)}) \
-                        % if mtd.is_const:
-const \
-                        % endif
-{ PYBIND11_OVERLOAD\
-                        % if mtd.is_pure:
-_PURE\
-                        % endif
-(PYBIND11_TYPE(${mtd.return_type}), PYBIND11_TYPE(${cls.globalname.replace('class ', '').replace('struct ', '')}), ${mtd.localname}, ${', '.join('param_' + str(parameter.index) for parameter in mtd.parameters)}); };
-                    % endif
-<% prototypes.add(mtd.prototype(desugared=True)) %>\
-                % endif
-            % endfor
 
+        % for mtd in cls.methods(access="private", inherited=True, strict=True):
+            %if mtd.is_virtual:
+            typedef ${mtd.return_type.globalname} return_type_${mtd.hash};
+                % for parameter in mtd.parameters:
+            typedef ${parameter.qualified_type.globalname} param_${mtd.hash}_${parameter.index}_type;
+                % endfor
+            virtual return_type_${mtd.hash} ${mtd.localname}(${', '.join('param_' + mtd.hash + '_' + str(parameter.index) + '_type param_' + str(parameter.index) for parameter in mtd.parameters)}) \
+                % if mtd.is_const:
+const \
+                % endif
+override { PYBIND11_OVERLOAD\
+                % if mtd.is_pure:
+_PURE\
+                % endif
+                % if mtd.return_type.is_std_unique_ptr:
+_UNIQUE_PTR\
+                % endif
+(return_type_${mtd.hash}, class_type, ${mtd.localname}, ${', '.join('param_' + str(parameter.index) for parameter in mtd.parameters)}); };
+            % endif
         % endfor
     };
+% if any([mtd for mtd in cls.methods(inherited=True, strict=True, access="private") if not mtd.access == "public" and mtd.is_virtual]):
+
+    class Publicist : public class_type
+    {
+        public:
+    % for mtd in cls.methods(inherited=True, strict=True, access="private"):
+        % if not mtd.access == "public" and mtd.is_virtual:
+            using class_type::${mtd.localname};
+        % endif
+    % endfor
+    };
+% endif
 }
 """)
 
@@ -221,7 +235,7 @@ ${function.globalname}\
     % endif
     pybind11::class_<${cls.globalname}, \
     % if cls.is_abstract:
-autowig::Wrap_${cls.hash}, \
+autowig::Trampoline, \
     % endif
 autowig::\
     % if not cls.is_deletable:
@@ -232,12 +246,11 @@ HolderType< ${cls.globalname} >::Type\
 , ${", ".join(base.globalname for base in cls.bases(access='public') if base.pybind11_export)}\
     % endif
  > class_${cls.hash}(module, "${node_rename(cls)}", "${documenter(cls)}");
-    % for constructor in cls.constructors(access = 'public'):
-        % if constructor.pybind11_export:
-    class_${cls.hash}.def(\
-pybind11::init< ${", ".join(parameter.qualified_type.globalname for parameter in constructor.parameters)} >());
-        % endif
-    % endfor
+        % for constructor in cls.constructors(access = 'public'):
+            % if constructor.pybind11_export and not (cls.is_abstract and constructor.is_copy_constructor):
+    class_${cls.hash}.def(pybind11::init< ${", ".join(parameter.qualified_type.globalname for parameter in constructor.parameters)} >());
+            % endif
+        % endfor
     % for method in cls.methods(access = 'public'):
         % if method.pybind11_export:
     class_${cls.hash}.def\
@@ -254,6 +267,21 @@ ${method.pybind11_call_policy}, \
                 % endif
         % endif
     % endfor
+    % if cls.is_abstract:
+        % for mtd in cls.methods(access='private', inherited=True, strict=True):
+            % if mtd.is_virtual and not mtd.access == 'public' and mtd.pybind11_export:
+    class_${cls.hash}.def("_\
+                % if mtd.access == 'private':
+_\
+                % endif
+${node_rename(mtd)}", &autowig::Publicist::${mtd.localname}, \
+                % if mtd.pybind11_call_policy:
+${mtd.pybind11_call_policy}, \
+                % endif
+"${documenter(mtd)}");
+            % endif
+        % endfor
+    % endif
     % for function in cls.functions():
         % if function.pybind11_export:
     class_${cls.hash}.def("${node_rename(function)}", function_group::function_${function.hash}, \
@@ -514,15 +542,15 @@ MethodProxy._default_pybind11_export = property(_default_pybind11_export)
 del _default_pybind11_export
 
 def _valid_pybind11_export(self):
-    if self.return_type.desugared_type.is_reference and self.return_type.desugared_type.is_pointer:
+    if self.return_type.desugared_type.is_reference and self.return_type.desugared_type.is_pointer and not self.return_type.desugared_type.is_const:
         return False
-    if any(parameter.qualified_type.desugared_type.is_reference and parameter.qualified_type.desugared_type.is_pointer for parameter in self.parameters):
+    if any(parameter.qualified_type.desugared_type.is_reference and parameter.qualified_type.desugared_type.is_pointer and not parameter.qualified_type.is_const for parameter in self.parameters):
         return False
     if self.pybind11_call_policy in ['pybind11::return_value_policy::reference_internal',
                                      'pybind11::return_value_policy::reference']:
         if not isinstance(self.return_type.desugared_type.unqualified_type, ClassProxy):
             return False
-    if self.access == 'public' and self.return_type.pybind11_export and all(bool(parameter.pybind11_export) for parameter in self.parameters):
+    if (self.access == 'public'or self.parent.is_abstract) and self.return_type.pybind11_export and all(bool(parameter.pybind11_export) for parameter in self.parameters):
         return not self.localname.startswith('operator') or self.localname.strip('operator').strip() in PYTHON_OPERATOR
     else:
         return False
@@ -717,6 +745,33 @@ extern "C" {
     % endif
 % endfor
 
+
+#define PYBIND11_OVERLOAD_UNIQUE_PTR_INT(ret_type, cname, name, ...) { ${"\\"}
+        pybind11::gil_scoped_acquire gil; ${"\\"}
+        pybind11::function overload = pybind11::get_overload(static_cast<const cname *>(this), name); ${"\\"}
+        if (overload) { ${"\\"}
+            auto o = overload(__VA_ARGS__); ${"\\"}
+            if (pybind11::detail::cast_is_temporary_value_reference<ret_type::pointer>::value) { ${"\\"}
+                static pybind11::detail::overload_caster_t<ret_type::pointer> caster; ${"\\"}
+                return std::unique_ptr< ret_type::element_type >(pybind11::detail::cast_ref<ret_type::pointer>(std::move(o), caster)); ${"\\"}
+            } ${"\\"}
+            else return std::unique_ptr< ret_type::element_type >(pybind11::detail::cast_safe<ret_type::pointer>(std::move(o))); ${"\\"}
+        } ${"\\"}
+    }
+
+#define PYBIND11_OVERLOAD_UNIQUE_PTR_NAME(ret_type, cname, name, fn, ...) ${"\\"}
+    PYBIND11_OVERLOAD_UNIQUE_PTR_INT(ret_type, cname, name, __VA_ARGS__) ${"\\"}
+    return cname::fn(__VA_ARGS__)
+
+#define PYBIND11_OVERLOAD_PURE_UNIQUE_PTR_NAME(ret_type, cname, name, fn, ...) ${"\\"}
+    PYBIND11_OVERLOAD_UNIQUE_PTR_INT(ret_type, cname, name, __VA_ARGS__) ${"\\"}
+    pybind11::pybind11_fail("Tried to call pure virtual function \"" #cname "::" name "\"");
+
+#define PYBIND11_OVERLOAD_UNIQUE_PTR(ret_type, cname, fn, ...) ${"\\"}
+    PYBIND11_OVERLOAD_UNIQUE_PTR_NAME(ret_type, cname, #fn, fn, __VA_ARGS__)
+
+#define PYBIND11_OVERLOAD_PURE_UNIQUE_PTR(ret_type, cname, fn, ...) ${"\\"}
+    PYBIND11_OVERLOAD_PURE_UNIQUE_PTR_NAME(ret_type, cname, #fn, fn, __VA_ARGS__)
 
 namespace autowig
 {
@@ -1016,8 +1071,8 @@ from . import _${module.prefix}
 % if len(scopes) > 0:
 # Resolve scopes
     % for scope in scopes:
-${module.prefix}.${".".join(node_rename(ancestor) for ancestor in scope.ancestors[1:])}.${node_rename(scope)} = \
-${module.prefix}.${".".join(node_rename(ancestor, scope=True) for ancestor in scope.ancestors[1:])}.${node_rename(scope)}
+_${module.prefix}.${".".join(node_rename(ancestor) for ancestor in scope.ancestors[1:])}.${node_rename(scope)} = \
+_${module.prefix}.${".".join(node_rename(ancestor, scope=True) for ancestor in scope.ancestors[1:])}.${node_rename(scope)}
     % endfor
 % endif
 """)
