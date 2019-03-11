@@ -274,7 +274,7 @@ ${method.pybind11_call_policy}, \
                 % if mtd.access == 'private':
 _\
                 % endif
-${node_rename(mtd)}", &autowig::Publicist::${mtd.localname}, \
+${node_rename(mtd)}", static_cast< ${mtd.type(desugared=False)} >(&autowig::Publicist::${mtd.localname}), \
                 % if mtd.pybind11_call_policy:
 ${mtd.pybind11_call_policy}, \
                 % endif

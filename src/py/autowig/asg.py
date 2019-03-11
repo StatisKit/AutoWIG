@@ -1093,7 +1093,26 @@ class MethodProxy(FunctionProxy):
         else:
             return 'static ' * self.is_static + str(self.return_type) + ' ' + self.localname + '(' + \
                     ', '.join(str(parameter.qualified_type) for parameter in self.parameters) + ')' + ' const' * self.is_const + ' volatile' * self.is_volatile
-                    
+    
+
+    def type(self, desugared):
+        if desugared:
+            string = self.return_type.desugared_type.globalname
+            if not self.is_static:
+                string += " " + self.parent.globalname.replace('class ', '').replace('struct ', '').replace('union ', '') + "::"
+            string += "*(" + ", ".join(parameter.qualified_type.desugared_type.globalname for parameter in self.parameters) + ")"
+            if self.is_const:
+                string += " const"
+            return string
+        else:
+            string = self.return_type.globalname
+            if not self.is_static:
+                string += " (" + self.parent.globalname.replace('class ', '').replace('struct ', '').replace('union ', '') + "::"
+            string += "*) (" + ", ".join(parameter.qualified_type.globalname for parameter in self.parameters) + ")"
+            if self.is_const:
+                string += " const"
+            return string
+
 class ConstructorProxy(DeclarationProxy):
     """
     """
