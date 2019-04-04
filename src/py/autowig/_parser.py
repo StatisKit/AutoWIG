@@ -173,7 +173,7 @@ def pre_processing(asg, headers, flags, **kwargs):
                 else:
                     sysincludes = [str(Path(sysinclude.strip()).abspath()) for sysinclude in sysincludes]
                     if system == 'linux':
-                        if "CONDA_PREFIX" in os.environ and not os.path.join(os.environ["CONDA_PREFIX"], os.environ['GXX'], 'sysroot', 'usr', 'include') in sysincludes:
+                        if "CONDA_PREFIX" in os.environ and not os.path.join(os.environ["CONDA_PREFIX"], 'x86_64-conda_cos6-linux-gnu', 'sysroot', 'usr', 'include') in sysincludes:
                             sysincludes.append(os.path.join(os.environ["CONDA_PREFIX"], 'x86_64-conda_cos6-linux-gnu', 'sysroot', 'usr', 'include'))
                         sysincludes = [sysinclude for sysinclude in sysincludes if not 'lib/gcc' in sysinclude]
                         s = subprocess.Popen(['clang', '-x', asg._language, '-v', '-E', devnull],

@@ -43,6 +43,8 @@ requirements:
     - libtoolchain
     - python-toolchain
     - python-clanglite
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
   host:
     - python
   run:
@@ -54,4 +56,6 @@ requirements:
     - {{ pin_compatible('libtoolchain', exact=True) }}
     - {{ pin_compatible('python-toolchain', exact=True) }}
     - {{ pin_compatible('python-clanglite', exact=True) }}
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
     - python
