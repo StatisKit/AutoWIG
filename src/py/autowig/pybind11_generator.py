@@ -490,7 +490,10 @@ VariableProxy._default_pybind11_export = property(_default_pybind11_export)
 del _default_pybind11_export
 
 def _valid_pybind11_export(self):
-    return getattr(self, 'access', False) in ['none', 'public'] and not self.is_bit_field
+    if isinstance(self.parent, ClassTemplateProxy):
+        return False
+    else:
+        return getattr(self, 'access', False) in ['none', 'public'] and not self.is_bit_field
 
 FieldProxy._valid_pybind11_export = property(_valid_pybind11_export)
 
@@ -542,18 +545,21 @@ MethodProxy._default_pybind11_export = property(_default_pybind11_export)
 del _default_pybind11_export
 
 def _valid_pybind11_export(self):
-    if self.return_type.desugared_type.is_reference and self.return_type.desugared_type.is_pointer and not self.return_type.desugared_type.is_const:
+    if isinstance(self.parent, ClassTemplateProxy):
         return False
-    if any(parameter.qualified_type.desugared_type.is_reference and parameter.qualified_type.desugared_type.is_pointer and not parameter.qualified_type.is_const for parameter in self.parameters):
-        return False
-    if self.pybind11_call_policy in ['pybind11::return_value_policy::reference_internal',
-                                     'pybind11::return_value_policy::reference']:
-        if not isinstance(self.return_type.desugared_type.unqualified_type, ClassProxy):
-            return False
-    if (self.access == 'public'or self.parent.is_abstract) and self.return_type.pybind11_export and all(bool(parameter.pybind11_export) for parameter in self.parameters):
-        return not self.localname.startswith('operator') or self.localname.strip('operator').strip() in PYTHON_OPERATOR
     else:
-        return False
+        if self.return_type.desugared_type.is_reference and self.return_type.desugared_type.is_pointer and not self.return_type.desugared_type.is_const:
+            return False
+        if any(parameter.qualified_type.desugared_type.is_reference and parameter.qualified_type.desugared_type.is_pointer and not parameter.qualified_type.is_const for parameter in self.parameters):
+            return False
+        if self.pybind11_call_policy in ['pybind11::return_value_policy::reference_internal',
+                                         'pybind11::return_value_policy::reference']:
+            if not isinstance(self.return_type.desugared_type.unqualified_type, ClassProxy):
+                return False
+        if (self.access == 'public'or self.parent.is_abstract) and self.return_type.pybind11_export and all(bool(parameter.pybind11_export) for parameter in self.parameters):
+            return not self.localname.startswith('operator') or self.localname.strip('operator').strip() in PYTHON_OPERATOR
+        else:
+            return False
 
 MethodProxy._valid_pybind11_export = property(_valid_pybind11_export)
 del _valid_pybind11_export
