@@ -101,7 +101,15 @@ class NodeProxy(object):
         return int(uuid.uuid5(uuid.NAMESPACE_X500, self._node).hex, 16)
 
     def __dir__(self):
-        return sorted([key for key in list(self._asg._nodes[self._node].keys())] + [key for key in dir(self.__class__)])
+        try:
+            return sorted([key for key in list(self._asg._nodes[self._node].keys())] + [key for key in dir(self.__class__)])
+        except:
+            print(self.__class__)
+            print(self)
+            print(self._node)
+            print(self._asg)
+            print(self._asg._nodes)
+            raise
 
     def __getattr__(self, attr):
         if attr not in dir(self):

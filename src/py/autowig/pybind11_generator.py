@@ -26,6 +26,9 @@
 
 from mako.template import Template
 from operator import attrgetter
+from functools import partial
+
+import multiprocessing
 import os
 import parse
 
@@ -58,6 +61,9 @@ from .plugin import ProxyManager, PluginManager
 from ._node_rename import PYTHON_OPERATOR
 
 __all__ = ['pybind11_call_policy', 'pybind11_export', 'pybind11_module', 'pybind11_decorator', 'TO', 'FROM']
+
+def PARALLEL_WRITER(node, asg):
+    return asg[node].write()
 
 TO = {}
 
@@ -138,7 +144,9 @@ namespace autowig
 % endif
 
         % for mtd in cls.methods(access="private", inherited=True, strict=True):
-            %if mtd.is_virtual:
+            %if mtd.is_virtual and mtd.pybind11_export:
+
+        ${mtd.access}:
             typedef ${mtd.return_type.globalname} return_type_${mtd.hash};
                 % for parameter in mtd.parameters:
             typedef ${parameter.qualified_type.globalname} param_${mtd.hash}_${parameter.index}_type;
@@ -164,7 +172,7 @@ _UNIQUE_PTR\
     {
         public:
     % for mtd in cls.methods(inherited=True, strict=True, access="private"):
-        % if not mtd.access == "public" and mtd.is_virtual:
+        % if not mtd.access == "public" and mtd.is_virtual and mtd.pybind11_export:
             using class_type::${mtd.localname};
         % endif
     % endfor
@@ -977,22 +985,32 @@ PYBIND11_MODULE(_${module.prefix}, module_${module._asg['::'].hash})
             del self.decorator.module
         self._asg._nodes[self._node].pop('_decorator', None)
 
-    def write(self, header=True, exports=True, decorator=True):
+    def write(self, header=True, exports=True, decorator=True, processes=1):
         super(PyBind11ModuleFileProxy, self).write()
-        if header:
-            self.header.write()
-        if exports:
-            try:
+        if processes > 1:
+            args = []
+            if header:
+                args.append(self.header._node)
+            if exports:
+                args.extend([export._node for export in self.exports if not export.is_empty])
+            if decorator:
+                decorator = self.decorator
+            if decorator:
+                args.append(decorator._node)
+            pool = multiprocessing.Pool(processes)
+            pool.map(partial(PARALLEL_WRITER, asg=self._asg), args)
+        else:
+            super(PyBind11ModuleFileProxy, self).write()
+            if header:
+                self.header.write()
+            if exports:
                 for export in self.exports:
                     if not export.is_empty:
                         export.write()
-            except:
-                import pdb
-                pdb.set_trace()
-        if decorator:
-            decorator = self.decorator
-        if decorator:
-            decorator.write()
+            if decorator:
+                decorator = self.decorator
+            if decorator:
+                decorator.write()
 
     def remove(self, header=True, exports=True, decorator=True):
         super(PyBind11ModuleFileProxy, self).remove()
