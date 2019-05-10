@@ -389,7 +389,7 @@ class BoostPythonExportDefaultFileProxy(BoostPythonExportFileProxy):
 """)
 
     ENUMERATION = Template(text=r"""\
-    boost::python::enum_< ${enumeration.globalname} > enum_${enumeration.hash}("${node_rename(enumeration)}");
+    boost::python::enum_< ${enumeration.globalname.replace("enum ", "")} > enum_${enumeration.hash}("${node_rename(enumeration)}");
     % if enumeration.is_scoped:
         % for enumerator in enumeration.enumerators:
             % if enumerator.boost_python_export:

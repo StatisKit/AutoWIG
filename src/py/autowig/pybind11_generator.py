@@ -96,7 +96,7 @@ ENUMERATOR = Template(text="""\
 """)
 
 ENUMERATION = Template(text=r"""\
-    pybind11::enum_< ${enumeration.globalname} > enum_${enumeration.hash}(module, "${node_rename(enumeration)}");
+    pybind11::enum_< ${enumeration.globalname.replace("enum ", "")} > enum_${enumeration.hash}(module, "${node_rename(enumeration)}");
     % if enumeration.is_scoped:
         % for enumerator in enumeration.enumerators:
             % if enumerator.pybind11_export:
