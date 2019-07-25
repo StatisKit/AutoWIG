@@ -941,6 +941,10 @@ class TypedefProxy(DeclarationProxy):
     def qualified_type(self):
         return QualifiedTypeProxy(self._asg, self._node, **self._asg._type_edges[self._node])
 
+    @property
+    def is_local(self):
+        return isinstance(self.parent, NamespaceProxy)
+
 class VariableProxy(DeclarationProxy):
     """
     """

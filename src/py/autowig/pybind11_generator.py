@@ -1101,6 +1101,21 @@ _${module.prefix}.${".".join(node_rename(ancestor, scope=True) for ancestor in s
 % endif
 """)
 
+    ABSTRACTS = Template(text=r"""\
+% if len(abstracts) > 0:
+# Resolve scopes
+    % for abstract in abstracts:
+_${module.prefix}.${".".join(node_rename(ancestor) for ancestor in abstract.ancestors[1:])}.${node_rename(abstract)}.__abstract__ = True
+    % endfor
+% endif
+% if len(non_abstracts) > 0:
+# Resolve scopes
+    % for non_abstract in non_abstracts:
+_${module.prefix}.${".".join(node_rename(ancestor) for ancestor in non_abstract.ancestors[1:])}.${node_rename(non_abstract)}.__abstract__ = False
+    % endfor
+% endif
+""")
+
     TEMPLATES = Template(text=r"""\
 % if templates:
 # Group template specializations
@@ -1134,6 +1149,17 @@ ${target.package}._${target.module.prefix}.\
 ${".".join(node_rename(ancestor) for ancestor in tdf.qualified_type.desugared_type.unqualified_type.ancestors[1:])}.\
         % endif
 ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
+        % if tdf.is_local:
+            % if target.globalname == module.decorator.globalname:
+_${module.prefix}.\
+            % else:
+${target.package}._${target.module.prefix}.\
+            % endif
+            % if len(tdf.qualified_type.desugared_type.unqualified_type.ancestors) > 1:
+${".".join(node_rename(ancestor) for ancestor in tdf.qualified_type.desugared_type.unqualified_type.ancestors[1:])}.\
+            % endif
+${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}.__alias__ = "${node_rename(tdf)}"
+        % endif
     % endfor
 % endif""")
 
@@ -1160,6 +1186,17 @@ ${node_rename(tdf.qualified_type.desugared_type.unqualified_type)}
             if isinstance(declaration.parent, ClassProxy) and not ignore(declaration):
                 scopes.append(declaration)
         content.append(self.SCOPES.render(scopes = sorted(scopes, key = lambda scope: len(scope.ancestors)), decorator = self, module = self.module,
+                node_rename = node_rename))
+        abstracts = []
+        non_abstracts = []
+        for export in self.module.exports:
+            declaration = export.declaration
+            if isinstance(declaration, ClassProxy) and not ignore(declaration):
+                if declaration.is_abstract:
+                    abstracts.append(declaration)
+                else:
+                    non_abstracts.append(declaration)
+        content.append(self.ABSTRACTS.render(non_abstracts=non_abstracts, abstracts = abstracts, decorator = self, module = self.module,
                 node_rename = node_rename))
         templates = dict()
         for export in self.module.exports:
