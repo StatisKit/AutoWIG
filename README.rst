@@ -39,3 +39,8 @@ Citation
 If you use AutoWIG in a scientific publication, we would appreciate citations: 
 
          Fernique P, Pradal C. (2018) AutoWIG: automatic generation of python bindings for C++ libraries. PeerJ Computer Science 4:e149 https://doi.org/10.7717/peerj-cs.149 
+
+Examples
+=========
+
+Examples written in the article are available a dedicated `repository <http://github.com/StatisKit/FP17>`_
