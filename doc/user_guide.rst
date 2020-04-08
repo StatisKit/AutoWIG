@@ -33,7 +33,7 @@ Problem setting
 ---------------
 
 Consider a scientist who has designed multiple *C++* libraries for statistical analysis.
-He would like to distribute his libraries and decide to make them available in *Python* in order to reach a public of statisticians but also less expert scientists such as biologists.
+He would like to distribute his libraries and decide to make them available in *Python* in order to reach a public of scientists, expert and non-expert programmers alike.
 Yet, he is not interested in becoming an expert in *C++*/*Python* wrapping, even if it exists classical approaches consisting in writing wrappers with **SWIG** :cite:`Bea03` or **Boost.Python** :cite:`AG03`.
 Moreover, he would have serious difficulties to maintain the wrappers, since this semi-automatic process is time consuming and error prone.
 Instead, he would like to automate the process of generating wrappers in sync with his evolving *C++* libraries.
